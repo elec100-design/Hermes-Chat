@@ -1,0 +1,17 @@
+name: HermesChat
+targets:
+  HermesChat:
+    type: application
+    platform: iOS
+    sources: [HermesChat]
+    resources: [HermesChat/Resources]
+    settings:
+      base:
+        INFOPLIST_FILE: HermesChat/Resources/Info.plist
+        PRODUCT_NAME: HermesChat
+        PRODUCT_BUNDLE_IDENTIFIER: com.hermes.chatios
+        IPHONEOS_DEPLOYMENT_TARGET: 17.0
+        SWIFT_VERSION: 5.9
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: ""
+        GENERATE_INFOPLIST_FILE: NO

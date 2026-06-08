@@ -1,0 +1,399 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0D9CC9C9B49F82C246E793D9 /* HermesAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E785976044540D5051D9A8C /* HermesAPIClient.swift */; };
+		1ADA276CE4E2E73017B088A4 /* ApiClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D41605B6BF1840E350546220 /* ApiClient.swift */; };
+		1C77813AED34B08CD3E08F90 /* HermesChatApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65FFA2CC47E47044567F7E36 /* HermesChatApp.swift */; };
+		3658CC72F9CAB88AB9CBA142 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8DCB2A4C45DFD8E5CA9F032 /* SettingsView.swift */; };
+		5A89F158C9FB5779ECF4BB54 /* AppDefaults.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E3D771DF194DC8DF1975A78 /* AppDefaults.swift */; };
+		617FEF64C2A2B4E4986CB1BC /* DashboardModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FB3343782720464725EB49B /* DashboardModels.swift */; };
+		7E4B207B5BCA40A070CBF676 /* SessionModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001BE0A159F3AEBDC606263C /* SessionModels.swift */; };
+		A048726920A8715530AACBE9 /* ToolModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ABF5AB0727489B06D16F6AB /* ToolModels.swift */; };
+		A9FA080264459EA4F3C7D0AA /* ToolResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6743DB1D930CC2F7E9C650CC /* ToolResultView.swift */; };
+		B5B4BF8255A8DF60FFE1604F /* ChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEC3DC1D7345FE8A30F5F63E /* ChatViewModel.swift */; };
+		B681A38C220609922E6F32B6 /* ChatModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F3BB2D079331A3B8BEBB359 /* ChatModels.swift */; };
+		C29ABD7D6F0C12DFFACAAC42 /* SessionListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D485E391BB3FBF773D0C6778 /* SessionListView.swift */; };
+		CC0372ECAE6E122E1C4FAA13 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 690CD0BEB59B960A94F72420 /* ChatView.swift */; };
+		D37A2F7854931324D14E852F /* MessageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6079AD100F5FFAC1B2FE955 /* MessageView.swift */; };
+		FB2E0FF7697F10D61F2B83B1 /* StreamModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB500D688436AF311932B708 /* StreamModels.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		001BE0A159F3AEBDC606263C /* SessionModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionModels.swift; sourceTree = "<group>"; };
+		0ABF5AB0727489B06D16F6AB /* ToolModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolModels.swift; sourceTree = "<group>"; };
+		1F3BB2D079331A3B8BEBB359 /* ChatModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatModels.swift; sourceTree = "<group>"; };
+		1FB3343782720464725EB49B /* DashboardModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardModels.swift; sourceTree = "<group>"; };
+		23245B6E8F2A9A7A394852E9 /* HermesChat.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HermesChat.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		65FFA2CC47E47044567F7E36 /* HermesChatApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HermesChatApp.swift; sourceTree = "<group>"; };
+		6743DB1D930CC2F7E9C650CC /* ToolResultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolResultView.swift; sourceTree = "<group>"; };
+		690CD0BEB59B960A94F72420 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
+		7E785976044540D5051D9A8C /* HermesAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HermesAPIClient.swift; sourceTree = "<group>"; };
+		8E3D771DF194DC8DF1975A78 /* AppDefaults.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDefaults.swift; sourceTree = "<group>"; };
+		A221A979D2EDD87F33D38D44 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		BB500D688436AF311932B708 /* StreamModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamModels.swift; sourceTree = "<group>"; };
+		D41605B6BF1840E350546220 /* ApiClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApiClient.swift; sourceTree = "<group>"; };
+		D485E391BB3FBF773D0C6778 /* SessionListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionListView.swift; sourceTree = "<group>"; };
+		DEC3DC1D7345FE8A30F5F63E /* ChatViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatViewModel.swift; sourceTree = "<group>"; };
+		E6079AD100F5FFAC1B2FE955 /* MessageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageView.swift; sourceTree = "<group>"; };
+		F8DCB2A4C45DFD8E5CA9F032 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		2DBCD9AC0F176525E1C50AB6 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				E6079AD100F5FFAC1B2FE955 /* MessageView.swift */,
+				6743DB1D930CC2F7E9C650CC /* ToolResultView.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		36A99B5720D58F1B3DB28FFB /* HermesChat */ = {
+			isa = PBXGroup;
+			children = (
+				65FFA2CC47E47044567F7E36 /* HermesChatApp.swift */,
+				BB500D688436AF311932B708 /* StreamModels.swift */,
+				F071D0C15D5946A0A9C611C8 /* Models */,
+				79ADB5EF3F17868193DD3239 /* Resources */,
+				4D292AE3948AF1C9BD5C12E1 /* Services */,
+				AFC58B4E359424F537D0C882 /* ViewModels */,
+				AD022600DB262A1EE5281A15 /* Views */,
+			);
+			path = HermesChat;
+			sourceTree = "<group>";
+		};
+		44F68EE33E19F15B8A6EF68B /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				23245B6E8F2A9A7A394852E9 /* HermesChat.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		4D292AE3948AF1C9BD5C12E1 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				D41605B6BF1840E350546220 /* ApiClient.swift */,
+				8E3D771DF194DC8DF1975A78 /* AppDefaults.swift */,
+				7E785976044540D5051D9A8C /* HermesAPIClient.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		79ADB5EF3F17868193DD3239 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				A221A979D2EDD87F33D38D44 /* Info.plist */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		AD022600DB262A1EE5281A15 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				690CD0BEB59B960A94F72420 /* ChatView.swift */,
+				D485E391BB3FBF773D0C6778 /* SessionListView.swift */,
+				F8DCB2A4C45DFD8E5CA9F032 /* SettingsView.swift */,
+				2DBCD9AC0F176525E1C50AB6 /* Components */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		AFC58B4E359424F537D0C882 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				DEC3DC1D7345FE8A30F5F63E /* ChatViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		C6988E78869DC4646BA1BD85 = {
+			isa = PBXGroup;
+			children = (
+				36A99B5720D58F1B3DB28FFB /* HermesChat */,
+				44F68EE33E19F15B8A6EF68B /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		F071D0C15D5946A0A9C611C8 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				1F3BB2D079331A3B8BEBB359 /* ChatModels.swift */,
+				1FB3343782720464725EB49B /* DashboardModels.swift */,
+				001BE0A159F3AEBDC606263C /* SessionModels.swift */,
+				0ABF5AB0727489B06D16F6AB /* ToolModels.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		DB97AA5A8FBBD54B6F05AC0F /* HermesChat */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DACB90115195947152786C91 /* Build configuration list for PBXNativeTarget "HermesChat" */;
+			buildPhases = (
+				826B5629B0929883375420D7 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = HermesChat;
+			packageProductDependencies = (
+			);
+			productName = HermesChat;
+			productReference = 23245B6E8F2A9A7A394852E9 /* HermesChat.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		BD8AF0C259AF7A97636A68F7 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					DB97AA5A8FBBD54B6F05AC0F = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 41FFABF6DF1B39B1D967CB88 /* Build configuration list for PBXProject "HermesChat" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = C6988E78869DC4646BA1BD85;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 44F68EE33E19F15B8A6EF68B /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				DB97AA5A8FBBD54B6F05AC0F /* HermesChat */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		826B5629B0929883375420D7 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1ADA276CE4E2E73017B088A4 /* ApiClient.swift in Sources */,
+				5A89F158C9FB5779ECF4BB54 /* AppDefaults.swift in Sources */,
+				B681A38C220609922E6F32B6 /* ChatModels.swift in Sources */,
+				CC0372ECAE6E122E1C4FAA13 /* ChatView.swift in Sources */,
+				B5B4BF8255A8DF60FFE1604F /* ChatViewModel.swift in Sources */,
+				617FEF64C2A2B4E4986CB1BC /* DashboardModels.swift in Sources */,
+				0D9CC9C9B49F82C246E793D9 /* HermesAPIClient.swift in Sources */,
+				1C77813AED34B08CD3E08F90 /* HermesChatApp.swift in Sources */,
+				D37A2F7854931324D14E852F /* MessageView.swift in Sources */,
+				C29ABD7D6F0C12DFFACAAC42 /* SessionListView.swift in Sources */,
+				7E4B207B5BCA40A070CBF676 /* SessionModels.swift in Sources */,
+				3658CC72F9CAB88AB9CBA142 /* SettingsView.swift in Sources */,
+				FB2E0FF7697F10D61F2B83B1 /* StreamModels.swift in Sources */,
+				A048726920A8715530AACBE9 /* ToolModels.swift in Sources */,
+				A9FA080264459EA4F3C7D0AA /* ToolResultView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		0650E9FD5B1F1828BC225394 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = FQC4365RD8;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = HermesChat/Resources/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.hermes.chatios;
+				PRODUCT_NAME = HermesChat;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		2E16DB503774BC85741E9C6F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		2F91E6CA81CC7154294F3050 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = FQC4365RD8;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = HermesChat/Resources/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.hermes.chatios;
+				PRODUCT_NAME = HermesChat;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		C6B7B5A246C4C81F6FB50720 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		41FFABF6DF1B39B1D967CB88 /* Build configuration list for PBXProject "HermesChat" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C6B7B5A246C4C81F6FB50720 /* Debug */,
+				2E16DB503774BC85741E9C6F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		DACB90115195947152786C91 /* Build configuration list for PBXNativeTarget "HermesChat" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2F91E6CA81CC7154294F3050 /* Debug */,
+				0650E9FD5B1F1828BC225394 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = BD8AF0C259AF7A97636A68F7 /* Project object */;
+}
