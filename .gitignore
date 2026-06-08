@@ -1,0 +1,44 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Xcode
+xcuserdata/
+*.xcworkspace
+DerivedData/
+*.pbxuser
+!default.pbxuser
+
+# Build
+build/
+*.o
+*.a
+*.dylib
+*.so
+
+# Swift Package Manager
+.build/
+Package.resolved
+
+# CocoaPods
+Pods/
+
+# Carthage
+Carthage/Build/
+
+# fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/
+fastlane/test_output/
+
+# Editor
+*.swp
+*~
+.idea/
+.vscode/
+
+# Env
+.env
+.env.local
