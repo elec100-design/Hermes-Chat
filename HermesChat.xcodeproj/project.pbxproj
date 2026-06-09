@@ -13,6 +13,7 @@
 		3658CC72F9CAB88AB9CBA142 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8DCB2A4C45DFD8E5CA9F032 /* SettingsView.swift */; };
 		5A89F158C9FB5779ECF4BB54 /* AppDefaults.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E3D771DF194DC8DF1975A78 /* AppDefaults.swift */; };
 		617FEF64C2A2B4E4986CB1BC /* DashboardModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FB3343782720464725EB49B /* DashboardModels.swift */; };
+		776B66DF2FD8387E001190A1 /* ProfileModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 776B66DE2FD8387E001190A1 /* ProfileModels.swift */; };
 		7E4B207B5BCA40A070CBF676 /* SessionModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001BE0A159F3AEBDC606263C /* SessionModels.swift */; };
 		A048726920A8715530AACBE9 /* ToolModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ABF5AB0727489B06D16F6AB /* ToolModels.swift */; };
 		A9FA080264459EA4F3C7D0AA /* ToolResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6743DB1D930CC2F7E9C650CC /* ToolResultView.swift */; };
@@ -33,6 +34,7 @@
 		65FFA2CC47E47044567F7E36 /* HermesChatApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HermesChatApp.swift; sourceTree = "<group>"; };
 		6743DB1D930CC2F7E9C650CC /* ToolResultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolResultView.swift; sourceTree = "<group>"; };
 		690CD0BEB59B960A94F72420 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
+		776B66DE2FD8387E001190A1 /* ProfileModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileModels.swift; sourceTree = "<group>"; };
 		7E785976044540D5051D9A8C /* HermesAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HermesAPIClient.swift; sourceTree = "<group>"; };
 		8E3D771DF194DC8DF1975A78 /* AppDefaults.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDefaults.swift; sourceTree = "<group>"; };
 		A221A979D2EDD87F33D38D44 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -128,6 +130,7 @@
 				1FB3343782720464725EB49B /* DashboardModels.swift */,
 				001BE0A159F3AEBDC606263C /* SessionModels.swift */,
 				0ABF5AB0727489B06D16F6AB /* ToolModels.swift */,
+				776B66DE2FD8387E001190A1 /* ProfileModels.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -193,6 +196,7 @@
 				1ADA276CE4E2E73017B088A4 /* ApiClient.swift in Sources */,
 				5A89F158C9FB5779ECF4BB54 /* AppDefaults.swift in Sources */,
 				B681A38C220609922E6F32B6 /* ChatModels.swift in Sources */,
+				776B66DF2FD8387E001190A1 /* ProfileModels.swift in Sources */,
 				CC0372ECAE6E122E1C4FAA13 /* ChatView.swift in Sources */,
 				B5B4BF8255A8DF60FFE1604F /* ChatViewModel.swift in Sources */,
 				617FEF64C2A2B4E4986CB1BC /* DashboardModels.swift in Sources */,

@@ -5,6 +5,7 @@ struct Session: Identifiable, Codable, Equatable, Hashable {
     var title: String?
     var preview: String?
     var updatedAt: Date
+    var source: String?
 
     var displayTitle: String {
         if let t = title, !t.isEmpty { return t }

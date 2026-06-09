@@ -13,16 +13,17 @@ private struct ServerSession: Decodable {
     let startedAt: Double?
     let lastActive: Double?
     let model: String?
+    let source: String?
 
     enum CodingKeys: String, CodingKey {
-        case id, title, preview, model
+        case id, title, preview, model, source
         case startedAt = "started_at"
         case lastActive = "last_active"
     }
 
     var asSession: Session {
         let ts = lastActive ?? startedAt ?? Date.now.timeIntervalSince1970
-        return Session(id: id, title: title, preview: preview, updatedAt: Date(timeIntervalSince1970: ts))
+        return Session(id: id, title: title, preview: preview, updatedAt: Date(timeIntervalSince1970: ts), source: source)
     }
 }
 
@@ -105,9 +106,10 @@ final class HermesAPIClient {
             .sorted { $0.updatedAt > $1.updatedAt }
     }
 
-    func createSession(model: String? = nil) async throws -> Session {
+    func createSession(model: String? = nil, systemPrompt: String? = nil) async throws -> Session {
         var body: [String: Any] = [:]
         if let model { body["model"] = model }
+        if let sp = systemPrompt, !sp.isEmpty { body["system_prompt"] = sp }
         let data = try await post("/api/sessions", body: body)
         let serverSession = try JSONDecoder().decode(ServerSession.self, from: data)
         return serverSession.asSession

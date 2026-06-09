@@ -10,6 +10,17 @@ final class AppSettings: ObservableObject {
     @Published var sessions: [Session] = []
     @Published var isLoadingSessions: Bool = false
     @Published var sessionLoadError: String? = nil
+    @Published var selectedSource: String? = nil
+
+    var availableSources: [String] {
+        let all = sessions.compactMap { $0.source }.filter { !$0.isEmpty }
+        return Array(Set(all)).sorted()
+    }
+
+    var filteredSessions: [Session] {
+        guard let source = selectedSource else { return sessions }
+        return sessions.filter { $0.source == source }
+    }
 
     var hermesClient: HermesAPIClient {
         HermesAPIClient(
@@ -33,7 +44,7 @@ final class AppSettings: ObservableObject {
     }
 
     func createSession() async throws -> Session {
-        let session = try await hermesClient.createSession(model: selectedModel)
+        let session = try await hermesClient.createSession(model: selectedModel, systemPrompt: nil)
         sessions.insert(session, at: 0)
         return session
     }
