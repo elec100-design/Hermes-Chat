@@ -1,50 +1,45 @@
 import Foundation
-import Combine
 
 @MainActor
 final class ChatViewModel: ObservableObject {
     @Published var messages: [ChatMessage] = []
     @Published var inputText: String = ""
     @Published var isWorking: Bool = false
+    @Published var isLoadingHistory: Bool = false
+
     let sessionId: String
     let appSettings: AppSettings
 
     init(sessionId: String, appSettings: AppSettings) {
         self.sessionId = sessionId
         self.appSettings = appSettings
+        Task { await loadHistory() }
+    }
+
+    private func loadHistory() async {
+        isLoadingHistory = true
+        do {
+            messages = try await appSettings.hermesClient.fetchMessages(sessionId: sessionId)
+        } catch {
+            // New session or unreachable — start empty
+        }
+        isLoadingHistory = false
     }
 
     func send() async {
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, isWorking == false else { return }
+        guard !text.isEmpty, !isWorking else { return }
 
         inputText = ""
-        let userMessage = ChatMessage(
-            role: .user,
-            content: text,
-            toolCalls: nil,
-            createdAt: .init()
-        )
-        messages.append(userMessage)
+        messages.append(ChatMessage(role: .user, content: text, toolCalls: nil, createdAt: .now))
 
         isWorking = true
         defer { isWorking = false }
 
-        let client = APIClient(
-            baseURL: URL(string: appSettings.serverHost)!,
-            apiKey: appSettings.apiKey
-        )
-
-        let request = ChatRequest(
-            model: appSettings.selectedModel,
-            messages: messages.map { .init(role: $0.role.rawValue, content: $0.content) },
-            sessionId: sessionId
-        )
+        let stream = appSettings.hermesClient.streamChat(sessionId: sessionId, message: text)
 
         do {
-            let stream = client.streamChat(request: request)
-
-            var assistant = ChatMessage(role: .assistant, content: "", toolCalls: [], createdAt: .init())
+            var assistant = ChatMessage(role: .assistant, content: "", toolCalls: [], createdAt: .now)
             let assistantIndex = messages.count
             messages.append(assistant)
             var toolDictionary: [String: ToolCall] = [:]
@@ -56,12 +51,13 @@ final class ChatViewModel: ObservableObject {
                 case .toolCallUpdate(let id, let name, let argumentsDelta):
                     if var existing = toolDictionary[id] {
                         let merged = (existing.arguments ?? [:])
-                            .merging(["_delta": argumentsDelta], uniquingKeysWith: { current, _ in current })
+                            .merging(["_delta": argumentsDelta], uniquingKeysWith: { cur, _ in cur })
                         toolDictionary[id] = ToolCall(id: existing.id, name: existing.name, arguments: merged, result: existing.result)
                     } else {
                         toolDictionary[id] = ToolCall(id: id, name: name, arguments: ["_delta": argumentsDelta], result: nil)
                     }
                 }
+                messages[assistantIndex].content = assistant.content
             }
 
             messages[assistantIndex].content = assistant.content
@@ -71,13 +67,12 @@ final class ChatViewModel: ObservableObject {
                 messages.remove(at: assistantIndex)
             }
         } catch {
-            let errorMessage = ChatMessage(
+            messages.append(ChatMessage(
                 role: .assistant,
                 content: "[에러] \(error.localizedDescription)",
                 toolCalls: nil,
-                createdAt: .init()
-            )
-            messages.append(errorMessage)
+                createdAt: .now
+            ))
         }
     }
 }

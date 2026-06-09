@@ -3,66 +3,51 @@ import Security
 
 struct SettingsView: View {
     @ObservedObject var appSettings: AppSettings
-    @Environment(\.dismiss) private var dismiss
     @State private var testResult: String? = nil
     @State private var isTesting = false
     @State private var showApiKeyInput = false
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section("Hermes 연결") {
-                    TextField("Server Host", text: $appSettings.serverHost)
-                        .textContentType(.URL)
-                        .keyboardType(.URL)
-                    HStack {
-                        if showApiKeyInput {
-                            TextField("API Key", text: $appSettings.apiKey)
-                        } else {
-                            SecureField("API Key", text: $appSettings.apiKey)
-                        }
-                        Button {
-                            showApiKeyInput.toggle()
-                        } label: {
-                            Image(systemName: showApiKeyInput ? "eye" : "eye.slash")
-                        }
-                        .buttonStyle(.plain)
+        Form {
+            Section("Hermes 연결") {
+                TextField("Server Host", text: $appSettings.serverHost)
+                    .textContentType(.URL)
+                    .keyboardType(.URL)
+                HStack {
+                    if showApiKeyInput {
+                        TextField("API Key", text: $appSettings.apiKey)
+                    } else {
+                        SecureField("API Key", text: $appSettings.apiKey)
                     }
-                    Button("연결 테스트") {
-                        testConnection()
-                    }
-                    .disabled(isTesting)
-
-                    if let testResult {
-                        Text(testResult)
-                            .font(.footnote)
-                            .foregroundStyle(testResult.contains("성공") ? .green : .red)
-                    }
-                }
-
-                Section("기본 모델") {
-                    TextField("Model", text: $appSettings.selectedModel)
-                }
-
-                Section {
-                    NavigationLink {
-                        SessionListView(appSettings: appSettings, activeSessionId: .constant(nil))
+                    Button {
+                        showApiKeyInput.toggle()
                     } label: {
-                        Label("세션 목록", systemImage: "bubble.left.and.bubble.right")
+                        Image(systemName: showApiKeyInput ? "eye" : "eye.slash")
                     }
+                    .buttonStyle(.plain)
                 }
+                Button("연결 테스트") {
+                    testConnection()
+                }
+                .disabled(isTesting)
 
-                Section {
-                    Link("Tailscale 다운로드", destination: URL(string: "https://tailscale.com")!)
+                if let testResult {
+                    Text(testResult)
+                        .font(.footnote)
+                        .foregroundStyle(testResult.contains("성공") ? .green : .red)
                 }
             }
-            .navigationTitle("설정")
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("닫기") { dismiss() }
-                }
+
+            Section("기본 모델") {
+                TextField("Model", text: $appSettings.selectedModel)
+            }
+
+            Section {
+                Link("Tailscale 다운로드", destination: URL(string: "https://tailscale.com")!)
             }
         }
+        .navigationTitle("설정")
+        .navigationBarTitleDisplayMode(.large)
     }
 
     private func testConnection() {

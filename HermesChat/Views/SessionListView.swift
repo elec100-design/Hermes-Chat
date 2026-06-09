@@ -2,27 +2,61 @@ import SwiftUI
 
 struct SessionListView: View {
     @ObservedObject var appSettings: AppSettings
-    @Binding var activeSessionId: String?
+    @State private var navigationPath = NavigationPath()
+    @State private var isCreatingSession = false
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             List {
-                Button {
-                    let session = appSettings.createSession()
-                    activeSessionId = session.id
-                } label: {
-                    Label("새 세션 만들기", systemImage: "speaker.wave.2.bubble.fill")
-                        .foregroundStyle(.tint)
+                // Error banner
+                if let error = appSettings.sessionLoadError {
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                        Text(error)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Button("재시도") { appSettings.loadSessions() }
+                            .font(.footnote.bold())
+                    }
+                    .listRowBackground(Color.orange.opacity(0.08))
                 }
 
+                // New session button
+                Button {
+                    guard !isCreatingSession else { return }
+                    isCreatingSession = true
+                    Task {
+                        do {
+                            let session = try await appSettings.createSession()
+                            navigationPath.append(session)
+                        } catch {
+                            appSettings.sessionLoadError = error.localizedDescription
+                        }
+                        isCreatingSession = false
+                    }
+                } label: {
+                    if isCreatingSession {
+                        HStack(spacing: 8) {
+                            ProgressView().scaleEffect(0.8)
+                            Text("생성 중...")
+                                .foregroundStyle(.secondary)
+                        }
+                    } else {
+                        Label("새 세션 만들기", systemImage: "speaker.wave.2.bubble.fill")
+                            .foregroundStyle(.tint)
+                    }
+                }
+                .disabled(isCreatingSession)
+
+                // Session list
                 ForEach(appSettings.sessions) { session in
-                    Button {
-                        activeSessionId = session.id
-                        appSettings.loadSessions()
-                    } label: {
+                    NavigationLink(value: session) {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(session.title.isEmpty ? "(제목 없음)" : session.title)
+                            Text(session.displayTitle)
                                 .font(.headline)
+                                .lineLimit(1)
                             Text(formattedDate(session.updatedAt))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
@@ -32,7 +66,7 @@ struct SessionListView: View {
                         Button(role: .destructive) {
                             appSettings.deleteSession(id: session.id)
                         } label: {
-                            Text("삭제")
+                            Label("삭제", systemImage: "trash")
                         }
                     }
                 }
@@ -47,6 +81,14 @@ struct SessionListView: View {
                         Text("설정")
                     }
                 }
+                ToolbarItem(placement: .navigationBarLeading) {
+                    if appSettings.isLoadingSessions {
+                        ProgressView().scaleEffect(0.8)
+                    }
+                }
+            }
+            .navigationDestination(for: Session.self) { session in
+                ChatView(sessionId: session.id, appSettings: appSettings)
             }
             .onAppear {
                 appSettings.loadSessions()

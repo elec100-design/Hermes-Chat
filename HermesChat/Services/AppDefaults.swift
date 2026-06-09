@@ -5,48 +5,47 @@ import SwiftUI
 final class AppSettings: ObservableObject {
     @AppStorage("serverHost") var serverHost: String = "http://localhost:8642"
     @AppStorage("selectedModel") var selectedModel: String = "hermes-agent"
-
-    @Published var apiKey: String = ""
+    @AppStorage("apiKey") var apiKey: String = ""
 
     @Published var sessions: [Session] = []
+    @Published var isLoadingSessions: Bool = false
+    @Published var sessionLoadError: String? = nil
 
-    private var sessionsFileURL: URL {
-        let url = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        return url.appendingPathComponent("sessions.json")
+    var hermesClient: HermesAPIClient {
+        HermesAPIClient(
+            baseURL: URL(string: serverHost) ?? URL(string: "http://localhost:8642")!,
+            apiKey: apiKey
+        )
     }
 
     func loadSessions() {
-        guard let data = try? Data(contentsOf: sessionsFileURL) else { return }
-        sessions = (try? JSONDecoder().decode([Session].self, from: data)) ?? []
+        guard !isLoadingSessions else { return }
+        isLoadingSessions = true
+        sessionLoadError = nil
+        Task {
+            do {
+                sessions = try await hermesClient.fetchSessions()
+            } catch {
+                sessionLoadError = error.localizedDescription
+            }
+            isLoadingSessions = false
+        }
     }
 
-    func saveSessions() {
-        let data = try? JSONEncoder().encode(sessions)
-        try? data?.write(to: sessionsFileURL, options: .atomic)
-    }
-
-    func createSession(title: String = "새 세션") -> Session {
-        let session = Session(id: UUID().uuidString, title: title, updatedAt: .init())
+    func createSession() async throws -> Session {
+        let session = try await hermesClient.createSession(model: selectedModel)
         sessions.insert(session, at: 0)
-        saveSessions()
         return session
     }
 
     func deleteSession(id: String) {
         sessions.removeAll { $0.id == id }
-        saveSessions()
+        Task { try? await hermesClient.deleteSession(id: id) }
     }
-}
 
-extension AppSettings {
-    func headers() -> [String: String] {
-        var headers: [String: String] = [
-            "Content-Type": "application/json",
-            "Accept": "text/event-stream"
-        ]
-        if !apiKey.isEmpty {
-            headers["Authorization"] = "Bearer \(apiKey)"
+    func updateSession(_ session: Session) {
+        if let idx = sessions.firstIndex(where: { $0.id == session.id }) {
+            sessions[idx] = session
         }
-        return headers
     }
 }

@@ -1,14 +1,14 @@
 import Foundation
 
-struct Session: Identifiable, Codable, Equatable {
+struct Session: Identifiable, Codable, Equatable, Hashable {
     let id: String
-    var title: String
+    var title: String?
+    var preview: String?
     var updatedAt: Date
-}
 
-struct SessionListItem: Identifiable, Codable, Equatable {
-    let id: String
-    var title: String
-    var createdAt: Date
-    var updatedAt: Date
+    var displayTitle: String {
+        if let t = title, !t.isEmpty { return t }
+        if let p = preview, !p.isEmpty { return p }
+        return "(제목 없음)"
+    }
 }

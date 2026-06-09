@@ -13,33 +13,36 @@ struct ChatView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
+        VStack(spacing: 0) {
+            if viewModel.isLoadingHistory {
+                ProgressView("대화 기록 불러오는 중...")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
                 messageList
-
-                if viewModel.isWorking {
-                    Divider()
-                    HStack {
-                        Spacer()
-                        ProgressView()
-                            .padding(.trailing, 4)
-                        Text(viewModel.messages.last?.content.isEmpty == true ? "응답 생성 중..." : "응답 중")
-                        Spacer()
-                    }
-                    .padding(.vertical, 6)
-                    .background(.thinMaterial)
-                }
-
-                Divider()
-                inputBar
-                    .padding()
-                    .background(.background)
             }
-            .navigationTitle("Hermes Chat")
-            .toolbar {
-                ToolbarItem(placement: .keyboard) {
-                    Button("완료") { isInputFocused = false }
+
+            if viewModel.isWorking {
+                Divider()
+                HStack {
+                    Spacer()
+                    ProgressView().padding(.trailing, 4)
+                    Text(viewModel.messages.last?.content.isEmpty == true ? "응답 생성 중..." : "응답 중")
+                    Spacer()
                 }
+                .padding(.vertical, 6)
+                .background(.thinMaterial)
+            }
+
+            Divider()
+            inputBar
+                .padding()
+                .background(.background)
+        }
+        .navigationTitle("Hermes Chat")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .keyboard) {
+                Button("완료") { isInputFocused = false }
             }
         }
     }
@@ -48,12 +51,10 @@ struct ChatView: View {
         ScrollViewReader { proxy in
             List {
                 ForEach(viewModel.messages) { message in
-                    MessageBubble(
-                        message: message
-                    )
-                    .listRowSeparator(.hidden)
-                    .listRowInsets(.init(top: 6, leading: 0, bottom: 6, trailing: 0))
-                    .listRowBackground(Color.clear)
+                    MessageBubble(message: message)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(.init(top: 6, leading: 0, bottom: 6, trailing: 0))
+                        .listRowBackground(Color.clear)
                 }
             }
             .listStyle(.plain)
@@ -64,9 +65,7 @@ struct ChatView: View {
 
     private func scrollToBottom(proxy: ScrollViewProxy) {
         guard let last = viewModel.messages.last?.id else { return }
-        withAnimation(.easeInOut) {
-            proxy.scrollTo(last, anchor: .bottom)
-        }
+        withAnimation(.easeInOut) { proxy.scrollTo(last, anchor: .bottom) }
     }
 
     private var inputBar: some View {
