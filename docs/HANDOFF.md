@@ -4,6 +4,18 @@
 Claude Code (Xcode 내장/웹) ↔ Hermes+Step-3.7-flash (맥미니 상주) ↔ Grok Build (웹).
 사용자 개입 없이 매끄럽게 이어지도록, 모든 에이전트는 아래 규칙을 따른다.
 
+## 0. 에이전트 역할 분담 (중요 — 2026-06-10 개정)
+
+| 에이전트 | 허용 작업 | 금지 작업 |
+|---|---|---|
+| Claude Code | 코드 작성, pbxproj 수정, 충돌 해소, 문서 | — |
+| Grok Build | 코드 작성 (NEEDS-BUILD로 기록) | 충돌 해소 |
+| **Hermes(codex)** | **빌드 검증, TASKS.md 상태 갱신, 검증 기록 추가만** | **코드·pbxproj 수정, 충돌 해소, 요청 범위 밖 커밋** |
+
+> 배경: codex(Step-3.7-flash)가 코드 작성 시 허위 보고(빈 구현을 "완료"로 보고),
+> pbxproj 파손(다른 에이전트의 등록 삭제), 무단 충돌 해소·커밋을 일으킨 이력이 있다.
+> codex에게는 빌드 검증만 맡긴다. 코드 작성 태스크는 Claude Code 또는 Grok Build가 집는다.
+
 ---
 
 ## 1. 세션 시작 시 (모든 에이전트 공통)
@@ -11,13 +23,16 @@ Claude Code (Xcode 내장/웹) ↔ Hermes+Step-3.7-flash (맥미니 상주) ↔ 
 맥미니 저장소 경로 (공백 포함 — **반드시 따옴표로 감쌀 것**):
 `REPO="/Users/macmini/Library/Mobile Documents/com~apple~CloudDocs/Coding/claude/busy-meitner-lhc5os"`
 
-1. `cd "$REPO" && git fetch origin claude/busy-meitner-lhc5os && git checkout claude/busy-meitner-lhc5os && git pull`
-2. **읽기 순서**: `docs/PLAN.md` → `docs/TASKS.md` → 이 문서.
-3. 작업 선택:
+1. `cd "$REPO" && git status --porcelain` — **출력이 있으면(더러우면) pull 하지 말 것.**
+   Hermes(codex)는 여기서 멈추고 상태를 보고한다. Claude Code만 정리 후 진행한다.
+2. `git fetch origin claude/busy-meitner-lhc5os && git checkout claude/busy-meitner-lhc5os && git pull --ff-only`
+   — `--ff-only`가 실패하면 머지하지 말고 §7을 따른다.
+3. **읽기 순서**: `docs/PLAN.md` → `docs/TASKS.md` → 이 문서.
+4. 작업 선택 (§0의 역할 범위 안에서만):
    - `BLOCKED`가 있으면 사유를 읽고 해소 가능하면 우선 처리.
    - `NEEDS-BUILD`가 있고 **자신이 맥에서 빌드 가능하면**(Hermes, Xcode의 Claude) 빌드 검증 최우선 (§3).
    - 아니면 TASKS.md에서 번호가 가장 낮은 `TODO`를 집는다 (의존: 같은 Phase 안에서는 위에서 아래 순서).
-4. 집은 작업의 상태를 `DOING(에이전트명, 날짜)`으로 수정 — **코드와 같은 커밋에 포함**.
+5. 집은 작업의 상태를 `DOING(에이전트명, 날짜)`으로 수정 — **코드와 같은 커밋에 포함**.
 
 ## 2. 작업 완료 시
 
@@ -42,8 +57,11 @@ xcodebuild -project HermesChat.xcodeproj -scheme HermesChat \
   -destination 'generic/platform=iOS Simulator' \
   CODE_SIGNING_ALLOWED=NO build 2>&1 | tail -30
 ```
-- 성공 → 해당 작업들 `NEEDS-BUILD` → `DONE`, TASKS.md "빌드 검증 기록"에 한 줄 추가, 커밋·푸시.
-- 실패 → 에러를 직접 수정 시도. 3회 실패 시 `BLOCKED(빌드에러: <요약>)`로 기록하고 에러 전문을 `docs/BUILD_STATUS.md`에 저장 후 푸시.
+- 성공 → 해당 작업들 `NEEDS-BUILD` → `DONE`, TASKS.md "빌드 검증 기록"에 **커밋 해시와 함께** 한 줄 추가, 커밋·푸시.
+- 실패 →
+  - **Hermes(codex): 코드를 수정하지 않는다.** 에러 전문을 `docs/BUILD_STATUS.md`에 저장하고
+    해당 태스크를 `BLOCKED(빌드에러: <요약>)`로 기록 후 커밋·푸시. 수정은 Claude Code 담당.
+  - Claude Code/Grok: 직접 수정 시도, 3회 실패 시 위와 동일하게 BLOCKED 처리.
 
 ## 4. 새 Swift 파일 추가 절차 (중요!)
 
@@ -61,30 +79,38 @@ xcodebuild -project HermesChat.xcodeproj -scheme HermesChat \
 
 ## 5. 에이전트별 시작 프롬프트 (복사해서 사용)
 
-### 5-A. Hermes(Step-3.7-flash, 맥미니)에게 — 1회 등록하면 이후 자동
+### 5-A. Hermes(Step-3.7-flash, 맥미니)에게 — **빌드 검증 전용** (2026-06-10 개정)
 텔레그램/슬랙으로 아래를 보내면 된다:
 
 ```
-앞으로 "HermesChat 작업 이어줘"라고 하면:
-1. cd "/Users/macmini/Library/Mobile Documents/com~apple~CloudDocs/Coding/claude/busy-meitner-lhc5os" && git checkout claude/busy-meitner-lhc5os && git pull
-2. docs/PLAN.md, docs/TASKS.md, docs/HANDOFF.md를 읽는다.
-3. HANDOFF.md §1~§4 프로토콜대로 작업 하나를 골라 구현하고,
-   xcodebuild로 빌드 검증 후 TASKS.md를 갱신해 커밋·푸시한다.
-4. 결과(완료한 태스크 ID, 빌드 결과)를 한 줄로 보고한다.
+앞으로 "HermesChat 빌드 검증해줘"라고 하면 아래 절차만 정확히 수행해. 코드 수정 금지.
+1. cd "/Users/macmini/Library/Mobile Documents/com~apple~CloudDocs/Coding/claude/busy-meitner-lhc5os"
+2. git status --porcelain 출력이 비어 있지 않으면 → 아무것도 하지 말고 출력을 그대로 보고 후 종료.
+3. git fetch origin && git checkout claude/busy-meitner-lhc5os && git pull --ff-only
+   → 실패하면 머지/리베이스 하지 말고 에러를 그대로 보고 후 종료.
+4. xcodebuild -project HermesChat.xcodeproj -scheme HermesChat -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build 2>&1 | tail -5
+5. 성공: docs/TASKS.md의 NEEDS-BUILD를 DONE으로 바꾸고 빌드 검증 기록에
+   "날짜 | 브랜치 @ 커밋해시 | BUILD SUCCEEDED" 한 줄 추가 → 이 두 파일만 커밋·푸시.
+6. 실패: 코드를 고치지 말고 에러 전문을 docs/BUILD_STATUS.md에 추가, 해당 태스크를
+   BLOCKED(빌드에러)로 바꿔 커밋·푸시.
+7. 결과를 한 줄로 보고: 커밋해시, BUILD SUCCEEDED/FAILED, 갱신한 태스크 ID.
+절대 금지: Swift/pbxproj 파일 수정, merge 충돌 해소, 시키지 않은 커밋.
 지금 한 번 실행해줘.
 ```
 
 ### 5-B. Hermes 자동 빌드 감시 (cron — 사용자 개입 제거의 핵심)
-Hermes에게 1회 지시:
+Hermes에게 1회 지시 (기존 cron이 있으면 교체):
 
 ```
-cron 작업을 등록해줘: 매 시간마다
-1. cd "/Users/macmini/Library/Mobile Documents/com~apple~CloudDocs/Coding/claude/busy-meitner-lhc5os" && git fetch && git checkout claude/busy-meitner-lhc5os && git pull
-2. docs/TASKS.md에 NEEDS-BUILD가 있으면 HANDOFF.md §3의 xcodebuild 명령으로 빌드.
-3. 성공: 해당 태스크를 DONE으로, 실패: 에러를 분석해 코드를 수정하고 재빌드(최대 3회),
-   그래도 실패면 BLOCKED로 기록하고 에러를 docs/BUILD_STATUS.md에 저장.
-4. 변경이 있을 때만 커밋("T-0NN: 빌드 검증 [DONE]" 형식)하고 푸시.
-5. 변경이 없으면 아무것도 하지 말고 조용히 종료.
+기존 HermesChat cron 작업을 삭제하고 새로 등록해줘: 매 시간마다
+1. cd "/Users/macmini/Library/Mobile Documents/com~apple~CloudDocs/Coding/claude/busy-meitner-lhc5os"
+2. git status --porcelain 출력이 비어 있지 않으면 조용히 종료 (절대 커밋/정리하지 말 것).
+3. git fetch origin && git pull --ff-only — 실패하면 조용히 종료 (머지 금지).
+4. docs/TASKS.md에 NEEDS-BUILD가 있을 때만 HANDOFF.md §3의 xcodebuild 명령으로 빌드.
+5. 성공: 해당 태스크를 DONE으로, 빌드 검증 기록에 커밋해시와 함께 한 줄 추가.
+   실패: 코드를 수정하지 말고 에러를 docs/BUILD_STATUS.md에 저장, 태스크를 BLOCKED로.
+6. docs/ 아래 파일만 커밋("T-0NN: 빌드 검증 [DONE]" 형식)하고 푸시.
+7. 그 외에는 아무것도 하지 말고 조용히 종료. Swift/pbxproj 수정 절대 금지.
 ```
 
 ### 5-C. Grok Build에게 (빌드 불가 환경 → 코드 작성 전담)
@@ -125,6 +151,9 @@ git push -u origin claude/busy-meitner-lhc5os   # 동작 확인
 
 - 같은 태스크에 두 에이전트가 붙는 것을 막기 위해 `DOING` 표시가 있으면 그 태스크는 건드리지 않는다 (7일 이상 방치된 `DOING`은 회수 가능).
 - push 충돌 시: `git pull --rebase origin claude/busy-meitner-lhc5os` 후 재푸시. TASKS.md 충돌은 양쪽 상태 변경을 모두 보존하는 방향으로 병합.
+- **머지/리베이스 충돌이 나면 Hermes(codex)는 해소를 시도하지 않는다**: 즉시
+  `git merge --abort`(또는 `git rebase --abort`)로 되돌리고 충돌 파일 목록을 보고 후 종료.
+  충돌 해소는 Claude Code만 한다.
 - 설계 판단이 필요한 모호함 → 임의로 결정하지 말고 TASKS.md에 `BLOCKED(질문: ...)`로 남긴다. 사용자가 모아서 답한다.
 
 ---
