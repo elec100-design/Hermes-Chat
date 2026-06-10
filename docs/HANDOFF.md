@@ -25,6 +25,14 @@ Claude Code (Xcode 내장/웹) ↔ Hermes+Step-3.7-flash (맥미니 상주) ↔ 
 2. 커밋 메시지 형식: `T-0NN: <한 줄 설명> [DONE|NEEDS-BUILD]`
 3. `git push -u origin claude/busy-meitner-lhc5os` (실패 시 2s/4s/8s/16s 백오프 재시도).
 4. **작업 도중 중단되더라도** 컴파일 가능한 단위로 자주 커밋·푸시할 것. 중단된 작업은 TASKS.md에 `DOING` + 마지막 상황 한 줄을 남기면 다음 에이전트가 이어받는다.
+5. **`server/hermes_bridge.py`를 수정했다면 배포까지 한다** (맥에서 작업하는 에이전트만 가능):
+   ```bash
+   cp "$REPO/server/hermes_bridge.py" ~/.hermes/bridge/
+   launchctl unload ~/Library/LaunchAgents/ai.hermes.bridge.plist
+   launchctl load ~/Library/LaunchAgents/ai.hermes.bridge.plist
+   curl -s http://127.0.0.1:8765/health   # {"status": "ok"} 확인
+   ```
+   맥이 아닌 에이전트(Grok 등)가 수정한 경우 TASKS.md에 `NEEDS-BUILD(브리지 재배포 필요)`로 남긴다.
 
 ## 3. 빌드 검증 (맥에서만 가능)
 
