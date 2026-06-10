@@ -19,9 +19,11 @@
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import time
+import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -32,6 +34,39 @@ TOKEN = os.environ.get("HERMES_BRIDGE_TOKEN", "")
 MAX_UPLOAD = 50 * 1024 * 1024  # 50MB
 
 SAFE_NAME = re.compile(r"^[A-Za-z0-9._-]{1,80}$")
+
+# launchd의 PATH는 /usr/bin:/bin 수준이라 pipx/homebrew 설치 경로를 보충해야 한다.
+EXTRA_BIN_DIRS = [
+    str(Path.home() / ".local" / "bin"),
+    "/opt/homebrew/bin",
+    "/usr/local/bin",
+    str(Path.home() / "bin"),
+]
+
+
+def find_hermes():
+    """hermes 실행파일 탐색: HERMES_BIN 환경변수 → PATH(+보충 경로)"""
+    env_bin = os.environ.get("HERMES_BIN", "")
+    if env_bin and Path(env_bin).is_file():
+        return env_bin
+    search = os.environ.get("PATH", "") + os.pathsep + os.pathsep.join(EXTRA_BIN_DIRS)
+    return shutil.which("hermes", path=search)
+
+
+def poll_health(port, timeout_sec):
+    """게이트웨이 /health가 응답할 때까지 폴링. 클라이언트 타임아웃(15초)보다 짧게 유지할 것."""
+    deadline = time.time() + timeout_sec
+    while time.time() < deadline:
+        try:
+            with urllib.request.urlopen(
+                f"http://127.0.0.1:{port}/health", timeout=2
+            ) as resp:
+                if resp.status == 200:
+                    return True
+        except OSError:
+            pass
+        time.sleep(1)
+    return False
 
 
 def list_profile_names():
@@ -148,17 +183,34 @@ class Handler(BaseHTTPRequestHandler):
             name = self.check_profile(parts[1])
             if not name:
                 return self.fail(404, "unknown profile")
-            cmd = ["hermes", "gateway", "restart"] if name == "default" \
-                else ["hermes", "--profile", name, "gateway", "restart"]
+            hermes = find_hermes()
+            if not hermes:
+                return self.fail(
+                    500,
+                    "hermes 실행파일을 찾지 못했습니다. "
+                    "LaunchAgent plist의 EnvironmentVariables에 HERMES_BIN=<hermes 절대경로>를 추가하세요.",
+                )
+            cmd = [hermes, "gateway", "restart"] if name == "default" \
+                else [hermes, "--profile", name, "gateway", "restart"]
+            port = int(read_env(profile_dir(name) / ".env").get("API_SERVER_PORT", "8642") or 8642)
             try:
-                proc = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
-                return self.send_json({
-                    "profile": name,
-                    "ok": proc.returncode == 0,
-                    "output": (proc.stdout + proc.stderr)[-2000:],
-                })
+                # 서비스 미설치 시 restart가 포그라운드로 돌 수 있어 분리 실행 후 헬스 폴링.
+                subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    start_new_session=True,
+                )
             except Exception as e:  # noqa: BLE001
                 return self.fail(500, f"restart failed: {e}")
+            time.sleep(2)  # 기존 프로세스 종료 여유
+            healthy = poll_health(port, timeout_sec=8)
+            output = (
+                f"재시작 완료 — 포트 {port} 헬스체크 성공"
+                if healthy
+                else f"재시작 요청됨 — 포트 {port}가 아직 응답하지 않습니다. 10~20초 후 세션 목록을 새로고침해 보세요."
+            )
+            return self.send_json({"profile": name, "ok": True, "output": output})
 
         # POST /upload/<profile>  (raw body + X-Filename 헤더)
         if len(parts) == 2 and parts[0] == "upload":
