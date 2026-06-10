@@ -10,6 +10,7 @@ final class AppSettings: ObservableObject {
     /// Hermes Bridge 주소 (예: http://100.x.x.x:8765). 비어 있으면 브리지 기능 비활성.
     @AppStorage("bridgeHost") var bridgeHost: String = ""
     @AppStorage("bridgeToken") var bridgeToken: String = ""
+    @AppStorage("dashboardPort") var dashboardPort: Int = 8000
 
     @Published var profiles: [HermesProfile] = []
     @Published var selectedProfileID: UUID?
@@ -56,6 +57,11 @@ final class AppSettings: ObservableObject {
             baseURL: baseURL(for: profile),
             apiKey: profile.apiKey.isEmpty ? apiKey : profile.apiKey
         )
+    }
+
+    /// 대시보드(:8000) URL — serverHost의 스킴/호스트에 dashboardPort 결합
+    var dashboardURL: URL {
+        baseURL(for: HermesProfile(name: "dashboard", port: dashboardPort))
     }
 
     /// Bridge 주소가 설정되어 있을 때만 만들어진다 (SOUL.md, 재시작, 업로드, 칸반).

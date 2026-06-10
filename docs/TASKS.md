@@ -58,7 +58,7 @@
 
 | ID | 작업 | 파일 | 상태 |
 |----|------|------|------|
-| T-060 | 대시보드(:8000) WKWebView 임베드 탭 | `Views/DashboardWebView.swift` (신규) | TODO |
+| T-060 | 대시보드(:8000) WKWebView 임베드 탭 | `Views/DashboardWebView.swift` (신규) | NEEDS-BUILD (Claude, 06-10) |
 | T-061 | Bridge 읽기전용 /files, /logs 확장 + 네이티브 파일 브라우저 | `server/hermes_bridge.py`, `Views/FileBrowserView.swift` (신규) | TODO |
 
 ## Phase 8 — 품질

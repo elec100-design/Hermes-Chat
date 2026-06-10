@@ -4,6 +4,7 @@ enum AppTab: Hashable {
     case board
     case sessions
     case kanban
+    case dashboard
     case settings
 }
 
@@ -26,6 +27,10 @@ struct HermesChatApp: App {
                 KanbanView(appSettings: appSettings)
                     .tabItem { Label("칸반", systemImage: "rectangle.split.3x1") }
                     .tag(AppTab.kanban)
+
+                DashboardWebView(appSettings: appSettings)
+                    .tabItem { Label("대시보드", systemImage: "gauge.with.dots.needle.50percent") }
+                    .tag(AppTab.dashboard)
 
                 NavigationStack {
                     SettingsView(appSettings: appSettings)
