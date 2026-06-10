@@ -1,11 +1,22 @@
 import Foundation
 
+/// 전송 대기 중인 첨부 파일 (업로드는 send 시점에 일괄 수행)
+struct PendingAttachment: Identifiable, Equatable {
+    let id = UUID()
+    let filename: String
+    let data: Data
+}
+
 @MainActor
 final class ChatViewModel: ObservableObject {
     @Published var messages: [ChatMessage] = []
     @Published var inputText: String = ""
     @Published var isWorking: Bool = false
     @Published var isLoadingHistory: Bool = false
+    @Published var attachments: [PendingAttachment] = []
+
+    /// Bridge 업로드 한도와 동일 (server/hermes_bridge.py MAX_UPLOAD)
+    static let maxAttachmentBytes = 50 * 1024 * 1024
 
     let sessionId: String
     let appSettings: AppSettings
@@ -26,18 +37,50 @@ final class ChatViewModel: ObservableObject {
         isLoadingHistory = false
     }
 
+    func addAttachment(filename: String, data: Data) {
+        guard data.count <= Self.maxAttachmentBytes else {
+            messages.append(ChatMessage(
+                role: .assistant,
+                content: "[에러] \(filename): 50MB를 초과해 첨부할 수 없습니다.",
+                toolCalls: nil,
+                createdAt: .now
+            ))
+            return
+        }
+        attachments.append(PendingAttachment(filename: filename, data: data))
+    }
+
+    func removeAttachment(id: UUID) {
+        attachments.removeAll { $0.id == id }
+    }
+
     func send() async {
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, !isWorking else { return }
-
-        let isFirstMessage = messages.isEmpty
-        inputText = ""
-        messages.append(ChatMessage(role: .user, content: text, toolCalls: nil, createdAt: .now))
+        guard !text.isEmpty || !attachments.isEmpty, !isWorking else { return }
 
         isWorking = true
         defer { isWorking = false }
 
-        let stream = appSettings.hermesClient.streamChat(sessionId: sessionId, message: text)
+        var outgoing = text
+        if !attachments.isEmpty {
+            do {
+                outgoing = try await uploadAttachmentsAndPrepend(to: text)
+            } catch {
+                messages.append(ChatMessage(
+                    role: .assistant,
+                    content: "[에러] 첨부 업로드 실패: \(error.localizedDescription)",
+                    toolCalls: nil,
+                    createdAt: .now
+                ))
+                return
+            }
+        }
+
+        let isFirstMessage = messages.isEmpty
+        inputText = ""
+        messages.append(ChatMessage(role: .user, content: outgoing, toolCalls: nil, createdAt: .now))
+
+        let stream = appSettings.hermesClient.streamChat(sessionId: sessionId, message: outgoing)
 
         do {
             var assistant = ChatMessage(role: .assistant, content: "", toolCalls: [], createdAt: .now)
@@ -79,6 +122,29 @@ final class ChatViewModel: ObservableObject {
                 createdAt: .now
             ))
         }
+    }
+
+    /// 첨부를 Bridge로 업로드하고 맥미니 절대경로를 메시지 앞에 붙인다.
+    /// 게이트웨이 chat API는 텍스트만 받으므로, Hermes가 자기 파일 도구로
+    /// 경로를 읽게 하는 것이 정석 흐름이다 (PLAN §3 Phase 4).
+    private func uploadAttachmentsAndPrepend(to text: String) async throws -> String {
+        guard let bridge = appSettings.bridgeClient else {
+            throw HermesAPIError.serverError(
+                "첨부를 보내려면 설정 화면의 Hermes Bridge 섹션에 URL과 토큰을 입력하세요."
+            )
+        }
+        var lines: [String] = []
+        for attachment in attachments {
+            let path = try await bridge.upload(
+                data: attachment.data,
+                filename: attachment.filename,
+                profile: appSettings.selectedProfile.name
+            )
+            lines.append("[첨부: \(path)]")
+        }
+        attachments = []
+        let header = lines.joined(separator: "\n")
+        return text.isEmpty ? header : header + "\n\n" + text
     }
 
     /// 첫 메시지의 앞부분으로 세션 제목을 자동 설정한다.

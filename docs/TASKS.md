@@ -35,9 +35,9 @@
 
 | ID | 작업 | 파일 | 상태 |
 |----|------|------|------|
-| T-020 | 업로드 → 절대경로를 메시지에 prepend 하는 전송 흐름 | `ViewModels/ChatViewModel.swift` | TODO |
-| T-021 | 입력창 `+` 버튼: PhotosPicker + fileImporter(드라이브 포함), 첨부 칩 UI | `Views/ChatView.swift` | TODO |
-| T-022 | Info.plist NSPhotoLibraryUsageDescription | `Resources/Info.plist` | TODO |
+| T-020 | 업로드 → 절대경로를 메시지에 prepend 하는 전송 흐름 | `ViewModels/ChatViewModel.swift` | NEEDS-BUILD (Claude, 06-10) |
+| T-021 | 입력창 `+` 버튼: PhotosPicker + fileImporter(드라이브 포함), 첨부 칩 UI | `Views/ChatView.swift` | NEEDS-BUILD (Claude, 06-10) |
+| T-022 | Info.plist NSPhotoLibraryUsageDescription | `Resources/Info.plist` | NEEDS-BUILD (Claude, 06-10) |
 
 ## Phase 5 — 프로필 보드
 
