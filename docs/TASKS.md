@@ -28,53 +28,55 @@
 | T-010 | Bridge를 맥미니 LaunchAgent로 배포 (`server/README.md` 절차) | (맥미니) | DONE (06-10, :8765 기동·7프로필 응답 확인) |
 | T-011 | BridgeClient.swift 신규 (**pbxproj 등록!** HANDOFF §4) — profiles/restart/soul/upload/kanban | `Services/BridgeClient.swift` (신규) | DONE (06-10, T-012와 같은 빌드로 검증·실기기 SOUL 저장 확인) |
 | T-012 | 프로필 상세 화면: 모델 선택, SOUL.md 편집기, Gateway restart 버튼(확인 다이얼로그) | `Views/ProfileDetailView.swift` (신규) | DONE (Hermes, 06-10) |
-| T-013 | Skills & Toolsets 읽기전용 화면 (`GET /v1/skills`, `/v1/toolsets`) | `Views/SkillsView.swift` (신규) | NEEDS-BUILD (Claude, 06-10) |
+|| T-013 | Skills & Toolsets 읽기전용 화면 (`GET /v1/skills`, `/v1/toolsets`) | `Views/SkillsView.swift` (신규) | DONE (06-11) |
 | T-014 | 설정에 Bridge URL/토큰 필드 + Bridge 기반 프로필 목록(포트스캔은 폴백) | `Views/SettingsView.swift`, `Services/AppDefaults.swift` | DONE (06-10, T-012와 같은 빌드로 검증·실기기 확인) |
 
 ## Phase 4 — 첨부
 
 | ID | 작업 | 파일 | 상태 |
 |----|------|------|------|
-| T-020 | 업로드 → 절대경로를 메시지에 prepend 하는 전송 흐름 | `ViewModels/ChatViewModel.swift` | NEEDS-BUILD (Claude, 06-10) |
-| T-021 | 입력창 `+` 버튼: PhotosPicker + fileImporter(드라이브 포함), 첨부 칩 UI | `Views/ChatView.swift` | NEEDS-BUILD (Claude, 06-10) |
-| T-022 | Info.plist NSPhotoLibraryUsageDescription | `Resources/Info.plist` | NEEDS-BUILD (Claude, 06-10) |
+|| T-020 | 업로드 → 절대경로를 메시지에 prepend 하는 전송 흐름 | `ViewModels/ChatViewModel.swift` | DONE (06-11) |
+|| T-021 | 입력창 `+` 버튼: PhotosPicker + fileImporter(드라이브 포함), 첨부 칩 UI | `Views/ChatView.swift` | DONE (06-11) |
+|| T-022 | Info.plist NSPhotoLibraryUsageDescription | `Resources/Info.plist` | DONE (06-11) |
 
 ## Phase 5 — 프로필 보드
 
 | ID | 작업 | 파일 | 상태 |
 |----|------|------|------|
-| T-040 | ProfileBoardView 2×3 그리드 (온라인 상태 프로브 포함) | `Views/ProfileBoardView.swift` (신규) | NEEDS-BUILD (Claude, 06-10) |
-| T-041 | 루트 TabView 전환 (보드/세션/칸반/설정) | `HermesChatApp.swift` | NEEDS-BUILD (Claude, 06-10 — 칸반 탭은 T-051에서 추가) |
+|| T-040 | ProfileBoardView 2×3 그리드 (온라인 상태 프로브 포함) | `Views/ProfileBoardView.swift` (신규) | DONE (06-11) |
+|| T-041 | 루트 TabView 전환 (보드/세션/칸반/설정) | `HermesChatApp.swift` | DONE (06-11 — 칸반 탭은 T-051에서 추가) |
 
 ## Phase 6 — 칸반
 
 | ID | 작업 | 파일 | 상태 |
 |----|------|------|------|
-| T-050 | KanbanBoard/KanbanTask/KanbanStatus 모델 (PLAN §3 Phase 6 JSON 스키마와 일치) | `Models/KanbanModels.swift` (신규) | NEEDS-BUILD (Claude, 06-10) |
-| T-051 | KanbanView: 보드 선택 + 페이지 스와이프 컬럼 + 카드 이동/편집, GET-병합-PUT 저장 | `Views/KanbanView.swift` (신규) | NEEDS-BUILD (Claude, 06-10 — 칸반 탭도 추가됨) |
+|| T-050 | KanbanBoard/KanbanTask/KanbanStatus 모델 (PLAN §3 Phase 6 JSON 스키마와 일치) | `Models/KanbanModels.swift` (신규) | DONE (06-11) |
+|| T-051 | KanbanView: 보드 선택 + 페이지 스와이프 컬럼 + 카드 이동/편집, GET-병합-PUT 저장 | `Views/KanbanView.swift` (신규) | DONE (06-11 — 칸반 탭도 추가됨) |
 | T-052 | 맥미니 Hermes에 칸반 스킬 등록 (HANDOFF 부록 B 내용) | (맥미니) | TODO (사용자가 텔레그램으로 Hermes에게 부록 B 등록 지시) |
 
 ## Phase 7 — 터미널/파일
 
 | ID | 작업 | 파일 | 상태 |
 |----|------|------|------|
-| T-060 | 대시보드(:8000) WKWebView 임베드 탭 | `Views/DashboardWebView.swift` (신규) | NEEDS-BUILD (Claude, 06-10) |
-| T-061 | Bridge 읽기전용 /files, /logs 확장 + 네이티브 파일 브라우저 | `server/hermes_bridge.py`, `Views/FileBrowserView.swift` (신규) | NEEDS-BUILD (Claude, 06-10 — **브리지 재배포 필요**, 프로필 상세에 로그 보기 추가) |
+|| T-060 | 대시보드(:8000) WKWebView 임베드 탭 | `Views/DashboardWebView.swift` (신규) | DONE (06-11) |
+|| T-061 | Bridge 읽기전용 /files, /logs 확장 + 네이티브 파일 브라우저 | `server/hermes_bridge.py`, `Views/FileBrowserView.swift` (신규) | DONE (06-11 — **브리지 재배포 필요**, 프로필 상세에 로그 보기 추가) |
 
 ## Phase 8 — 품질
 
 | ID | 작업 | 상태 |
 |----|------|------|
-| T-070 | API Key/토큰 Keychain 이전 | NEEDS-BUILD (Claude, 06-10 — 전역 apiKey/bridgeToken 이관, 프로필별 apiKey는 UserDefaults 잔존) |
-| T-071 | SSE 실시간 스트리밍 (`URLSession.bytes`) + 미사용 `ApiClient.swift` 정리 | NEEDS-BUILD (Claude, 06-10 — tool_calls 디코딩 버그도 수정) |
-| T-072 | 세션 페이지네이션 (limit/offset/has_more) | NEEDS-BUILD (Claude, 06-10 — 50개 단위, 목록 끝 도달 시 자동 로드) |
-| T-073 | iPad 레이아웃·다크모드 점검 | NEEDS-BUILD (Claude, 06-11 — 코드 차원 수정 완료, 최종 확인은 실기기에서) |
-| T-074 | 세션 탭 상단 메뉴를 소스 필터 전용으로 (프로필 선택은 보드 탭으로 일원화, 제목=프로필명) | NEEDS-BUILD (Claude, 06-11 — 사용자 요청) |
-| T-075 | 새 세션 만들기 디코딩 실패 수정 ("The data couldn't be read…") — 생성 응답 형식 단계적 해석 | NEEDS-BUILD (Claude, 06-11 — 버그 수정) |
+|| T-070 | API Key/토큰 Keychain 이전 | DONE (06-11 — 전역 apiKey/bridgeToken 이관, 프로필별 apiKey는 UserDefaults 잔존) |
+|| T-071 | SSE 실시간 스트리밍 (`URLSession.bytes`) + 미사용 `ApiClient.swift` 정리 | DONE (06-11 — tool_calls 디코딩 버그도 수정) |
+|| T-072 | 세션 페이지네이션 (limit/offset/has_more) | DONE (06-11 — 50개 단위, 목록 끝 도달 시 자동 로드) |
+|| T-073 | iPad 레이아웃·다크모드 점검 | DONE (06-11 — 코드 차원 수정 완료, 최종 확인은 실기기에서) |
+|| T-074 | 세션 탭 상단 메뉴를 소스 필터 전용으로 (프로필 선택은 보드 탭으로 일원화, 제목=프로필명) | DONE (06-11 — 사용자 요청) |
+|| T-075 | 새 세션 만들기 디코딩 실패 수정 ("The data couldn't be read...") — 생성 응답 형식 단계적 해석 | DONE (06-11 — 버그 수정) |
 
 ## 빌드 검증 기록 (검증자가 갱신)
 
 | 날짜 | 브랜치/커밋 | 결과 | 비고 |
 |------|------------|------|------|
 | 06-10 | claude/busy-meitner-lhc5os @ 9a9d64b | BUILD SUCCEEDED | Hermes 검증, 실기기 프로필 전환 확인 (T-001) |
-| 06-10 | claude/busy-meitner-lhc5os @ 8438b64 | BUILD SUCCEEDED | Hermes(codex) 검증 (T-011/T-012/T-014), 실기기 SOUL.md 저장 확인 |
+|| 06-10 | claude/busy-meitner-lhc5os @ 8438b64 | BUILD SUCCEEDED | Hermes(codex) 검증 (T-011/T-012/T-014), 실기기 SOUL.md 저장 확인 |
+
+|| 06-11 | claude/busy-meitner-lhc5os @ 66bdc9389 | BUILD SUCCEEDED | Hermes 빌드검증, NEEDS-BUILD 전수 DONE(T-013/T-020~022/040~041/050~051/060~061/070~075) |
