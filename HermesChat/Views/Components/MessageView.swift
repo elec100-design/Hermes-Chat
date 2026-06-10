@@ -9,8 +9,8 @@ struct MessageBubble: View {
 
     var body: some View {
         HStack {
-            Spacer()
-            VStack(alignment: .trailing, spacing: 4) {
+            if isUser { Spacer(minLength: 40) }
+            VStack(alignment: isUser ? .trailing : .leading, spacing: 4) {
                 Text(message.content)
                     .textSelection(.enabled)
                 if let toolCalls = message.toolCalls, !toolCalls.isEmpty {
@@ -24,6 +24,7 @@ struct MessageBubble: View {
             .background(isUser ? Color.accentColor : Color(.tertiarySystemBackground))
             .foregroundStyle(isUser ? .white : .primary)
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            if !isUser { Spacer(minLength: 40) }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 4)

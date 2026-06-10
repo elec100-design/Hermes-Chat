@@ -15,9 +15,9 @@ struct ProfileBoardView: View {
     @State private var status: [UUID: ProfileStatus] = [:]
     @State private var isProbing = false
 
+    /// iPhone에선 2열, iPad에선 화면 폭에 맞춰 자동 증가
     private let columns = [
-        GridItem(.flexible(), spacing: 12),
-        GridItem(.flexible(), spacing: 12),
+        GridItem(.adaptive(minimum: 160), spacing: 12),
     ]
 
     var body: some View {
@@ -78,7 +78,7 @@ struct ProfileBoardView: View {
             }
             .padding()
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.gray.opacity(0.12))
+            .background(Color(.secondarySystemBackground))
             .clipShape(RoundedRectangle(cornerRadius: 14))
         }
         .buttonStyle(.plain)
