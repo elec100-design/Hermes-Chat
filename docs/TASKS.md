@@ -66,7 +66,7 @@
 | ID | 작업 | 상태 |
 |----|------|------|
 | T-070 | API Key/토큰 Keychain 이전 | TODO |
-| T-071 | SSE 실시간 스트리밍 (`URLSession.bytes`) + 미사용 `ApiClient.swift` 정리 | TODO |
+| T-071 | SSE 실시간 스트리밍 (`URLSession.bytes`) + 미사용 `ApiClient.swift` 정리 | NEEDS-BUILD (Claude, 06-10 — tool_calls 디코딩 버그도 수정) |
 | T-072 | 세션 페이지네이션 (limit/offset/has_more) | TODO |
 | T-073 | iPad 레이아웃·다크모드 점검 | TODO |
 

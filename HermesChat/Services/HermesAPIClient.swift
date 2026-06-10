@@ -191,44 +191,43 @@ final class HermesAPIClient {
 
     // MARK: Streaming Chat
 
+    /// 실시간 SSE 스트리밍: `URLSession.bytes`로 라인 단위 수신 — 토큰이 도착하는 대로 UI에 반영된다.
     func streamChat(sessionId: String, message: String) -> AsyncThrowingStream<StreamUpdate, Error> {
         var urlRequest = URLRequest(url: baseURL.appendingPathComponent("/api/sessions/\(sessionId)/chat/stream"))
         urlRequest.httpMethod = "POST"
+        urlRequest.timeoutInterval = 300  // Hermes의 긴 도구 실행 동안 유휴 타임아웃 방지
         urlRequest.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
         urlRequest.setValue("text/event-stream", forHTTPHeaderField: "Accept")
         urlRequest.httpBody = try? JSONSerialization.data(withJSONObject: ["message": message])
 
         return AsyncThrowingStream { continuation in
-            let task = URLSession.shared.dataTask(with: urlRequest) { data, response, error in
-                if let error {
-                    continuation.finish(throwing: HermesAPIError.network(error))
-                    return
-                }
-                guard let http = response as? HTTPURLResponse else {
-                    continuation.finish(throwing: HermesAPIError.serverError("응답 없음"))
-                    return
-                }
-                guard http.statusCode == 200 else {
-                    if http.statusCode == 401 {
-                        continuation.finish(throwing: HermesAPIError.unauthorized)
-                    } else {
-                        continuation.finish(throwing: HermesAPIError.serverError("HTTP \(http.statusCode)"))
+            let task = Task {
+                do {
+                    let (bytes, response) = try await URLSession.shared.bytes(for: urlRequest)
+                    guard let http = response as? HTTPURLResponse else {
+                        continuation.finish(throwing: HermesAPIError.serverError("응답 없음"))
+                        return
                     }
-                    return
-                }
-                guard let data else {
-                    continuation.finish(throwing: HermesAPIError.serverError("빈 응답"))
-                    return
-                }
+                    guard http.statusCode == 200 else {
+                        if http.statusCode == 401 {
+                            continuation.finish(throwing: HermesAPIError.unauthorized)
+                        } else {
+                            continuation.finish(throwing: HermesAPIError.serverError("HTTP \(http.statusCode)"))
+                        }
+                        return
+                    }
 
-                let text = String(decoding: data, as: UTF8.self)
-                for line in text.split(separator: "\n") where line.hasPrefix("data:") {
-                    let payload = line.dropFirst(5).trimmingCharacters(in: .whitespaces)
-                    if payload == "[DONE]" { continuation.finish(); return }
-                    if let chunkData = payload.data(using: .utf8),
-                       let chunk = try? JSONDecoder().decode(StreamChunk.self, from: chunkData),
-                       let choice = chunk.choices?.first {
+                    for try await line in bytes.lines {
+                        guard line.hasPrefix("data:") else { continue }
+                        let payload = line.dropFirst(5).trimmingCharacters(in: .whitespaces)
+                        if payload == "[DONE]" {
+                            continuation.finish()
+                            return
+                        }
+                        guard let chunkData = payload.data(using: .utf8),
+                              let chunk = try? JSONDecoder().decode(StreamChunk.self, from: chunkData),
+                              let choice = chunk.choices?.first else { continue }
                         if let content = choice.delta.content, !content.isEmpty {
                             continuation.yield(.content(content))
                         }
@@ -240,10 +239,12 @@ final class HermesAPIClient {
                             ))
                         }
                     }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: HermesAPIError.network(error))
                 }
-                continuation.finish()
             }
-            task.resume()
+            continuation.onTermination = { _ in task.cancel() }
         }
     }
 
