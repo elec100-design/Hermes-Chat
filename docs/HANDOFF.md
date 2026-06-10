@@ -20,8 +20,9 @@ Claude Code (Xcode 내장/웹) ↔ Hermes+Step-3.7-flash (맥미니 상주) ↔ 
 
 ## 1. 세션 시작 시 (모든 에이전트 공통)
 
-맥미니 저장소 경로 (공백 포함 — **반드시 따옴표로 감쌀 것**):
-`REPO="/Users/macmini/Library/Mobile Documents/com~apple~CloudDocs/Coding/claude/busy-meitner-lhc5os"`
+맥미니 저장소 경로 (**2026-06-11 iCloud → 로컬 이전** — iCloud 동기화가 .git까지 손상시킨 사고 이후):
+`REPO="/Users/macmini/projects/HermesChat"`
+(구 경로 `~/Library/Mobile Documents/.../busy-meitner-lhc5os` 는 폐기됨 — 절대 사용 금지)
 
 1. `cd "$REPO" && git status --porcelain` — **출력이 있으면(더러우면) pull 하지 말 것.**
    Hermes(codex)는 여기서 멈추고 상태를 보고한다. Claude Code만 정리 후 진행한다.
@@ -52,7 +53,7 @@ Claude Code (Xcode 내장/웹) ↔ Hermes+Step-3.7-flash (맥미니 상주) ↔ 
 ## 3. 빌드 검증 (맥에서만 가능)
 
 ```bash
-cd "/Users/macmini/Library/Mobile Documents/com~apple~CloudDocs/Coding/claude/busy-meitner-lhc5os"
+cd "/Users/macmini/projects/HermesChat"
 xcodebuild -project HermesChat.xcodeproj -scheme HermesChat \
   -destination 'generic/platform=iOS Simulator' \
   CODE_SIGNING_ALLOWED=NO build 2>&1 | tail -30
@@ -84,7 +85,7 @@ xcodebuild -project HermesChat.xcodeproj -scheme HermesChat \
 
 ```
 앞으로 "HermesChat 빌드 검증해줘"라고 하면 아래 절차만 정확히 수행해. 코드 수정 금지.
-1. cd "/Users/macmini/Library/Mobile Documents/com~apple~CloudDocs/Coding/claude/busy-meitner-lhc5os"
+1. cd "/Users/macmini/projects/HermesChat"
 2. git status --porcelain 출력이 비어 있지 않으면 → 아무것도 하지 말고 출력을 그대로 보고 후 종료.
 3. git fetch origin && git checkout claude/busy-meitner-lhc5os && git pull --ff-only
    → 실패하면 머지/리베이스 하지 말고 에러를 그대로 보고 후 종료.
@@ -103,7 +104,7 @@ Hermes에게 1회 지시 (기존 cron이 있으면 교체):
 
 ```
 기존 HermesChat cron 작업을 삭제하고 새로 등록해줘: 매 시간마다
-1. cd "/Users/macmini/Library/Mobile Documents/com~apple~CloudDocs/Coding/claude/busy-meitner-lhc5os"
+1. cd "/Users/macmini/projects/HermesChat"
 2. git status --porcelain 출력이 비어 있지 않으면 조용히 종료 (절대 커밋/정리하지 말 것).
 3. git fetch origin && git pull --ff-only — 실패하면 조용히 종료 (머지 금지).
 4. docs/TASKS.md에 NEEDS-BUILD가 있을 때만 HANDOFF.md §3의 xcodebuild 명령으로 빌드.
@@ -138,7 +139,7 @@ HTTPS 푸시가 `could not read Username ... Device not configured` / `-25308`
 #    Settings → Developer settings → Fine-grained tokens →
 #    Repository access: elec100-design/Hermes-Chat 만, Permissions: Contents = Read and write
 # 2) 토큰을 평문 파일 저장소에 1회 기록 (키체인을 거치지 않아 헤드리스에서도 동작):
-cd "/Users/macmini/Library/Mobile Documents/com~apple~CloudDocs/Coding/claude/busy-meitner-lhc5os"
+cd "/Users/macmini/projects/HermesChat"
 git config credential.helper "store --file ~/.hermes/.git-credentials"
 printf 'https://elec100-design:%s@github.com\n' '<발급한 토큰>' > ~/.hermes/.git-credentials
 chmod 600 ~/.hermes/.git-credentials

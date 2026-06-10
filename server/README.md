@@ -12,7 +12,7 @@ SOUL.md 편집, 파일 업로드, 칸반 저장소)을 보충하는 단일 파�
 
 ```bash
 # 0) 저장소의 스크립트를 iCloud 밖 고정 경로로 복사
-REPO="/Users/macmini/Library/Mobile Documents/com~apple~CloudDocs/Coding/claude/busy-meitner-lhc5os"
+REPO="/Users/macmini/projects/HermesChat"
 mkdir -p ~/.hermes/bridge
 cp "$REPO/server/hermes_bridge.py" ~/.hermes/bridge/
 

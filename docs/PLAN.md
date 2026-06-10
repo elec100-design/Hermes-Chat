@@ -93,7 +93,7 @@
 
 **맥미니 1회 설정 (필수!)** — 이게 없으면 앱을 아무리 고쳐도 전환 안 됨:
 ```bash
-cd "/Users/macmini/Library/Mobile Documents/com~apple~CloudDocs/Coding/claude/busy-meitner-lhc5os"
+cd "/Users/macmini/projects/HermesChat"
 git pull
 bash scripts/setup_profiles_api.sh <API_KEY>
 ```
