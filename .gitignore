@@ -42,3 +42,7 @@ fastlane/test_output/
 # Env
 .env
 .env.local
+
+# Python (server/hermes_bridge.py)
+__pycache__/
+*.pyc
