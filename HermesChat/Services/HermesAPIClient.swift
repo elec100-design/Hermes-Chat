@@ -131,7 +131,12 @@ final class HermesAPIClient {
         let data = try await post("/api/sessions", body: body)
 
         // 생성 응답 형식이 서버 버전에 따라 달라서 단계적으로 해석한다:
-        // ① ServerSession 그대로 ② {"data": {...}} 래핑 ③ id 계열 키만 추출
+        // ① {"object":"hermes.session","session":{...}} (실서버 확인 형식)
+        // ② ServerSession 그대로 ③ {"data": {...}} 래핑 ④ id 계열 키 재귀 탐색
+        struct HermesWrapped: Decodable { let session: ServerSession }
+        if let wrapped = try? JSONDecoder().decode(HermesWrapped.self, from: data) {
+            return wrapped.session.asSession
+        }
         if let server = try? JSONDecoder().decode(ServerSession.self, from: data) {
             return server.asSession
         }
