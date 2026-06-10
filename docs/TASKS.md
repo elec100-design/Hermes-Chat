@@ -43,8 +43,8 @@
 
 | ID | 작업 | 파일 | 상태 |
 |----|------|------|------|
-| T-040 | ProfileBoardView 2×3 그리드 (온라인 상태 프로브 포함) | `Views/ProfileBoardView.swift` (신규) | TODO |
-| T-041 | 루트 TabView 전환 (보드/세션/칸반/설정) | `HermesChatApp.swift` | TODO |
+| T-040 | ProfileBoardView 2×3 그리드 (온라인 상태 프로브 포함) | `Views/ProfileBoardView.swift` (신규) | NEEDS-BUILD (Claude, 06-10) |
+| T-041 | 루트 TabView 전환 (보드/세션/칸반/설정) | `HermesChatApp.swift` | NEEDS-BUILD (Claude, 06-10 — 칸반 탭은 T-051에서 추가) |
 
 ## Phase 6 — 칸반
 
