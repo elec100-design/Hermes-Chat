@@ -100,11 +100,11 @@ struct SessionListView: View {
                 }
             }
             .listStyle(.insetGrouped)
-            .navigationTitle("세션")
+            .navigationTitle(appSettings.selectedProfile.name)
             .searchable(text: $searchText, prompt: "세션 검색")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    profileMenu
+                    sourceFilterMenu
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     HStack(spacing: 12) {
@@ -139,57 +139,41 @@ struct SessionListView: View {
         }
     }
 
-    private var profileMenu: some View {
-        Menu {
-            Section("프로필") {
-                ForEach(appSettings.profiles) { profile in
+    /// 프로필 선택은 보드 탭으로 일원화 — 여기는 소스 필터만 (T-074)
+    @ViewBuilder
+    private var sourceFilterMenu: some View {
+        if !appSettings.availableSources.isEmpty {
+            Menu {
+                Button {
+                    appSettings.selectedSource = nil
+                } label: {
+                    if appSettings.selectedSource == nil {
+                        Label("전체", systemImage: "checkmark")
+                    } else {
+                        Text("전체")
+                    }
+                }
+                ForEach(appSettings.availableSources, id: \.self) { source in
                     Button {
-                        appSettings.selectProfile(profile)
+                        appSettings.selectedSource = source
                     } label: {
-                        if profile.id == appSettings.selectedProfileID {
-                            Label(profile.name, systemImage: "checkmark")
+                        if appSettings.selectedSource == source {
+                            Label(sourceDisplayName(source), systemImage: "checkmark")
                         } else {
-                            Text(profile.name)
+                            Text(sourceDisplayName(source))
                         }
                     }
                 }
-            }
-
-            if !appSettings.availableSources.isEmpty {
-                Section("소스 필터") {
-                    Button {
-                        appSettings.selectedSource = nil
-                    } label: {
-                        if appSettings.selectedSource == nil {
-                            Label("전체", systemImage: "checkmark")
-                        } else {
-                            Text("전체")
-                        }
-                    }
-                    ForEach(appSettings.availableSources, id: \.self) { source in
-                        Button {
-                            appSettings.selectedSource = source
-                        } label: {
-                            if appSettings.selectedSource == source {
-                                Label(sourceDisplayName(source), systemImage: "checkmark")
-                            } else {
-                                Text(sourceDisplayName(source))
-                            }
-                        }
+            } label: {
+                HStack(spacing: 3) {
+                    Image(systemName: appSettings.selectedSource == nil
+                          ? "line.3.horizontal.decrease.circle"
+                          : "line.3.horizontal.decrease.circle.fill")
+                    if let source = appSettings.selectedSource {
+                        Text(sourceDisplayName(source))
+                            .font(.subheadline)
                     }
                 }
-            }
-        } label: {
-            HStack(spacing: 3) {
-                Text(appSettings.selectedProfile.name)
-                    .font(.headline)
-                if let source = appSettings.selectedSource {
-                    Text("· \(sourceDisplayName(source))")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                Image(systemName: "chevron.down")
-                    .font(.caption.weight(.semibold))
             }
         }
     }
