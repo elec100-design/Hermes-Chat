@@ -7,6 +7,9 @@ final class AppSettings: ObservableObject {
     @AppStorage("serverHost") var serverHost: String = "http://localhost:8642"
     @AppStorage("selectedModel") var selectedModel: String = "hermes-agent"
     @AppStorage("apiKey") var apiKey: String = ""
+    /// Hermes Bridge 주소 (예: http://100.x.x.x:8765). 비어 있으면 브리지 기능 비활성.
+    @AppStorage("bridgeHost") var bridgeHost: String = ""
+    @AppStorage("bridgeToken") var bridgeToken: String = ""
 
     @Published var profiles: [HermesProfile] = []
     @Published var selectedProfileID: UUID?
@@ -55,6 +58,15 @@ final class AppSettings: ObservableObject {
         )
     }
 
+    /// Bridge 주소가 설정되어 있을 때만 만들어진다 (SOUL.md, 재시작, 업로드, 칸반).
+    var bridgeClient: BridgeClient? {
+        var trimmed = bridgeHost.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return nil }
+        if !trimmed.lowercased().hasPrefix("http") { trimmed = "http://" + trimmed }
+        guard let url = URL(string: trimmed) else { return nil }
+        return BridgeClient(baseURL: url, token: bridgeToken)
+    }
+
     func selectProfile(_ profile: HermesProfile) {
         guard profile.id != selectedProfileID else { return }
         selectedProfileID = profile.id
@@ -73,6 +85,12 @@ final class AppSettings: ObservableObject {
         persistProfiles()
     }
 
+    func updateProfile(_ profile: HermesProfile) {
+        guard let idx = profiles.firstIndex(where: { $0.id == profile.id }) else { return }
+        profiles[idx] = profile
+        persistProfiles()
+    }
+
     func removeProfiles(at offsets: IndexSet) {
         let removingSelected = offsets.contains { profiles[$0].id == selectedProfileID }
         profiles.remove(atOffsets: offsets)
@@ -86,8 +104,9 @@ final class AppSettings: ObservableObject {
         persistProfiles()
     }
 
-    /// 호스트의 포트 범위를 스캔해서 응답하는 hermes API 서버를 프로필로 등록한다.
-    /// 프로필 이름은 각 API 서버가 /v1/models 로 알려주는 모델 식별자
+    /// 프로필 자동 검색. Bridge가 설정돼 있으면 정확한 목록을 받아오고,
+    /// 아니면 호스트의 포트 범위를 스캔해서 응답하는 hermes API 서버를 등록한다.
+    /// 스캔 시 프로필 이름은 각 API 서버가 /v1/models 로 알려주는 모델 식별자
     /// (API_SERVER_MODEL_NAME, 기본값 = 프로필 이름)를 사용한다.
     /// - Returns: 새로 추가된 프로필 수
     @discardableResult
@@ -95,6 +114,21 @@ final class AppSettings: ObservableObject {
         guard !isDiscoveringProfiles else { return 0 }
         isDiscoveringProfiles = true
         defer { isDiscoveringProfiles = false }
+
+        if let bridge = bridgeClient,
+           let bridgeProfiles = try? await bridge.fetchProfiles() {
+            var added = 0
+            for bp in bridgeProfiles
+            where bp.apiEnabled && !profiles.contains(where: { $0.port == bp.port }) {
+                profiles.append(HermesProfile(name: bp.name, port: bp.port))
+                added += 1
+            }
+            if added > 0 {
+                profiles.sort { $0.port < $1.port }
+                persistProfiles()
+            }
+            return added
+        }
 
         var found: [(port: Int, name: String)] = []
         await withTaskGroup(of: (Int, String)?.self) { group in
@@ -182,7 +216,10 @@ final class AppSettings: ObservableObject {
     }
 
     func createSession() async throws -> Session {
-        let session = try await hermesClient.createSession(model: selectedModel, systemPrompt: nil)
+        let session = try await hermesClient.createSession(
+            model: selectedProfile.model ?? selectedModel,
+            systemPrompt: nil
+        )
         sessions.insert(session, at: 0)
         return session
     }

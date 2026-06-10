@@ -123,6 +123,18 @@ final class HermesAPIClient {
         _ = try await patch("/api/sessions/\(id)", body: ["title": title])
     }
 
+    // MARK: Models
+
+    /// 이 게이트웨이가 알려주는 모델 식별자 목록 (`GET /v1/models`)
+    func fetchModelIDs() async throws -> [String] {
+        struct ModelsResponse: Decodable {
+            struct Model: Decodable { let id: String }
+            let data: [Model]
+        }
+        let data = try await get("/v1/models")
+        return try JSONDecoder().decode(ModelsResponse.self, from: data).data.map(\.id)
+    }
+
     // MARK: Messages
 
     func fetchMessages(sessionId: String) async throws -> [ChatMessage] {

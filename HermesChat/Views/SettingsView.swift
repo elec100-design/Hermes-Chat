@@ -6,9 +6,11 @@ struct SettingsView: View {
     @State private var testResult: String? = nil
     @State private var isTesting = false
     @State private var showApiKeyInput = false
+    @State private var showBridgeTokenInput = false
     @State private var newProfileName = ""
     @State private var newProfilePort = ""
     @State private var discoveryResult: String? = nil
+    @State private var detailProfile: HermesProfile? = nil
 
     var body: some View {
         Form {
@@ -55,6 +57,13 @@ struct SettingsView: View {
                             Image(systemName: "checkmark")
                                 .foregroundStyle(.tint)
                         }
+                        Button {
+                            detailProfile = profile
+                        } label: {
+                            Image(systemName: "info.circle")
+                                .foregroundStyle(.tint)
+                        }
+                        .buttonStyle(.borderless)
                     }
                     .contentShape(Rectangle())
                     .onTapGesture { appSettings.selectProfile(profile) }
@@ -103,7 +112,32 @@ struct SettingsView: View {
             } header: {
                 Text("프로필 (맥미니 게이트웨이)")
             } footer: {
-                Text("프로필마다 게이트웨이 API 포트가 다릅니다. 맥미니에서 각 프로필의 .env에 API_SERVER_ENABLED=true와 고유 포트를 설정하세요.")
+                Text("행을 탭하면 해당 프로필로 전환하고, ⓘ를 탭하면 모델 선택·SOUL.md 편집·게이트웨이 재시작 화면으로 이동합니다.")
+            }
+
+            Section {
+                TextField("Bridge URL (예: http://100.x.x.x:8765)", text: $appSettings.bridgeHost)
+                    .textContentType(.URL)
+                    .keyboardType(.URL)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                HStack {
+                    if showBridgeTokenInput {
+                        TextField("Bridge Token", text: $appSettings.bridgeToken)
+                    } else {
+                        SecureField("Bridge Token", text: $appSettings.bridgeToken)
+                    }
+                    Button {
+                        showBridgeTokenInput.toggle()
+                    } label: {
+                        Image(systemName: showBridgeTokenInput ? "eye" : "eye.slash")
+                    }
+                    .buttonStyle(.plain)
+                }
+            } header: {
+                Text("Hermes Bridge")
+            } footer: {
+                Text("맥미니의 브리지(:8765)입니다. SOUL.md 편집, 게이트웨이 재시작, 프로필 자동 검색, 파일 업로드에 사용합니다.")
             }
 
             Section("기본 모델") {
@@ -116,6 +150,9 @@ struct SettingsView: View {
         }
         .navigationTitle("설정")
         .navigationBarTitleDisplayMode(.large)
+        .navigationDestination(item: $detailProfile) { profile in
+            ProfileDetailView(appSettings: appSettings, profileID: profile.id)
+        }
     }
 
     private func testConnection() {

@@ -14,12 +14,15 @@ struct HermesProfile: Identifiable, Codable, Equatable, Hashable {
     var port: Int
     /// 프로필 전용 API Key. 비어 있으면 전역 API Key를 사용한다.
     var apiKey: String
+    /// 이 프로필에서 새 세션을 만들 때 쓸 모델. nil이면 전역 기본 모델을 사용한다.
+    var model: String?
 
-    init(id: UUID = UUID(), name: String, port: Int, apiKey: String = "") {
+    init(id: UUID = UUID(), name: String, port: Int, apiKey: String = "", model: String? = nil) {
         self.id = id
         self.name = name
         self.port = port
         self.apiKey = apiKey
+        self.model = model
     }
 
     static let `default` = HermesProfile(name: "default", port: 8642)
