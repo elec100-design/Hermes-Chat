@@ -50,9 +50,9 @@
 
 | ID | 작업 | 파일 | 상태 |
 |----|------|------|------|
-| T-050 | KanbanBoard/KanbanTask/KanbanStatus 모델 (PLAN §3 Phase 6 JSON 스키마와 일치) | `Models/KanbanModels.swift` (신규) | TODO |
-| T-051 | KanbanView: 보드 선택 + 페이지 스와이프 컬럼 + 카드 이동/편집, GET-병합-PUT 저장 | `Views/KanbanView.swift` (신규) | TODO |
-| T-052 | 맥미니 Hermes에 칸반 스킬 등록 (HANDOFF 부록 B 내용) | (맥미니) | TODO |
+| T-050 | KanbanBoard/KanbanTask/KanbanStatus 모델 (PLAN §3 Phase 6 JSON 스키마와 일치) | `Models/KanbanModels.swift` (신규) | NEEDS-BUILD (Claude, 06-10) |
+| T-051 | KanbanView: 보드 선택 + 페이지 스와이프 컬럼 + 카드 이동/편집, GET-병합-PUT 저장 | `Views/KanbanView.swift` (신규) | NEEDS-BUILD (Claude, 06-10 — 칸반 탭도 추가됨) |
+| T-052 | 맥미니 Hermes에 칸반 스킬 등록 (HANDOFF 부록 B 내용) | (맥미니) | TODO (사용자가 텔레그램으로 Hermes에게 부록 B 등록 지시) |
 
 ## Phase 7 — 터미널/파일
 

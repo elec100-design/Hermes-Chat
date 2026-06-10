@@ -23,6 +23,10 @@ struct HermesChatApp: App {
                     .tabItem { Label("세션", systemImage: "bubble.left.and.bubble.right") }
                     .tag(AppTab.sessions)
 
+                KanbanView(appSettings: appSettings)
+                    .tabItem { Label("칸반", systemImage: "rectangle.split.3x1") }
+                    .tag(AppTab.kanban)
+
                 NavigationStack {
                     SettingsView(appSettings: appSettings)
                 }
