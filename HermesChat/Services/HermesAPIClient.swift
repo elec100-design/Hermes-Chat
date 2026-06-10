@@ -4,6 +4,18 @@ import Foundation
 
 private struct SessionListResponse: Decodable {
     let data: [ServerSession]
+    let hasMore: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case data
+        case hasMore = "has_more"
+    }
+}
+
+/// 페이지네이션 결과 (T-072). 서버가 has_more를 안 주면 false로 간주.
+struct SessionPage {
+    let sessions: [Session]
+    let hasMore: Bool
 }
 
 private struct ServerSession: Decodable {
@@ -98,12 +110,18 @@ final class HermesAPIClient {
 
     // MARK: Sessions
 
-    func fetchSessions() async throws -> [Session] {
-        let data = try await get("/api/sessions")
+    func fetchSessions(limit: Int = 50, offset: Int = 0) async throws -> SessionPage {
+        let data = try await get(
+            "/api/sessions",
+            query: ["limit": String(limit), "offset": String(offset)]
+        )
         let response = try JSONDecoder().decode(SessionListResponse.self, from: data)
-        return response.data
-            .map { $0.asSession }
-            .sorted { $0.updatedAt > $1.updatedAt }
+        return SessionPage(
+            sessions: response.data
+                .map { $0.asSession }
+                .sorted { $0.updatedAt > $1.updatedAt },
+            hasMore: response.hasMore ?? false
+        )
     }
 
     func createSession(model: String? = nil, systemPrompt: String? = nil) async throws -> Session {
@@ -250,8 +268,14 @@ final class HermesAPIClient {
 
     // MARK: - Private HTTP Helpers
 
-    private func get(_ path: String) async throws -> Data {
-        var request = URLRequest(url: baseURL.appendingPathComponent(path))
+    private func get(_ path: String, query: [String: String]? = nil) async throws -> Data {
+        var url = baseURL.appendingPathComponent(path)
+        if let query,
+           var comps = URLComponents(url: url, resolvingAgainstBaseURL: false) {
+            comps.queryItems = query.map { URLQueryItem(name: $0.key, value: $0.value) }
+            url = comps.url ?? url
+        }
+        var request = URLRequest(url: url)
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         let (data, response) = try await URLSession.shared.data(for: request)
         try validate(response, data: data)

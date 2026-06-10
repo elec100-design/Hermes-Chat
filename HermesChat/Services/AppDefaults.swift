@@ -26,6 +26,10 @@ final class AppSettings: ObservableObject {
     @Published var isLoadingSessions: Bool = false
     @Published var sessionLoadError: String? = nil
     @Published var selectedSource: String? = nil
+    @Published var hasMoreSessions: Bool = false
+    @Published var isLoadingMoreSessions: Bool = false
+
+    private let sessionPageSize = 50
 
     private static let profilesKey = "hermesProfiles"
     private static let selectedProfileNameKey = "selectedProfileName"
@@ -99,6 +103,7 @@ final class AppSettings: ObservableObject {
         sessions = []
         selectedSource = nil
         sessionLoadError = nil
+        hasMoreSessions = false
         loadSessions()
     }
 
@@ -227,16 +232,41 @@ final class AppSettings: ObservableObject {
         isLoadingSessions = true
         sessionLoadError = nil
         let client = hermesClient
+        let limit = sessionPageSize
         Task {
             do {
-                let result = try await client.fetchSessions()
+                let page = try await client.fetchSessions(limit: limit, offset: 0)
                 guard generation == loadGeneration else { return }
-                sessions = result
+                sessions = page.sessions
+                hasMoreSessions = page.hasMore
             } catch {
                 guard generation == loadGeneration else { return }
                 sessionLoadError = error.localizedDescription
             }
             isLoadingSessions = false
+        }
+    }
+
+    /// 다음 페이지를 이어 붙인다 (T-072). 목록 끝 도달 시 호출.
+    func loadMoreSessions() {
+        guard hasMoreSessions, !isLoadingMoreSessions, !isLoadingSessions else { return }
+        let generation = loadGeneration
+        isLoadingMoreSessions = true
+        let client = hermesClient
+        let limit = sessionPageSize
+        let offset = sessions.count
+        Task {
+            do {
+                let page = try await client.fetchSessions(limit: limit, offset: offset)
+                guard generation == loadGeneration else { return }
+                let existing = Set(sessions.map(\.id))
+                sessions += page.sessions.filter { !existing.contains($0.id) }
+                hasMoreSessions = page.hasMore
+            } catch {
+                guard generation == loadGeneration else { return }
+                hasMoreSessions = false
+            }
+            isLoadingMoreSessions = false
         }
     }
 

@@ -82,6 +82,22 @@ struct SessionListView: View {
                         }
                     }
                 }
+
+                // 페이지네이션: 목록 끝에 도달하면 다음 페이지 로드 (T-072)
+                if appSettings.hasMoreSessions && searchText.isEmpty {
+                    HStack {
+                        Spacer()
+                        if appSettings.isLoadingMoreSessions {
+                            ProgressView().scaleEffect(0.8)
+                        } else {
+                            Text("더 보기")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                    }
+                    .onAppear { appSettings.loadMoreSessions() }
+                }
             }
             .listStyle(.insetGrouped)
             .navigationTitle("세션")
