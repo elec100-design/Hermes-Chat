@@ -145,6 +145,16 @@ struct SettingsView: View {
             }
 
             Section {
+                NavigationLink {
+                    SkillsView(appSettings: appSettings)
+                } label: {
+                    Label("Skills & Tools", systemImage: "wand.and.stars")
+                }
+            } footer: {
+                Text("현재 선택된 프로필(\(appSettings.selectedProfile.name)) 게이트웨이의 스킬·툴셋 목록입니다.")
+            }
+
+            Section {
                 Link("Tailscale 다운로드", destination: URL(string: "https://tailscale.com")!)
             }
         }

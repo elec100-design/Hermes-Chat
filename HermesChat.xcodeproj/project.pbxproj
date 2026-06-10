@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		000000000000000000009000 /* ProfileDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000009001 /* ProfileDetailView.swift */; };
 		0B1D6E01C3A94F20B81DDE01 /* BridgeClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B1D6E02C3A94F20B81DDE02 /* BridgeClient.swift */; };
+		0C2E7F01D4B05A31C92EEF01 /* SkillsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C2E7F02D4B05A31C92EEF02 /* SkillsView.swift */; };
 		0D9CC9C9B49F82C246E793D9 /* HermesAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E785976044540D5051D9A8C /* HermesAPIClient.swift */; };
 		1ADA276CE4E2E73017B088A4 /* ApiClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D41605B6BF1840E350546220 /* ApiClient.swift */; };
 		1C77813AED34B08CD3E08F90 /* HermesChatApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65FFA2CC47E47044567F7E36 /* HermesChatApp.swift */; };
@@ -30,6 +31,7 @@
 /* Begin PBXFileReference section */
 		001BE0A159F3AEBDC606263C /* SessionModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionModels.swift; sourceTree = "<group>"; };
 		0B1D6E02C3A94F20B81DDE02 /* BridgeClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeClient.swift; sourceTree = "<group>"; };
+		0C2E7F02D4B05A31C92EEF02 /* SkillsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillsView.swift; sourceTree = "<group>"; };
 		0ABF5AB0727489B06D16F6AB /* ToolModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolModels.swift; sourceTree = "<group>"; };
 		1F3BB2D079331A3B8BEBB359 /* ChatModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatModels.swift; sourceTree = "<group>"; };
 		1FB3343782720464725EB49B /* DashboardModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardModels.swift; sourceTree = "<group>"; };
@@ -107,6 +109,7 @@
 				690CD0BEB59B960A94F72420 /* ChatView.swift */,
 				000000000000000000009001 /* ProfileDetailView.swift */,
 				D485E391BB3FBF773D0C6778 /* SessionListView.swift */,
+				0C2E7F02D4B05A31C92EEF02 /* SkillsView.swift */,
 				F8DCB2A4C45DFD8E5CA9F032 /* SettingsView.swift */,
 				2DBCD9AC0F176525E1C50AB6 /* Components */,
 			);
@@ -214,6 +217,7 @@
 				C29ABD7D6F0C12DFFACAAC42 /* SessionListView.swift in Sources */,
 				7E4B207B5BCA40A070CBF676 /* SessionModels.swift in Sources */,
 				3658CC72F9CAB88AB9CBA142 /* SettingsView.swift in Sources */,
+				0C2E7F01D4B05A31C92EEF01 /* SkillsView.swift in Sources */,
 				FB2E0FF7697F10D61F2B83B1 /* StreamModels.swift in Sources */,
 				A048726920A8715530AACBE9 /* ToolModels.swift in Sources */,
 				A9FA080264459EA4F3C7D0AA /* ToolResultView.swift in Sources */,

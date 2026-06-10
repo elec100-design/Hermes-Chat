@@ -135,6 +135,52 @@ final class HermesAPIClient {
         return try JSONDecoder().decode(ModelsResponse.self, from: data).data.map(\.id)
     }
 
+    // MARK: Skills & Toolsets (읽기전용 — 응답 스키마가 버전에 따라 다를 수 있어 방어적 파싱)
+
+    /// `GET /v1/skills` — [{name, description, ...}] 형태로 정규화
+    func fetchSkills() async throws -> [GatewayCapability] {
+        let data = try await get("/v1/skills")
+        return Self.parseCapabilities(data, arrayKeys: ["data", "skills"])
+    }
+
+    /// `GET /v1/toolsets` — 활성화 상태 포함
+    func fetchToolsets() async throws -> [GatewayCapability] {
+        let data = try await get("/v1/toolsets")
+        return Self.parseCapabilities(data, arrayKeys: ["data", "toolsets"])
+    }
+
+    /// {data:[...]}, {skills:[...]}, 최상위 배열, 문자열 배열 등 다양한 형태를 수용한다.
+    nonisolated static func parseCapabilities(_ data: Data, arrayKeys: [String]) -> [GatewayCapability] {
+        guard let json = try? JSONSerialization.jsonObject(with: data) else { return [] }
+        var items: [Any] = []
+        if let array = json as? [Any] {
+            items = array
+        } else if let dict = json as? [String: Any] {
+            for key in arrayKeys {
+                if let array = dict[key] as? [Any] {
+                    items = array
+                    break
+                }
+            }
+            // {"이름": {설명...}} 같은 딕셔너리 맵 형태
+            if items.isEmpty, !dict.isEmpty, dict.values.allSatisfy({ $0 is [String: Any] }) {
+                items = dict.map { ["name": $0.key].merging($0.value as? [String: Any] ?? [:]) { a, _ in a } }
+            }
+        }
+        return items.compactMap { item in
+            if let name = item as? String {
+                return GatewayCapability(name: name, detail: nil, enabled: nil)
+            }
+            guard let dict = item as? [String: Any] else { return nil }
+            let name = (dict["name"] ?? dict["id"] ?? dict["title"]) as? String
+            guard let name, !name.isEmpty else { return nil }
+            let detail = (dict["description"] ?? dict["summary"] ?? dict["detail"]) as? String
+            let enabled = (dict["enabled"] ?? dict["active"] ?? dict["is_enabled"]) as? Bool
+            return GatewayCapability(name: name, detail: detail, enabled: enabled)
+        }
+        .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
     // MARK: Messages
 
     func fetchMessages(sessionId: String) async throws -> [ChatMessage] {
