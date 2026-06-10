@@ -4,6 +4,7 @@ struct SessionListView: View {
     @ObservedObject var appSettings: AppSettings
     @State private var navigationPath = NavigationPath()
     @State private var isCreatingSession = false
+    @State private var searchText = ""
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
@@ -51,7 +52,7 @@ struct SessionListView: View {
                 .disabled(isCreatingSession)
 
                 // Session list
-                ForEach(appSettings.filteredSessions) { session in
+                ForEach(displayedSessions) { session in
                     NavigationLink(value: session) {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(session.displayTitle)
@@ -84,9 +85,10 @@ struct SessionListView: View {
             }
             .listStyle(.insetGrouped)
             .navigationTitle("세션")
+            .searchable(text: $searchText, prompt: "세션 검색")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    sourceMenu
+                    profileMenu
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     HStack(spacing: 12) {
@@ -110,38 +112,66 @@ struct SessionListView: View {
         }
     }
 
-    // MARK: - Source Menu
+    // MARK: - Profile / Source Menu
 
-    private var sourceMenu: some View {
+    private var displayedSessions: [Session] {
+        let base = appSettings.filteredSessions
+        guard !searchText.isEmpty else { return base }
+        return base.filter {
+            $0.displayTitle.localizedCaseInsensitiveContains(searchText)
+                || ($0.preview ?? "").localizedCaseInsensitiveContains(searchText)
+        }
+    }
+
+    private var profileMenu: some View {
         Menu {
-            Button {
-                appSettings.selectedSource = nil
-            } label: {
-                if appSettings.selectedSource == nil {
-                    Label("전체", systemImage: "checkmark")
-                } else {
-                    Text("전체")
+            Section("프로필") {
+                ForEach(appSettings.profiles) { profile in
+                    Button {
+                        appSettings.selectProfile(profile)
+                    } label: {
+                        if profile.id == appSettings.selectedProfileID {
+                            Label(profile.name, systemImage: "checkmark")
+                        } else {
+                            Text(profile.name)
+                        }
+                    }
                 }
             }
 
             if !appSettings.availableSources.isEmpty {
-                Divider()
-                ForEach(appSettings.availableSources, id: \.self) { source in
+                Section("소스 필터") {
                     Button {
-                        appSettings.selectedSource = source
+                        appSettings.selectedSource = nil
                     } label: {
-                        if appSettings.selectedSource == source {
-                            Label(sourceDisplayName(source), systemImage: "checkmark")
+                        if appSettings.selectedSource == nil {
+                            Label("전체", systemImage: "checkmark")
                         } else {
-                            Text(sourceDisplayName(source))
+                            Text("전체")
+                        }
+                    }
+                    ForEach(appSettings.availableSources, id: \.self) { source in
+                        Button {
+                            appSettings.selectedSource = source
+                        } label: {
+                            if appSettings.selectedSource == source {
+                                Label(sourceDisplayName(source), systemImage: "checkmark")
+                            } else {
+                                Text(sourceDisplayName(source))
+                            }
                         }
                     }
                 }
             }
         } label: {
             HStack(spacing: 3) {
-                Text(appSettings.selectedSource.map { sourceDisplayName($0) } ?? "전체")
+                Text(appSettings.selectedProfile.name)
                     .font(.headline)
+                if let source = appSettings.selectedSource {
+                    Text("· \(sourceDisplayName(source))")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
                 Image(systemName: "chevron.down")
                     .font(.caption.weight(.semibold))
             }

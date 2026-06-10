@@ -30,6 +30,7 @@ final class ChatViewModel: ObservableObject {
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, !isWorking else { return }
 
+        let isFirstMessage = messages.isEmpty
         inputText = ""
         messages.append(ChatMessage(role: .user, content: text, toolCalls: nil, createdAt: .now))
 
@@ -66,6 +67,10 @@ final class ChatViewModel: ObservableObject {
             if messages[assistantIndex].content.isEmpty && (messages[assistantIndex].toolCalls?.isEmpty ?? true) {
                 messages.remove(at: assistantIndex)
             }
+
+            if isFirstMessage {
+                await updateAutoTitle(from: text)
+            }
         } catch {
             messages.append(ChatMessage(
                 role: .assistant,
@@ -73,6 +78,19 @@ final class ChatViewModel: ObservableObject {
                 toolCalls: nil,
                 createdAt: .now
             ))
+        }
+    }
+
+    /// 첫 메시지의 앞부분으로 세션 제목을 자동 설정한다.
+    private func updateAutoTitle(from text: String) async {
+        let words = text.split(separator: " ").prefix(6).joined(separator: " ")
+        let title = String(words.prefix(40))
+        guard !title.isEmpty else { return }
+
+        try? await appSettings.hermesClient.updateSessionTitle(id: sessionId, title: title)
+        if var session = appSettings.sessions.first(where: { $0.id == sessionId }) {
+            session.title = title
+            appSettings.updateSession(session)
         }
     }
 }

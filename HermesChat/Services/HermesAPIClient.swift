@@ -119,6 +119,10 @@ final class HermesAPIClient {
         try await delete("/api/sessions/\(id)")
     }
 
+    func updateSessionTitle(id: String, title: String) async throws {
+        _ = try await patch("/api/sessions/\(id)", body: ["title": title])
+    }
+
     // MARK: Messages
 
     func fetchMessages(sessionId: String) async throws -> [ChatMessage] {
@@ -198,6 +202,17 @@ final class HermesAPIClient {
     private func post(_ path: String, body: [String: Any] = [:]) async throws -> Data {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))
         request.httpMethod = "POST"
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try validate(response, data: data)
+        return data
+    }
+
+    private func patch(_ path: String, body: [String: Any]) async throws -> Data {
+        var request = URLRequest(url: baseURL.appendingPathComponent(path))
+        request.httpMethod = "PATCH"
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: body)

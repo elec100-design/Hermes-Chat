@@ -3,14 +3,154 @@ import SwiftUI
 
 @MainActor
 final class AppSettings: ObservableObject {
+    /// 게이트웨이 호스트. 포트가 포함되어 있어도 프로필 포트로 대체된다.
     @AppStorage("serverHost") var serverHost: String = "http://localhost:8642"
     @AppStorage("selectedModel") var selectedModel: String = "hermes-agent"
     @AppStorage("apiKey") var apiKey: String = ""
+
+    @Published var profiles: [HermesProfile] = []
+    @Published var selectedProfileID: UUID?
+    @Published var isDiscoveringProfiles: Bool = false
 
     @Published var sessions: [Session] = []
     @Published var isLoadingSessions: Bool = false
     @Published var sessionLoadError: String? = nil
     @Published var selectedSource: String? = nil
+
+    private static let profilesKey = "hermesProfiles"
+    private static let selectedProfileNameKey = "selectedProfileName"
+
+    /// 프로필 전환 직후 도착하는 이전 프로필의 응답을 버리기 위한 세대 카운터
+    private var loadGeneration = 0
+
+    init() {
+        let stored = Self.loadStoredProfiles()
+        profiles = stored.isEmpty ? [.default] : stored
+        let storedName = UserDefaults.standard.string(forKey: Self.selectedProfileNameKey) ?? "default"
+        selectedProfileID = (profiles.first { $0.name == storedName } ?? profiles.first)?.id
+    }
+
+    // MARK: - Profiles
+
+    var selectedProfile: HermesProfile {
+        profiles.first { $0.id == selectedProfileID } ?? profiles.first ?? .default
+    }
+
+    /// serverHost의 scheme/host에 프로필의 포트를 결합한 baseURL
+    func baseURL(for profile: HermesProfile) -> URL {
+        var comps = URLComponents(string: serverHost.trimmingCharacters(in: .whitespaces)) ?? URLComponents()
+        if comps.scheme == nil { comps.scheme = "http" }
+        if comps.host == nil || comps.host?.isEmpty == true { comps.host = "localhost" }
+        comps.port = profile.port
+        comps.path = ""
+        comps.query = nil
+        return comps.url ?? URL(string: "http://localhost:8642")!
+    }
+
+    var hermesClient: HermesAPIClient {
+        let profile = selectedProfile
+        return HermesAPIClient(
+            baseURL: baseURL(for: profile),
+            apiKey: profile.apiKey.isEmpty ? apiKey : profile.apiKey
+        )
+    }
+
+    func selectProfile(_ profile: HermesProfile) {
+        guard profile.id != selectedProfileID else { return }
+        selectedProfileID = profile.id
+        UserDefaults.standard.set(profile.name, forKey: Self.selectedProfileNameKey)
+        sessions = []
+        selectedSource = nil
+        sessionLoadError = nil
+        loadSessions()
+    }
+
+    func addProfile(name: String, port: Int) {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty, !profiles.contains(where: { $0.port == port }) else { return }
+        profiles.append(HermesProfile(name: trimmed, port: port))
+        profiles.sort { $0.port < $1.port }
+        persistProfiles()
+    }
+
+    func removeProfiles(at offsets: IndexSet) {
+        let removingSelected = offsets.contains { profiles[$0].id == selectedProfileID }
+        profiles.remove(atOffsets: offsets)
+        if profiles.isEmpty { profiles = [.default] }
+        if removingSelected, let first = profiles.first {
+            selectedProfileID = first.id
+            UserDefaults.standard.set(first.name, forKey: Self.selectedProfileNameKey)
+            sessions = []
+            loadSessions()
+        }
+        persistProfiles()
+    }
+
+    /// 호스트의 포트 범위를 스캔해서 응답하는 hermes API 서버를 프로필로 등록한다.
+    /// 프로필 이름은 각 API 서버가 /v1/models 로 알려주는 모델 식별자
+    /// (API_SERVER_MODEL_NAME, 기본값 = 프로필 이름)를 사용한다.
+    /// - Returns: 새로 추가된 프로필 수
+    @discardableResult
+    func discoverProfiles(ports: [Int] = Array(8642...8651)) async -> Int {
+        guard !isDiscoveringProfiles else { return 0 }
+        isDiscoveringProfiles = true
+        defer { isDiscoveringProfiles = false }
+
+        var found: [(port: Int, name: String)] = []
+        await withTaskGroup(of: (Int, String)?.self) { group in
+            for port in ports {
+                let url = baseURL(for: HermesProfile(name: "probe", port: port))
+                let key = apiKey
+                group.addTask {
+                    guard let name = await Self.probeModelName(baseURL: url, apiKey: key) else { return nil }
+                    return (port, name)
+                }
+            }
+            for await result in group {
+                if let result { found.append(result) }
+            }
+        }
+
+        var added = 0
+        for item in found where !profiles.contains(where: { $0.port == item.port }) {
+            profiles.append(HermesProfile(name: item.name, port: item.port))
+            added += 1
+        }
+        if added > 0 {
+            profiles.sort { $0.port < $1.port }
+            persistProfiles()
+        }
+        return added
+    }
+
+    nonisolated private static func probeModelName(baseURL: URL, apiKey: String) async -> String? {
+        var request = URLRequest(url: baseURL.appendingPathComponent("v1/models"))
+        request.timeoutInterval = 3
+        if !apiKey.isEmpty {
+            request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        }
+        guard let (data, response) = try? await URLSession.shared.data(for: request),
+              let http = response as? HTTPURLResponse, http.statusCode == 200 else { return nil }
+        struct ModelsResponse: Decodable {
+            struct Model: Decodable { let id: String }
+            let data: [Model]
+        }
+        return (try? JSONDecoder().decode(ModelsResponse.self, from: data))?.data.first?.id
+    }
+
+    private func persistProfiles() {
+        if let data = try? JSONEncoder().encode(profiles) {
+            UserDefaults.standard.set(data, forKey: Self.profilesKey)
+        }
+    }
+
+    private static func loadStoredProfiles() -> [HermesProfile] {
+        guard let data = UserDefaults.standard.data(forKey: profilesKey),
+              let decoded = try? JSONDecoder().decode([HermesProfile].self, from: data) else { return [] }
+        return decoded
+    }
+
+    // MARK: - Sessions
 
     var availableSources: [String] {
         let all = sessions.compactMap { $0.source }.filter { !$0.isEmpty }
@@ -22,21 +162,19 @@ final class AppSettings: ObservableObject {
         return sessions.filter { $0.source == source }
     }
 
-    var hermesClient: HermesAPIClient {
-        HermesAPIClient(
-            baseURL: URL(string: serverHost) ?? URL(string: "http://localhost:8642")!,
-            apiKey: apiKey
-        )
-    }
-
     func loadSessions() {
-        guard !isLoadingSessions else { return }
+        loadGeneration += 1
+        let generation = loadGeneration
         isLoadingSessions = true
         sessionLoadError = nil
+        let client = hermesClient
         Task {
             do {
-                sessions = try await hermesClient.fetchSessions()
+                let result = try await client.fetchSessions()
+                guard generation == loadGeneration else { return }
+                sessions = result
             } catch {
+                guard generation == loadGeneration else { return }
                 sessionLoadError = error.localizedDescription
             }
             isLoadingSessions = false
@@ -51,7 +189,8 @@ final class AppSettings: ObservableObject {
 
     func deleteSession(id: String) {
         sessions.removeAll { $0.id == id }
-        Task { try? await hermesClient.deleteSession(id: id) }
+        let client = hermesClient
+        Task { try? await client.deleteSession(id: id) }
     }
 
     func updateSession(_ session: Session) {
