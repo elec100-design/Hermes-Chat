@@ -6,11 +6,17 @@ final class AppSettings: ObservableObject {
     /// 게이트웨이 호스트. 포트가 포함되어 있어도 프로필 포트로 대체된다.
     @AppStorage("serverHost") var serverHost: String = "http://localhost:8642"
     @AppStorage("selectedModel") var selectedModel: String = "hermes-agent"
-    @AppStorage("apiKey") var apiKey: String = ""
     /// Hermes Bridge 주소 (예: http://100.x.x.x:8765). 비어 있으면 브리지 기능 비활성.
     @AppStorage("bridgeHost") var bridgeHost: String = ""
-    @AppStorage("bridgeToken") var bridgeToken: String = ""
     @AppStorage("dashboardPort") var dashboardPort: Int = 8000
+
+    /// 비밀값은 Keychain 보관 (T-070). 구버전 UserDefaults 값은 init에서 1회 이관.
+    @Published var apiKey: String = "" {
+        didSet { KeychainHelper.set(apiKey, for: "apiKey") }
+    }
+    @Published var bridgeToken: String = "" {
+        didSet { KeychainHelper.set(bridgeToken, for: "bridgeToken") }
+    }
 
     @Published var profiles: [HermesProfile] = []
     @Published var selectedProfileID: UUID?
@@ -32,6 +38,19 @@ final class AppSettings: ObservableObject {
         profiles = stored.isEmpty ? [.default] : stored
         let storedName = UserDefaults.standard.string(forKey: Self.selectedProfileNameKey) ?? "default"
         selectedProfileID = (profiles.first { $0.name == storedName } ?? profiles.first)?.id
+        apiKey = Self.loadSecret("apiKey")
+        bridgeToken = Self.loadSecret("bridgeToken")
+    }
+
+    /// Keychain 우선, 없으면 구버전 UserDefaults에서 이관 후 삭제
+    private static func loadSecret(_ key: String) -> String {
+        if let value = KeychainHelper.get(key) { return value }
+        if let legacy = UserDefaults.standard.string(forKey: key), !legacy.isEmpty {
+            KeychainHelper.set(legacy, for: key)
+            UserDefaults.standard.removeObject(forKey: key)
+            return legacy
+        }
+        return ""
     }
 
     // MARK: - Profiles
