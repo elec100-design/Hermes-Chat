@@ -19,7 +19,7 @@ cat > ~/Library/LaunchAgents/ai.hermes.bridge.plist <<EOF
   <key>Label</key><string>ai.hermes.bridge</string>
   <key>ProgramArguments</key><array>
     <string>/usr/bin/python3</string>
-    <string>/Users/macmini/projects/HermesChat/server/hermes_bridge.py</string>
+    <string>/Users/macmini/Library/Mobile Documents/com~apple~CloudDocs/Coding/claude/busy-meitner-lhc5os/server/hermes_bridge.py</string>
     <string>--port</string><string>8765</string>
   </array>
   <key>EnvironmentVariables</key><dict>

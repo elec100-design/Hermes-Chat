@@ -93,10 +93,11 @@
 
 **맥미니 1회 설정 (필수!)** — 이게 없으면 앱을 아무리 고쳐도 전환 안 됨:
 ```bash
-cd ~/projects/HermesChat   # 이 저장소
+cd "/Users/macmini/Library/Mobile Documents/com~apple~CloudDocs/Coding/claude/busy-meitner-lhc5os"
 git pull
 bash scripts/setup_profiles_api.sh <API_KEY>
 ```
+✅ 2026-06-10 완료 — default+6프로필(8642~8648) 헬스체크 통과.
 스크립트가 하는 일: default=8642 유지, 나머지 프로필에 8643부터 포트 배정, `API_SERVER_HOST=0.0.0.0`, `API_SERVER_MODEL_NAME=<프로필명>` 설정, 게이트웨이 전체 재시작, 포트 응답 확인. 이후 아이폰 앱 설정에서 **"프로필 자동 검색"** 버튼 한 번.
 
 ---

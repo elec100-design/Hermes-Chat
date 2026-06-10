@@ -8,7 +8,10 @@ Claude Code (Xcode 내장/웹) ↔ Hermes+Step-3.7-flash (맥미니 상주) ↔ 
 
 ## 1. 세션 시작 시 (모든 에이전트 공통)
 
-1. `git fetch origin claude/busy-meitner-lhc5os && git checkout claude/busy-meitner-lhc5os && git pull`
+맥미니 저장소 경로 (공백 포함 — **반드시 따옴표로 감쌀 것**):
+`REPO="/Users/macmini/Library/Mobile Documents/com~apple~CloudDocs/Coding/claude/busy-meitner-lhc5os"`
+
+1. `cd "$REPO" && git fetch origin claude/busy-meitner-lhc5os && git checkout claude/busy-meitner-lhc5os && git pull`
 2. **읽기 순서**: `docs/PLAN.md` → `docs/TASKS.md` → 이 문서.
 3. 작업 선택:
    - `BLOCKED`가 있으면 사유를 읽고 해소 가능하면 우선 처리.
@@ -26,7 +29,7 @@ Claude Code (Xcode 내장/웹) ↔ Hermes+Step-3.7-flash (맥미니 상주) ↔ 
 ## 3. 빌드 검증 (맥에서만 가능)
 
 ```bash
-cd /Users/macmini/projects/HermesChat
+cd "/Users/macmini/Library/Mobile Documents/com~apple~CloudDocs/Coding/claude/busy-meitner-lhc5os"
 xcodebuild -project HermesChat.xcodeproj -scheme HermesChat \
   -destination 'generic/platform=iOS Simulator' \
   CODE_SIGNING_ALLOWED=NO build 2>&1 | tail -30
@@ -55,7 +58,7 @@ xcodebuild -project HermesChat.xcodeproj -scheme HermesChat \
 
 ```
 앞으로 "HermesChat 작업 이어줘"라고 하면:
-1. cd /Users/macmini/projects/HermesChat && git checkout claude/busy-meitner-lhc5os && git pull
+1. cd "/Users/macmini/Library/Mobile Documents/com~apple~CloudDocs/Coding/claude/busy-meitner-lhc5os" && git checkout claude/busy-meitner-lhc5os && git pull
 2. docs/PLAN.md, docs/TASKS.md, docs/HANDOFF.md를 읽는다.
 3. HANDOFF.md §1~§4 프로토콜대로 작업 하나를 골라 구현하고,
    xcodebuild로 빌드 검증 후 TASKS.md를 갱신해 커밋·푸시한다.
@@ -68,7 +71,7 @@ Hermes에게 1회 지시:
 
 ```
 cron 작업을 등록해줘: 매 시간마다
-1. cd /Users/macmini/projects/HermesChat && git fetch && git checkout claude/busy-meitner-lhc5os && git pull
+1. cd "/Users/macmini/Library/Mobile Documents/com~apple~CloudDocs/Coding/claude/busy-meitner-lhc5os" && git fetch && git checkout claude/busy-meitner-lhc5os && git pull
 2. docs/TASKS.md에 NEEDS-BUILD가 있으면 HANDOFF.md §3의 xcodebuild 명령으로 빌드.
 3. 성공: 해당 태스크를 DONE으로, 실패: 에러를 분석해 코드를 수정하고 재빌드(최대 3회),
    그래도 실패면 BLOCKED로 기록하고 에러를 docs/BUILD_STATUS.md에 저장.
@@ -90,7 +93,27 @@ project.pbxproj에 등록해. 완료하면 태스크 ID와 변경 파일을 보�
 docs/HANDOFF.md 프로토콜대로 HermesChat 작업을 이어서 진행해줘.
 ```
 
-## 6. 막혔을 때 / 충돌 시
+## 6. 푸시 인증 (헤드리스 에이전트 필수 설정)
+
+Hermes 같은 백그라운드 에이전트는 macOS 키체인/대화형 프롬프트에 접근할 수 없어
+HTTPS 푸시가 `could not read Username ... Device not configured` / `-25308`
+(errSecInteractionNotAllowed)으로 실패한다. **1회 설정** (사용자가 로컬 터미널에서):
+
+```bash
+# 1) GitHub에서 Fine-grained PAT 발급:
+#    Settings → Developer settings → Fine-grained tokens →
+#    Repository access: elec100-design/Hermes-Chat 만, Permissions: Contents = Read and write
+# 2) 토큰을 평문 파일 저장소에 1회 기록 (키체인을 거치지 않아 헤드리스에서도 동작):
+cd "/Users/macmini/Library/Mobile Documents/com~apple~CloudDocs/Coding/claude/busy-meitner-lhc5os"
+git config credential.helper "store --file ~/.hermes/.git-credentials"
+printf 'https://elec100-design:%s@github.com\n' '<발급한 토큰>' > ~/.hermes/.git-credentials
+chmod 600 ~/.hermes/.git-credentials
+git push -u origin claude/busy-meitner-lhc5os   # 동작 확인
+```
+토큰은 저장소 밖(~/.hermes/)에 있으므로 커밋될 일이 없다. 토큰을 텔레그램 등
+채팅으로 에이전트에게 보내지 말 것 — 위 명령은 사람이 직접 실행한다.
+
+## 7. 막혔을 때 / 충돌 시
 
 - 같은 태스크에 두 에이전트가 붙는 것을 막기 위해 `DOING` 표시가 있으면 그 태스크는 건드리지 않는다 (7일 이상 방치된 `DOING`은 회수 가능).
 - push 충돌 시: `git pull --rebase origin claude/busy-meitner-lhc5os` 후 재푸시. TASKS.md 충돌은 양쪽 상태 변경을 모두 보존하는 방향으로 병합.
