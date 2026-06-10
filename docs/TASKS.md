@@ -15,11 +15,11 @@
 
 | ID | 작업 | 파일 | 상태 |
 |----|------|------|------|
-| T-002 | HermesProfile 모델 (name+port) | `Models/ProfileModels.swift` | NEEDS-BUILD (Claude, 06-10) |
-| T-003 | AppSettings 프로필 영속화·전환·세대카운터·포트스캔 자동검색 | `Services/AppDefaults.swift` | NEEDS-BUILD (Claude, 06-10) |
-| T-004 | 세션 목록 프로필 드롭다운 + `.searchable` 검색 | `Views/SessionListView.swift` | NEEDS-BUILD (Claude, 06-10) |
-| T-005 | 설정 프로필 섹션 (목록/추가/삭제/자동검색) | `Views/SettingsView.swift` | NEEDS-BUILD (Claude, 06-10) |
-| T-006 | 첫 메시지 자동 제목 (PATCH /api/sessions) | `ViewModels/ChatViewModel.swift`, `Services/HermesAPIClient.swift` | NEEDS-BUILD (Claude, 06-10) |
+| T-002 | HermesProfile 모델 (name+port) | `Models/ProfileModels.swift` | DONE (06-10) |
+| T-003 | AppSettings 프로필 영속화·전환·세대카운터·포트스캔 자동검색 | `Services/AppDefaults.swift` | DONE (06-10) |
+| T-004 | 세션 목록 프로필 드롭다운 + `.searchable` 검색 | `Views/SessionListView.swift` | DONE (06-10) |
+| T-005 | 설정 프로필 섹션 (목록/추가/삭제/자동검색) | `Views/SettingsView.swift` | DONE (06-10) |
+| T-006 | 첫 메시지 자동 제목 (PATCH /api/sessions) | `ViewModels/ChatViewModel.swift`, `Services/HermesAPIClient.swift` | DONE (06-10) |
 
 ## Phase 3 — 설정 확장 + Bridge
 
@@ -74,4 +74,4 @@
 
 | 날짜 | 브랜치/커밋 | 결과 | 비고 |
 |------|------------|------|------|
-| - | - | - | 아직 없음 |
+| 06-10 | claude/busy-meitner-lhc5os @ 9a9d64b | BUILD SUCCEEDED | Hermes 검증, 실기기 프로필 전환 확인 (T-001) |
