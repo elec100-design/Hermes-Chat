@@ -26,6 +26,7 @@ import time
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 HERMES_HOME = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes"))
 PROFILES_DIR = HERMES_HOME / "profiles"
@@ -82,6 +83,22 @@ def profile_dir(name):
     return PROFILES_DIR / name
 
 
+def safe_subpath(rel):
+    """HERMES_HOME 밖으로 못 나가게 검증. 통과하면 절대 Path, 아니면 None."""
+    rel = (rel or "").lstrip("/")
+    home = HERMES_HOME.resolve()
+    target = (home / rel).resolve()
+    if target == home or home in target.parents:
+        return target
+    return None
+
+
+def is_hidden_path(target):
+    """HERMES_HOME 기준 상대경로에 숨김 요소(.env 등)가 있으면 True — 비밀값 노출 차단."""
+    rel = target.relative_to(HERMES_HOME.resolve())
+    return any(part.startswith(".") for part in rel.parts)
+
+
 def read_env(env_file):
     values = {}
     if env_file.is_file():
@@ -109,6 +126,14 @@ class Handler(BaseHTTPRequestHandler):
     def fail(self, status, message):
         self.send_json({"error": message}, status)
 
+    def send_text(self, text, status=200):
+        body = text.encode()
+        self.send_response(status)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
     def authorized(self):
         if not TOKEN:
             return True
@@ -129,12 +154,63 @@ class Handler(BaseHTTPRequestHandler):
     # ── routing ──────────────────────────────────────────────
 
     def do_GET(self):
-        parts = [p for p in self.path.split("?")[0].split("/") if p]
+        parsed = urlparse(self.path)
+        parts = [p for p in parsed.path.split("/") if p]
+        query = {k: v[0] for k, v in parse_qs(parsed.query).items()}
 
         if parts == ["health"]:
             return self.send_json({"status": "ok", "service": "hermes-bridge"})
         if not self.authorized():
             return self.fail(401, "unauthorized")
+
+        # GET /files?path=<HERMES_HOME 기준 상대경로> — 디렉터리 목록 (읽기전용)
+        if parts == ["files"]:
+            target = safe_subpath(query.get("path", ""))
+            if target is None or not target.is_dir():
+                return self.fail(404, "directory not found")
+            entries = []
+            for p in sorted(target.iterdir(), key=lambda x: (not x.is_dir(), x.name.lower())):
+                if p.name.startswith("."):
+                    continue  # .env 등 숨김 파일은 목록에서도 제외
+                try:
+                    entries.append({
+                        "name": p.name,
+                        "is_dir": p.is_dir(),
+                        "size": p.stat().st_size if p.is_file() else None,
+                    })
+                except OSError:
+                    pass
+            return self.send_json({"data": entries})
+
+        # GET /files/content?path=<상대경로> — 텍스트 파일 내용 (512KB 제한)
+        if parts == ["files", "content"]:
+            target = safe_subpath(query.get("path", ""))
+            if target is None or not target.is_file():
+                return self.fail(404, "file not found")
+            if is_hidden_path(target):
+                return self.fail(403, "hidden files are not accessible")
+            if target.stat().st_size > 512 * 1024:
+                return self.fail(413, "file too large (512KB limit)")
+            return self.send_text(target.read_text(errors="replace"))
+
+        # GET /profiles/<name>/logs?tail=200 — 최신 로그 파일 꼬리 (읽기전용)
+        if len(parts) == 3 and parts[0] == "profiles" and parts[2] == "logs":
+            name = self.check_profile(parts[1])
+            if not name:
+                return self.fail(404, "unknown profile")
+            try:
+                tail = max(1, min(int(query.get("tail", "200")), 2000))
+            except ValueError:
+                tail = 200
+            candidates = []
+            for base in (profile_dir(name) / "logs", HERMES_HOME / "logs"):
+                if base.is_dir():
+                    candidates += [p for p in base.glob("*.log") if p.is_file()]
+            if not candidates:
+                return self.fail(404, "no log files found")
+            newest = max(candidates, key=lambda p: p.stat().st_mtime)
+            lines = newest.read_text(errors="replace").splitlines()[-tail:]
+            return self.send_text(f"# {newest.name}\n" + "\n".join(lines))
 
         if parts == ["profiles"]:
             result = []

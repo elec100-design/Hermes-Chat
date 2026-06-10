@@ -150,8 +150,13 @@ struct SettingsView: View {
                 } label: {
                     Label("Skills & Tools", systemImage: "wand.and.stars")
                 }
+                NavigationLink {
+                    FileBrowserView(appSettings: appSettings)
+                } label: {
+                    Label("파일 브라우저 (~/.hermes)", systemImage: "folder")
+                }
             } footer: {
-                Text("현재 선택된 프로필(\(appSettings.selectedProfile.name)) 게이트웨이의 스킬·툴셋 목록입니다.")
+                Text("Skills & Tools는 현재 선택된 프로필(\(appSettings.selectedProfile.name)) 게이트웨이 기준이고, 파일 브라우저는 Bridge가 필요합니다 (읽기전용).")
             }
 
             Section {

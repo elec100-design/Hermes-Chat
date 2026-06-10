@@ -67,6 +67,9 @@ curl -H "Authorization: Bearer $BRIDGE_TOKEN" http://127.0.0.1:8765/profiles
 | `POST /upload/{profile}` | 파일 업로드 (raw body + `X-Filename` 헤더) → `{path}` |
 | `GET /kanban` | 보드 목록 |
 | `GET /kanban/{board}` / `PUT /kanban/{board}` | 보드 조회/전체 저장 |
+| `GET /files?path=` | HERMES_HOME 하위 디렉터리 목록 (읽기전용, 숨김 파일 제외) |
+| `GET /files/content?path=` | 텍스트 파일 내용 (512KB 제한, 숨김 파일 403) |
+| `GET /profiles/{name}/logs?tail=200` | 최신 로그 파일 꼬리 (최대 2000줄) |
 
 인증: `/health` 외 전부 `Authorization: Bearer <HERMES_BRIDGE_TOKEN>`.
 

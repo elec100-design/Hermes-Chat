@@ -20,6 +20,20 @@ struct BridgeProfile: Identifiable, Codable, Equatable, Hashable {
     }
 }
 
+/// 파일 브라우저(/files) 목록의 한 항목
+struct BridgeFileEntry: Identifiable, Codable, Equatable {
+    let name: String
+    let isDir: Bool
+    let size: Int?
+
+    var id: String { name }
+
+    enum CodingKeys: String, CodingKey {
+        case name, size
+        case isDir = "is_dir"
+    }
+}
+
 @MainActor
 final class BridgeClient {
     let baseURL: URL
@@ -79,6 +93,27 @@ final class BridgeClient {
         return try decode(Response.self, from: data).path
     }
 
+    // MARK: - Files & Logs (읽기전용, T-061)
+
+    /// HERMES_HOME 기준 상대경로의 디렉터리 목록
+    func listFiles(path: String) async throws -> [BridgeFileEntry] {
+        struct Response: Decodable { let data: [BridgeFileEntry] }
+        let data = try await request("GET", "files", query: ["path": path])
+        return try decode(Response.self, from: data).data
+    }
+
+    /// 텍스트 파일 내용 (브리지가 512KB로 제한)
+    func fetchFileContent(path: String) async throws -> String {
+        let data = try await request("GET", "files/content", query: ["path": path])
+        return String(decoding: data, as: UTF8.self)
+    }
+
+    /// 해당 프로필의 최신 로그 꼬리
+    func fetchLogs(profile: String, tail: Int = 200) async throws -> String {
+        let data = try await request("GET", "profiles/\(profile)/logs", query: ["tail": String(tail)])
+        return String(decoding: data, as: UTF8.self)
+    }
+
     // MARK: - Kanban (보드 원본 JSON은 T-050 모델에서 디코딩)
 
     func fetchBoardNames() async throws -> [String] {
@@ -100,10 +135,17 @@ final class BridgeClient {
     private func request(
         _ method: String,
         _ path: String,
+        query: [String: String]? = nil,
         body: Data? = nil,
         headers: [String: String] = [:]
     ) async throws -> Data {
-        var urlRequest = URLRequest(url: baseURL.appendingPathComponent(path))
+        var url = baseURL.appendingPathComponent(path)
+        if let query,
+           var comps = URLComponents(url: url, resolvingAgainstBaseURL: false) {
+            comps.queryItems = query.map { URLQueryItem(name: $0.key, value: $0.value) }
+            url = comps.url ?? url
+        }
+        var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = method
         urlRequest.timeoutInterval = 15
         urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")

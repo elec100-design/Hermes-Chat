@@ -23,6 +23,8 @@ struct ProfileDetailView: View {
     @State private var showRestartConfirm = false
     @State private var statusMessage: String?
     @State private var statusIsError = false
+    @State private var showLogs = false
+    @State private var logsText: String?
 
     private var profile: HermesProfile {
         appSettings.profiles.first { $0.id == profileID } ?? .default
@@ -70,6 +72,14 @@ struct ProfileDetailView: View {
 
             if bridgeConfigured {
                 Section {
+                    Button {
+                        showLogs = true
+                    } label: {
+                        Label("게이트웨이 로그 보기 (최근 200줄)", systemImage: "doc.plaintext")
+                    }
+                }
+
+                Section {
                     Button(role: .destructive) {
                         showRestartConfirm = true
                     } label: {
@@ -111,6 +121,45 @@ struct ProfileDetailView: View {
         .task {
             await loadModels()
             await loadSoul()
+        }
+        .sheet(isPresented: $showLogs) {
+            logsSheet
+                .task { await loadLogs() }
+        }
+    }
+
+    private var logsSheet: some View {
+        NavigationStack {
+            Group {
+                if let logsText {
+                    ScrollView {
+                        Text(logsText)
+                            .font(.system(.caption2, design: .monospaced))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding()
+                            .textSelection(.enabled)
+                    }
+                } else {
+                    ProgressView("로그 불러오는 중...")
+                }
+            }
+            .navigationTitle("\(profile.name) 로그")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("닫기") { showLogs = false }
+                }
+            }
+        }
+    }
+
+    private func loadLogs() async {
+        guard let bridge = appSettings.bridgeClient else { return }
+        logsText = nil
+        do {
+            logsText = try await bridge.fetchLogs(profile: profile.name, tail: 200)
+        } catch {
+            logsText = "로그를 불러오지 못했습니다: \(error.localizedDescription)"
         }
     }
 
