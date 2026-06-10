@@ -129,8 +129,32 @@ final class HermesAPIClient {
         if let model { body["model"] = model }
         if let sp = systemPrompt, !sp.isEmpty { body["system_prompt"] = sp }
         let data = try await post("/api/sessions", body: body)
-        let serverSession = try JSONDecoder().decode(ServerSession.self, from: data)
-        return serverSession.asSession
+
+        // 생성 응답 형식이 서버 버전에 따라 달라서 단계적으로 해석한다:
+        // ① ServerSession 그대로 ② {"data": {...}} 래핑 ③ id 계열 키만 추출
+        if let server = try? JSONDecoder().decode(ServerSession.self, from: data) {
+            return server.asSession
+        }
+        struct Wrapped: Decodable { let data: ServerSession }
+        if let wrapped = try? JSONDecoder().decode(Wrapped.self, from: data) {
+            return wrapped.data.asSession
+        }
+        if let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            let dict = (object["data"] as? [String: Any]) ?? object
+            let rawId = dict["id"] ?? dict["session_id"] ?? dict["sessionId"]
+            let id = (rawId as? String) ?? (rawId as? Int).map(String.init)
+            if let id, !id.isEmpty {
+                return Session(
+                    id: id,
+                    title: dict["title"] as? String,
+                    preview: nil,
+                    updatedAt: .now,
+                    source: dict["source"] as? String
+                )
+            }
+        }
+        let raw = String(data: data, encoding: .utf8) ?? ""
+        throw HermesAPIError.serverError("세션 생성 응답을 해석할 수 없습니다: \(raw.prefix(300))")
     }
 
     func deleteSession(id: String) async throws {

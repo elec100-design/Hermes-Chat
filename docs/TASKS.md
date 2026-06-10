@@ -70,6 +70,7 @@
 | T-072 | 세션 페이지네이션 (limit/offset/has_more) | NEEDS-BUILD (Claude, 06-10 — 50개 단위, 목록 끝 도달 시 자동 로드) |
 | T-073 | iPad 레이아웃·다크모드 점검 | NEEDS-BUILD (Claude, 06-11 — 코드 차원 수정 완료, 최종 확인은 실기기에서) |
 | T-074 | 세션 탭 상단 메뉴를 소스 필터 전용으로 (프로필 선택은 보드 탭으로 일원화, 제목=프로필명) | NEEDS-BUILD (Claude, 06-11 — 사용자 요청) |
+| T-075 | 새 세션 만들기 디코딩 실패 수정 ("The data couldn't be read…") — 생성 응답 형식 단계적 해석 | NEEDS-BUILD (Claude, 06-11 — 버그 수정) |
 
 ## 빌드 검증 기록 (검증자가 갱신)
 
