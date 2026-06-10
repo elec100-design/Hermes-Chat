@@ -6,7 +6,16 @@ SOUL.md 편집, 파일 업로드, 칸반 저장소)을 보충하는 단일 파�
 
 ## 1회 설치 (맥미니)
 
+> 주의: launchd는 iCloud Drive(`~/Library/Mobile Documents/...`) 안의 스크립트를
+> 실행하지 못할 수 있다 (TCC 권한 차단). 반드시 iCloud 밖으로 복사해서 실행한다.
+> 브리지 코드가 업데이트되면 아래 `cp` 한 줄만 다시 실행하고 reload 하면 된다.
+
 ```bash
+# 0) 저장소의 스크립트를 iCloud 밖 고정 경로로 복사
+REPO="/Users/macmini/Library/Mobile Documents/com~apple~CloudDocs/Coding/claude/busy-meitner-lhc5os"
+mkdir -p ~/.hermes/bridge
+cp "$REPO/server/hermes_bridge.py" ~/.hermes/bridge/
+
 # 1) 토큰 정하기 (앱 설정에 같은 값 입력)
 export BRIDGE_TOKEN="원하는-긴-랜덤-문자열"
 
@@ -19,7 +28,7 @@ cat > ~/Library/LaunchAgents/ai.hermes.bridge.plist <<EOF
   <key>Label</key><string>ai.hermes.bridge</string>
   <key>ProgramArguments</key><array>
     <string>/usr/bin/python3</string>
-    <string>/Users/macmini/Library/Mobile Documents/com~apple~CloudDocs/Coding/claude/busy-meitner-lhc5os/server/hermes_bridge.py</string>
+    <string>/Users/macmini/.hermes/bridge/hermes_bridge.py</string>
     <string>--port</string><string>8765</string>
   </array>
   <key>EnvironmentVariables</key><dict>
@@ -34,9 +43,14 @@ launchctl unload ~/Library/LaunchAgents/ai.hermes.bridge.plist 2>/dev/null
 launchctl load ~/Library/LaunchAgents/ai.hermes.bridge.plist
 
 # 3) 확인
+sleep 1
 curl http://127.0.0.1:8765/health
 curl -H "Authorization: Bearer $BRIDGE_TOKEN" http://127.0.0.1:8765/profiles
 ```
+
+안 뜨면 진단: `cat /tmp/hermes-bridge.log` (파이썬 에러), `launchctl list | grep hermes`
+(상태/종료코드), 수동 실행 테스트
+`HERMES_BRIDGE_TOKEN=x /usr/bin/python3 ~/.hermes/bridge/hermes_bridge.py --port 8765`
 
 ## API 요약
 
