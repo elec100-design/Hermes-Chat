@@ -139,11 +139,13 @@ final class HermesAPIClient {
         if let wrapped = try? JSONDecoder().decode(Wrapped.self, from: data) {
             return wrapped.data.asSession
         }
-        if let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-            let dict = (object["data"] as? [String: Any]) ?? object
-            let rawId = dict["id"] ?? dict["session_id"] ?? dict["sessionId"]
-            let id = (rawId as? String) ?? (rawId as? Int).map(String.init)
-            if let id, !id.isEmpty {
+        if let object = try? JSONSerialization.jsonObject(with: data) {
+            // 최상위가 그냥 문자열이면 그것이 곧 세션 id
+            if let id = object as? String, !id.isEmpty {
+                return Session(id: id, title: nil, preview: nil, updatedAt: .now, source: nil)
+            }
+            // 중첩 어디에 있든 id 계열 키를 가진 객체를 찾는다
+            if let (id, dict) = Self.extractSessionID(from: object) {
                 return Session(
                     id: id,
                     title: dict["title"] as? String,
@@ -155,6 +157,31 @@ final class HermesAPIClient {
         }
         let raw = String(data: data, encoding: .utf8) ?? ""
         throw HermesAPIError.serverError("세션 생성 응답을 해석할 수 없습니다: \(raw.prefix(300))")
+    }
+
+    /// 응답 JSON을 깊이 3까지 훑어 id/session_id 키를 가진 첫 객체를 돌려준다.
+    nonisolated private static func extractSessionID(
+        from object: Any, depth: Int = 0
+    ) -> (id: String, dict: [String: Any])? {
+        guard depth <= 3 else { return nil }
+        if let dict = object as? [String: Any] {
+            let rawId = dict["id"] ?? dict["session_id"] ?? dict["sessionId"]
+            if let id = (rawId as? String) ?? (rawId as? Int).map(String.init), !id.isEmpty {
+                return (id, dict)
+            }
+            for value in dict.values {
+                if let found = extractSessionID(from: value, depth: depth + 1) {
+                    return found
+                }
+            }
+        } else if let array = object as? [Any] {
+            for value in array {
+                if let found = extractSessionID(from: value, depth: depth + 1) {
+                    return found
+                }
+            }
+        }
+        return nil
     }
 
     func deleteSession(id: String) async throws {
