@@ -10,6 +10,9 @@ struct ChatView: View {
     @State private var photoItems: [PhotosPickerItem] = []
     @State private var showPhotoPicker = false
     @State private var showFileImporter = false
+    @State private var forkedSession: Session?
+    @State private var isForking = false
+    @State private var forkError: String?
 
     init(sessionId: String, appSettings: AppSettings) {
         self.sessionId = sessionId
@@ -46,9 +49,38 @@ struct ChatView: View {
         .navigationTitle("Hermes Chat")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Button {
+                        forkSession()
+                    } label: {
+                        Label("이 세션 분기", systemImage: "arrow.triangle.branch")
+                    }
+                    .disabled(isForking || viewModel.isWorking)
+                } label: {
+                    if isForking {
+                        ProgressView()
+                    } else {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                }
+                .accessibilityLabel("세션 메뉴")
+            }
             ToolbarItem(placement: .keyboard) {
                 Button("완료") { isInputFocused = false }
             }
+        }
+        // 분기된 세션으로 push — 부모 NavigationStack(SessionListView)의 path를 건드리지 않는다
+        .navigationDestination(item: $forkedSession) { session in
+            ChatView(sessionId: session.id, appSettings: appSettings)
+        }
+        .alert("세션 분기 실패", isPresented: .init(
+            get: { forkError != nil },
+            set: { if !$0 { forkError = nil } }
+        )) {
+            Button("확인", role: .cancel) {}
+        } message: {
+            Text(forkError ?? "")
         }
         .photosPicker(
             isPresented: $showPhotoPicker,
@@ -74,6 +106,19 @@ struct ChatView: View {
                     viewModel.addAttachment(filename: url.lastPathComponent, data: data)
                 }
             }
+        }
+    }
+
+    private func forkSession() {
+        guard !isForking else { return }
+        isForking = true
+        Task {
+            do {
+                forkedSession = try await appSettings.forkSession(id: sessionId)
+            } catch {
+                forkError = error.localizedDescription
+            }
+            isForking = false
         }
     }
 

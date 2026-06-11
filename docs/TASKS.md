@@ -90,7 +90,7 @@
 |----|------|------|------|
 | T-090 | 마크다운/코드블록 렌더링 — 코드펜스 자체 분리 + 인라인은 `AttributedString(markdown:)`. 코드블록 모노스페이스+배경+복사 버튼, 미닫힌 펜스는 코드 취급(스트리밍 안전). SPM 의존성 없음 | `Views/Components/MarkdownText.swift` (신규, pbxproj 등록됨), `Views/Components/MessageView.swift` | NEEDS-BUILD (Claude Code, 06-11 — 실기기 확인 항목: 다크모드 코드블록 가독, 스트리밍 중 깜빡임) |
 | T-091 | 메시지 컨텍스트 메뉴: 복사(UIPasteboard)·공유(ShareLink) + 어시스턴트는 "평문 복사(마크다운 제거)" 추가 | `Views/Components/MessageView.swift` | NEEDS-BUILD (Claude Code, 06-11) |
-| T-092 | 세션 fork — `POST /api/sessions/{id}/fork` 메서드(createSession의 단계적 응답 해석을 공용 추출해 재사용) + ChatView 툴바 "분기" + SessionListView leading 스와이프 | `Services/HermesAPIClient.swift`, `Views/ChatView.swift`, `Views/SessionListView.swift` | TODO |
+| T-092 | 세션 fork — `POST /api/sessions/{id}/fork` 메서드(createSession의 단계적 응답 해석을 parseSessionResponse로 공용 추출) + ChatView 툴바 ⋯ 메뉴 "이 세션 분기" + SessionListView leading 스와이프 "분기" | `Services/HermesAPIClient.swift`, `Services/AppDefaults.swift`, `Views/ChatView.swift`, `Views/SessionListView.swift` | NEEDS-BUILD (Claude Code, 06-11 — 실기기 확인: fork 응답 형식이 단계적 해석에 걸리는지, 분기 세션에 히스토리 보존 여부) |
 
 ## Phase 11 — 알림 (로컬 알림 + 폴링, APNs 없음 — Bridge 무수정이 본선)
 

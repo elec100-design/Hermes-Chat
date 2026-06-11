@@ -129,10 +129,19 @@ final class HermesAPIClient {
         if let model { body["model"] = model }
         if let sp = systemPrompt, !sp.isEmpty { body["system_prompt"] = sp }
         let data = try await post("/api/sessions", body: body)
+        return try parseSessionResponse(data)
+    }
 
-        // 생성 응답 형식이 서버 버전에 따라 달라서 단계적으로 해석한다:
-        // ① {"object":"hermes.session","session":{...}} (실서버 확인 형식)
-        // ② ServerSession 그대로 ③ {"data": {...}} 래핑 ④ id 계열 키 재귀 탐색
+    /// 세션 분기 (`POST /api/sessions/{id}/fork`) — 기존 히스토리를 가진 새 세션을 돌려준다.
+    func forkSession(id: String) async throws -> Session {
+        let data = try await post("/api/sessions/\(id)/fork")
+        return try parseSessionResponse(data)
+    }
+
+    /// 생성/분기 응답 형식이 서버 버전에 따라 달라서 단계적으로 해석한다:
+    /// ① {"object":"hermes.session","session":{...}} (실서버 확인 형식)
+    /// ② ServerSession 그대로 ③ {"data": {...}} 래핑 ④ id 계열 키 재귀 탐색
+    private func parseSessionResponse(_ data: Data) throws -> Session {
         struct HermesWrapped: Decodable { let session: ServerSession }
         if let wrapped = try? JSONDecoder().decode(HermesWrapped.self, from: data) {
             return wrapped.session.asSession
@@ -161,7 +170,7 @@ final class HermesAPIClient {
             }
         }
         let raw = String(data: data, encoding: .utf8) ?? ""
-        throw HermesAPIError.serverError("세션 생성 응답을 해석할 수 없습니다: \(raw.prefix(300))")
+        throw HermesAPIError.serverError("세션 응답을 해석할 수 없습니다: \(raw.prefix(300))")
     }
 
     /// 응답 JSON을 깊이 3까지 훑어 id/session_id 키를 가진 첫 객체를 돌려준다.

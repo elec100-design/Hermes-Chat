@@ -81,6 +81,21 @@ struct SessionListView: View {
                             Label("삭제", systemImage: "trash")
                         }
                     }
+                    .swipeActions(edge: .leading) {
+                        Button {
+                            Task {
+                                do {
+                                    let forked = try await appSettings.forkSession(id: session.id)
+                                    navigationPath.append(forked)
+                                } catch {
+                                    appSettings.sessionLoadError = error.localizedDescription
+                                }
+                            }
+                        } label: {
+                            Label("분기", systemImage: "arrow.triangle.branch")
+                        }
+                        .tint(.indigo)
+                    }
                 }
 
                 // 페이지네이션: 목록 끝에 도달하면 다음 페이지 로드 (T-072)

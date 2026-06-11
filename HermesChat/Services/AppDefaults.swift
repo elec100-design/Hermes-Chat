@@ -279,6 +279,13 @@ final class AppSettings: ObservableObject {
         return session
     }
 
+    /// 세션 분기 (T-092) — 분기된 새 세션을 목록 맨 앞에 넣고 돌려준다.
+    func forkSession(id: String) async throws -> Session {
+        let session = try await hermesClient.forkSession(id: id)
+        sessions.insert(session, at: 0)
+        return session
+    }
+
     func deleteSession(id: String) {
         sessions.removeAll { $0.id == id }
         let client = hermesClient
