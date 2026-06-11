@@ -462,6 +462,41 @@ class Handler(BaseHTTPRequestHandler):
             dest.write_bytes(data)
             return self.send_json({"path": str(dest), "size": len(data)}, 201)
 
+        # POST /kanban/boards  {"name": "표시명", "slug"?: "slug"}
+        if parts == ["kanban", "boards"]:
+            raw = self.read_body(4096)
+            if raw is None:
+                return self.fail(400, "empty body")
+            try:
+                payload = json.loads(raw)
+                name = str(payload.get("name") or "").strip()
+            except (ValueError, TypeError):
+                return self.fail(400, 'expected JSON {"name": ...}')
+            if not name:
+                return self.fail(400, "name is empty")
+            slug = str(payload.get("slug") or "").strip()
+            if not slug:
+                import re as _re
+                slug = _re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-") or "board"
+            if not SAFE_NAME.match(slug):
+                return self.fail(400, "invalid slug (alphanumeric, ., -, _ only, max 80)")
+            if slug in list_kanban_boards():
+                return self.fail(409, f"board '{slug}' already exists")
+            hermes = find_hermes()
+            if not hermes:
+                return self.fail(500, "hermes 실행파일을 찾지 못했습니다 (HERMES_BIN 설정 필요)")
+            try:
+                proc = subprocess.run(
+                    [hermes, "kanban", "boards", "create", slug, "--name", name],
+                    capture_output=True, text=True, timeout=30,
+                )
+            except subprocess.TimeoutExpired:
+                return self.fail(500, "CLI timeout")
+            if proc.returncode != 0:
+                detail = (proc.stderr or proc.stdout or "").strip()[:300]
+                return self.fail(500, f"CLI failed: {detail}")
+            return self.send_json({"board": slug, "name": name, "ok": True}, 201)
+
         # POST /kanban/<board>/tasks  {"title", "detail"?, "assignee"?, "status"?}
         # status: "ready"(기본 — 부모 없는 태스크는 곧바로 디스패처가 실행)
         #         "triage"(스페시파이어가 스펙 구체화 후 진행) | "blocked"(보류, 사람 개입 대기)

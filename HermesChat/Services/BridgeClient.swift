@@ -147,6 +147,14 @@ final class BridgeClient {
         _ = try await request("POST", "kanban/\(board)/tasks", body: body, timeout: 60)
     }
 
+    /// 새 보드 생성 — Bridge가 `hermes kanban boards create` CLI를 호출한다.
+    func createKanbanBoard(name: String, slug: String? = nil) async throws {
+        var payload: [String: Any] = ["name": name]
+        if let slug, !slug.isEmpty { payload["slug"] = slug }
+        let body = try JSONSerialization.data(withJSONObject: payload)
+        _ = try await request("POST", "kanban/boards", body: body, timeout: 30)
+    }
+
     /// 상태 전이 — promote/block/unblock/complete/archive (hermes kanban CLI 경유)
     func kanbanAction(
         board: String,

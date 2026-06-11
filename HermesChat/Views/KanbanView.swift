@@ -87,6 +87,22 @@ final class KanbanViewModel: ObservableObject {
         }
     }
 
+    func createBoard(name: String) async {
+        guard let bridge = appSettings.bridgeClient else { return }
+        isMutating = true
+        defer { isMutating = false }
+        do {
+            try await bridge.createKanbanBoard(name: name)
+            await loadBoards()
+            if let newBoard = boards.first(where: { $0.name == name }) {
+                await select(newBoard.board)
+            }
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func perform(_ action: KanbanAction, on task: KanbanTask, reason: String? = nil) async {
         guard let bridge = appSettings.bridgeClient, let slug = selectedSlug else { return }
         isMutating = true
@@ -113,6 +129,7 @@ struct KanbanView: View {
 
     @State private var currentStatus: KanbanStatus = .ready
     @State private var showComposer = false
+    @State private var showBoardCreator = false
     @State private var inspectingTask: KanbanTask?
 
     init(appSettings: AppSettings) {
@@ -151,6 +168,11 @@ struct KanbanView: View {
                 .sheet(item: $inspectingTask) { task in
                     KanbanTaskDetail(task: task) { action in
                         Task { await viewModel.perform(action, on: task) }
+                    }
+                }
+                .sheet(isPresented: $showBoardCreator) {
+                    BoardCreatorSheet { name in
+                        Task { await viewModel.createBoard(name: name) }
                     }
                 }
                 .task { await viewModel.start() }
@@ -205,6 +227,12 @@ struct KanbanView: View {
                         Text("\(summary.name) (\(summary.activeCount))")
                     }
                 }
+            }
+            Divider()
+            Button {
+                showBoardCreator = true
+            } label: {
+                Label("새 보드 만들기", systemImage: "plus.rectangle")
             }
         } label: {
             HStack(spacing: 3) {
@@ -450,5 +478,36 @@ private struct KanbanTaskDetail: View {
                 }
             }
         }
+    }
+}
+
+private struct BoardCreatorSheet: View {
+    var onCreate: (String) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var name = ""
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                TextField("보드 이름", text: $name)
+            }
+            .navigationTitle("새 보드 만들기")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("취소") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("만들기") {
+                        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard !trimmed.isEmpty else { return }
+                        onCreate(trimmed)
+                        dismiss()
+                    }
+                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
+        .presentationDetents([.height(180)])
     }
 }
