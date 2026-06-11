@@ -40,11 +40,19 @@ private struct ServerSession: Decodable {
 }
 
 private struct MessageListResponse: Decodable {
-    let data: [ServerMessage]
+    let data: [FailableMessage]
+}
+
+/// 메시지 하나가 깨져도 나머지를 살리기 위한 lossy 래퍼
+private struct FailableMessage: Decodable {
+    let value: ServerMessage?
+    init(from decoder: Decoder) throws {
+        value = try? ServerMessage(from: decoder)
+    }
 }
 
 private struct ServerMessage: Decodable {
-    let id: Int
+    let id: String
     let role: String
     let content: String
     let toolCallId: String?
@@ -58,6 +66,22 @@ private struct ServerMessage: Decodable {
         case toolCalls = "tool_calls"
         case toolName = "tool_name"
         case timestamp
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        // id: Int 또는 String 모두 수용
+        if let intId = try? c.decode(Int.self, forKey: .id) {
+            id = String(intId)
+        } else {
+            id = (try? c.decode(String.self, forKey: .id)) ?? ""
+        }
+        role = (try? c.decode(String.self, forKey: .role)) ?? "assistant"
+        content = (try? c.decode(String.self, forKey: .content)) ?? ""
+        toolCallId = try? c.decodeIfPresent(String.self, forKey: .toolCallId)
+        toolCalls = try? c.decodeIfPresent([ServerToolCall].self, forKey: .toolCalls)
+        toolName = try? c.decodeIfPresent(String.self, forKey: .toolName)
+        timestamp = (try? c.decode(Double.self, forKey: .timestamp)) ?? Date.now.timeIntervalSince1970
     }
 
     func asChatMessage() -> ChatMessage {
@@ -134,7 +158,7 @@ final class HermesAPIClient {
 
     /// 세션 분기 (`POST /api/sessions/{id}/fork`) — 기존 히스토리를 가진 새 세션을 돌려준다.
     func forkSession(id: String) async throws -> Session {
-        let data = try await post("/api/sessions/\(id)/fork")
+        let data = try await post("/api/sessions/\(Self.encodeSegment(id))/fork")
         return try parseSessionResponse(data)
     }
 
@@ -199,11 +223,11 @@ final class HermesAPIClient {
     }
 
     func deleteSession(id: String) async throws {
-        try await delete("/api/sessions/\(id)")
+        try await delete("/api/sessions/\(Self.encodeSegment(id))")
     }
 
     func updateSessionTitle(id: String, title: String) async throws {
-        _ = try await patch("/api/sessions/\(id)", body: ["title": title])
+        _ = try await patch("/api/sessions/\(Self.encodeSegment(id))", body: ["title": title])
     }
 
     // MARK: Models
@@ -267,16 +291,19 @@ final class HermesAPIClient {
     // MARK: Messages
 
     func fetchMessages(sessionId: String) async throws -> [ChatMessage] {
-        let data = try await get("/api/sessions/\(sessionId)/messages")
+        let encoded = Self.encodeSegment(sessionId)
+        let data = try await get("/api/sessions/\(encoded)/messages")
         let response = try JSONDecoder().decode(MessageListResponse.self, from: data)
-        return response.data.map { $0.asChatMessage() }
+        return response.data.compactMap { $0.value?.asChatMessage() }
     }
 
     // MARK: Streaming Chat
 
     /// 실시간 SSE 스트리밍: `URLSession.bytes`로 라인 단위 수신 — 토큰이 도착하는 대로 UI에 반영된다.
     func streamChat(sessionId: String, message: String) -> AsyncThrowingStream<StreamUpdate, Error> {
-        var urlRequest = URLRequest(url: baseURL.appendingPathComponent("/api/sessions/\(sessionId)/chat/stream"))
+        let encoded = Self.encodeSegment(sessionId)
+        let streamURL = URL(string: baseURL.absoluteString.trimmingCharacters(in: .init(charactersIn: "/")) + "/api/sessions/\(encoded)/chat/stream") ?? baseURL
+        var urlRequest = URLRequest(url: streamURL)
         urlRequest.httpMethod = "POST"
         urlRequest.timeoutInterval = 300  // Hermes의 긴 도구 실행 동안 유휴 타임아웃 방지
         urlRequest.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
@@ -332,6 +359,13 @@ final class HermesAPIClient {
     }
 
     // MARK: - Private HTTP Helpers
+
+    /// URL 경로 세그먼트로 안전하게 인코딩 — telegram:..., slack:... 등 특수문자 대응
+    nonisolated static func encodeSegment(_ raw: String) -> String {
+        var allowed = CharacterSet.urlPathAllowed
+        allowed.remove(charactersIn: "/:?#[]@!$&'()*+,;=")
+        return raw.addingPercentEncoding(withAllowedCharacters: allowed) ?? raw
+    }
 
     private func get(_ path: String, query: [String: String]? = nil) async throws -> Data {
         var url = baseURL.appendingPathComponent(path)

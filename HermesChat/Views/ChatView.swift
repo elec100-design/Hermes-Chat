@@ -29,6 +29,14 @@ struct ChatView: View {
                 ProgressView("대화 기록 불러오는 중...")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
+                if let err = viewModel.historyError {
+                    Text(err)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .padding(8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(.thinMaterial)
+                }
                 messageList
             }
 

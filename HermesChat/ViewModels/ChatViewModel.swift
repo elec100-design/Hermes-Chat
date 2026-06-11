@@ -21,6 +21,7 @@ final class ChatViewModel: ObservableObject {
     @Published var isWorking: Bool = false
     @Published var isLoadingHistory: Bool = false
     @Published var attachments: [PendingAttachment] = []
+    @Published var historyError: String?
 
     /// Bridge 업로드 한도와 동일 (server/hermes_bridge.py MAX_UPLOAD)
     static let maxAttachmentBytes = 50 * 1024 * 1024
@@ -56,8 +57,9 @@ final class ChatViewModel: ObservableObject {
         isLoadingHistory = true
         do {
             messages = try await appSettings.hermesClient.fetchMessages(sessionId: sessionId)
+            historyError = nil
         } catch {
-            // New session or unreachable — start empty
+            historyError = "대화 기록을 불러오지 못했습니다: \(error.localizedDescription)"
         }
         isLoadingHistory = false
     }
