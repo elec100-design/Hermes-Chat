@@ -114,20 +114,45 @@ final class BridgeClient {
         return String(decoding: data, as: UTF8.self)
     }
 
-    // MARK: - Kanban (보드 원본 JSON은 T-050 모델에서 디코딩)
+    // MARK: - Kanban (hermes-agent 내장 칸반 — 게이트웨이 디스패처·대시보드와 동일 데이터)
 
-    func fetchBoardNames() async throws -> [String] {
-        struct Response: Decodable { let data: [String] }
+    func fetchKanbanBoards() async throws -> [KanbanBoardSummary] {
+        struct Response: Decodable { let data: [KanbanBoardSummary] }
         let data = try await request("GET", "kanban")
         return try decode(Response.self, from: data).data
     }
 
-    func fetchBoardData(name: String) async throws -> Data {
-        try await request("GET", "kanban/\(name)")
+    func fetchBoard(slug: String) async throws -> KanbanBoard {
+        let data = try await request("GET", "kanban/\(slug)")
+        return try decode(KanbanBoard.self, from: data)
     }
 
-    func saveBoardData(name: String, data: Data) async throws {
-        _ = try await request("PUT", "kanban/\(name)", body: data)
+    /// 태스크 생성. mode=.ready면 디스패처가 1분 내 워커를 띄워 실행한다.
+    func createKanbanTask(
+        board: String,
+        title: String,
+        detail: String?,
+        assignee: String?,
+        mode: KanbanCreateMode
+    ) async throws {
+        var payload: [String: Any] = ["title": title, "status": mode.rawValue]
+        if let detail, !detail.isEmpty { payload["detail"] = detail }
+        if let assignee, !assignee.isEmpty { payload["assignee"] = assignee }
+        let body = try JSONSerialization.data(withJSONObject: payload)
+        _ = try await request("POST", "kanban/\(board)/tasks", body: body, timeout: 60)
+    }
+
+    /// 상태 전이 — promote/block/unblock/complete/archive (hermes kanban CLI 경유)
+    func kanbanAction(
+        board: String,
+        taskID: String,
+        action: KanbanAction,
+        reason: String? = nil
+    ) async throws {
+        var payload: [String: Any] = ["action": action.rawValue]
+        if let reason, !reason.isEmpty { payload["reason"] = reason }
+        let body = try JSONSerialization.data(withJSONObject: payload)
+        _ = try await request("POST", "kanban/\(board)/tasks/\(taskID)/action", body: body, timeout: 60)
     }
 
     // MARK: - Private
@@ -137,7 +162,8 @@ final class BridgeClient {
         _ path: String,
         query: [String: String]? = nil,
         body: Data? = nil,
-        headers: [String: String] = [:]
+        headers: [String: String] = [:],
+        timeout: TimeInterval = 15
     ) async throws -> Data {
         var url = baseURL.appendingPathComponent(path)
         if let query,
@@ -147,7 +173,7 @@ final class BridgeClient {
         }
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = method
-        urlRequest.timeoutInterval = 15
+        urlRequest.timeoutInterval = timeout
         urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         if body != nil, headers["X-Filename"] == nil {
             urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")

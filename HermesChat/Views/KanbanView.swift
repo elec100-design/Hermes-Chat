@@ -2,19 +2,20 @@ import SwiftUI
 
 // MARK: - ViewModel
 
-/// 칸반 보드 상태 관리. 저장은 항상 GET-병합-PUT:
-/// 최신 보드를 받아 우리 변경(업서트/삭제/이동)만 얹어서 전체 PUT 한다 (PLAN §4-5).
-/// Hermes 에이전트가 같은 파일을 수정하므로 마지막 쓰기 승리 + 변경 단위 병합으로 충돌을 줄인다.
+/// hermes-agent 내장 칸반 화면 상태 관리.
+/// 데이터 원본은 맥미니의 kanban.db — 대시보드(:8000/kanban)·게이트웨이 디스패처와 동일하다.
+/// 쓰기는 전부 Bridge가 `hermes kanban` CLI를 호출하므로(생성/promote/block/...)
+/// 앱은 보드 전체를 덮어쓰지 않고 태스크 단위 액션만 보낸다.
 @MainActor
 final class KanbanViewModel: ObservableObject {
-    @Published var boardNames: [String] = []
+    @Published var boards: [KanbanBoardSummary] = []
     @Published var board: KanbanBoard?
-    @Published var selectedBoardName: String?
+    @Published var selectedSlug: String?
     @Published var isLoading = false
+    @Published var isMutating = false
     @Published var errorMessage: String?
 
     private let appSettings: AppSettings
-    private static let iso = ISO8601DateFormatter()
 
     init(appSettings: AppSettings) {
         self.appSettings = appSettings
@@ -22,32 +23,37 @@ final class KanbanViewModel: ObservableObject {
 
     var bridgeConfigured: Bool { appSettings.bridgeClient != nil }
 
+    var selectedBoardTitle: String {
+        boards.first { $0.board == selectedSlug }?.name
+            ?? board?.name
+            ?? "칸반"
+    }
+
     func start() async {
         guard board == nil, bridgeConfigured else { return }
-        await loadBoardNames()
-        if selectedBoardName == nil, let first = boardNames.first {
-            await select(first)
+        await loadBoards()
+        if selectedSlug == nil, let first = boards.first {
+            await select(first.board)
         }
     }
 
-    func loadBoardNames() async {
+    func loadBoards() async {
         guard let bridge = appSettings.bridgeClient else { return }
         do {
-            boardNames = try await bridge.fetchBoardNames()
+            boards = try await bridge.fetchKanbanBoards()
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
         }
     }
 
-    func select(_ name: String) async {
+    func select(_ slug: String) async {
         guard let bridge = appSettings.bridgeClient else { return }
         isLoading = true
         defer { isLoading = false }
         do {
-            let data = try await bridge.fetchBoardData(name: name)
-            board = try JSONDecoder().decode(KanbanBoard.self, from: data)
-            selectedBoardName = name
+            board = try await bridge.fetchBoard(slug: slug)
+            selectedSlug = slug
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -55,67 +61,42 @@ final class KanbanViewModel: ObservableObject {
     }
 
     func refresh() async {
-        if let name = selectedBoardName {
-            await select(name)
+        await loadBoards()
+        if let slug = selectedSlug {
+            await select(slug)
         }
-        await loadBoardNames()
     }
 
-    /// 파일명 규칙은 Bridge의 SAFE_NAME(영문/숫자/._-)과 동일해야 한다.
-    static func isValidBoardName(_ name: String) -> Bool {
-        name.range(of: "^[A-Za-z0-9._-]{1,80}$", options: .regularExpression) != nil
-    }
-
-    func createBoard(named name: String) async {
-        guard let bridge = appSettings.bridgeClient else { return }
-        let newBoard = KanbanBoard(name: name, updatedAt: Self.iso.string(from: .now), tasks: [])
+    func createTask(
+        title: String,
+        detail: String?,
+        assignee: String?,
+        mode: KanbanCreateMode
+    ) async {
+        guard let bridge = appSettings.bridgeClient, let slug = selectedSlug else { return }
+        isMutating = true
+        defer { isMutating = false }
         do {
-            try await bridge.saveBoardData(name: name, data: JSONEncoder().encode(newBoard))
-            await loadBoardNames()
-            await select(name)
+            try await bridge.createKanbanTask(
+                board: slug, title: title, detail: detail, assignee: assignee, mode: mode
+            )
+            errorMessage = nil
+            await select(slug)
         } catch {
             errorMessage = error.localizedDescription
         }
     }
 
-    func upsert(_ task: KanbanTask) async {
-        var updated = task
-        updated.updatedAt = Self.iso.string(from: .now)
-        await mutate { tasks in
-            if let index = tasks.firstIndex(where: { $0.id == updated.id }) {
-                tasks[index] = updated
-            } else {
-                tasks.append(updated)
-            }
-        }
-    }
-
-    func delete(taskID: String) async {
-        await mutate { tasks in
-            tasks.removeAll { $0.id == taskID }
-        }
-    }
-
-    func move(taskID: String, to status: KanbanStatus) async {
-        await mutate { tasks in
-            if let index = tasks.firstIndex(where: { $0.id == taskID }) {
-                tasks[index].status = status
-                tasks[index].updatedAt = Self.iso.string(from: .now)
-            }
-        }
-    }
-
-    private func mutate(_ change: (inout [KanbanTask]) -> Void) async {
-        guard let bridge = appSettings.bridgeClient, let name = selectedBoardName else { return }
+    func perform(_ action: KanbanAction, on task: KanbanTask, reason: String? = nil) async {
+        guard let bridge = appSettings.bridgeClient, let slug = selectedSlug else { return }
+        isMutating = true
+        defer { isMutating = false }
         do {
-            let data = try await bridge.fetchBoardData(name: name)
-            var latest = (try? JSONDecoder().decode(KanbanBoard.self, from: data))
-                ?? KanbanBoard(name: name, updatedAt: nil, tasks: [])
-            change(&latest.tasks)
-            latest.updatedAt = Self.iso.string(from: .now)
-            try await bridge.saveBoardData(name: name, data: JSONEncoder().encode(latest))
-            board = latest
+            try await bridge.kanbanAction(
+                board: slug, taskID: task.id, action: action, reason: reason
+            )
             errorMessage = nil
+            await select(slug)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -125,16 +106,14 @@ final class KanbanViewModel: ObservableObject {
 // MARK: - View
 
 /// 칸반 화면: 상단 보드 선택, 컬럼(Triage→Done) 좌우 페이지 스와이프,
-/// 카드 탭→편집 시트, ◀▶로 상태 이동.
+/// 카드의 상태 전이는 액션 메뉴(실행/보류/완료/아카이브)로 수행.
 struct KanbanView: View {
     @ObservedObject var appSettings: AppSettings
     @StateObject private var viewModel: KanbanViewModel
 
-    @State private var currentStatus: KanbanStatus = .triage
-    @State private var editingTask: KanbanTask?
-    @State private var editorIsNew = false
-    @State private var showNewBoardAlert = false
-    @State private var newBoardName = ""
+    @State private var currentStatus: KanbanStatus = .ready
+    @State private var showComposer = false
+    @State private var inspectingTask: KanbanTask?
 
     init(appSettings: AppSettings) {
         self.appSettings = appSettings
@@ -144,42 +123,35 @@ struct KanbanView: View {
     var body: some View {
         NavigationStack {
             content
-                .navigationTitle(viewModel.selectedBoardName ?? "칸반")
+                .navigationTitle(viewModel.selectedBoardTitle)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) { boardMenu }
                     ToolbarItem(placement: .topBarTrailing) {
                         Button {
-                            editorIsNew = true
-                            editingTask = .new(status: currentStatus)
+                            showComposer = true
                         } label: {
                             Image(systemName: "plus")
                         }
-                        .disabled(viewModel.board == nil)
+                        .disabled(viewModel.board == nil || viewModel.isMutating)
                     }
                 }
-                .sheet(item: $editingTask) { task in
-                    KanbanTaskEditor(
-                        task: task,
-                        isNew: editorIsNew,
-                        onSave: { saved in Task { await viewModel.upsert(saved) } },
-                        onDelete: { id in Task { await viewModel.delete(taskID: id) } }
+                .sheet(isPresented: $showComposer) {
+                    KanbanTaskComposer(
+                        profiles: appSettings.profiles.map(\.name),
+                        onCreate: { title, detail, assignee, mode in
+                            Task {
+                                await viewModel.createTask(
+                                    title: title, detail: detail, assignee: assignee, mode: mode
+                                )
+                            }
+                        }
                     )
                 }
-                .alert("새 보드", isPresented: $showNewBoardAlert) {
-                    TextField("이름 (영문/숫자/._-)", text: $newBoardName)
-                    Button("만들기") {
-                        let name = newBoardName.trimmingCharacters(in: .whitespaces)
-                        newBoardName = ""
-                        guard KanbanViewModel.isValidBoardName(name) else {
-                            viewModel.errorMessage = "보드 이름은 영문/숫자/._- 만 쓸 수 있습니다."
-                            return
-                        }
-                        Task { await viewModel.createBoard(named: name) }
+                .sheet(item: $inspectingTask) { task in
+                    KanbanTaskDetail(task: task) { action in
+                        Task { await viewModel.perform(action, on: task) }
                     }
-                    Button("취소", role: .cancel) {}
-                } message: {
-                    Text("맥미니 ~/.hermes/kanban/<이름>.json 으로 저장됩니다.")
                 }
                 .task { await viewModel.start() }
         }
@@ -198,6 +170,10 @@ struct KanbanView: View {
                 if let errorMessage = viewModel.errorMessage {
                     errorBanner(errorMessage)
                 }
+                if viewModel.isMutating {
+                    ProgressView()
+                        .padding(.vertical, 4)
+                }
                 columnPager(board)
             }
         } else if viewModel.isLoading {
@@ -206,32 +182,29 @@ struct KanbanView: View {
             ContentUnavailableView {
                 Label("보드 없음", systemImage: "rectangle.split.3x1")
             } description: {
-                Text(viewModel.errorMessage ?? "새 보드를 만들거나, Hermes에게 칸반 작업을 시키면 보드가 생깁니다.")
+                Text(viewModel.errorMessage
+                     ?? "맥미니에서 `hermes kanban boards create <이름>` 으로 보드를 만들 수 있습니다.")
             } actions: {
-                Button("새 보드 만들기") { showNewBoardAlert = true }
-                    .buttonStyle(.borderedProminent)
+                Button("다시 불러오기") {
+                    Task { await viewModel.refresh() }
+                }
+                .buttonStyle(.borderedProminent)
             }
         }
     }
 
     private var boardMenu: some View {
         Menu {
-            ForEach(viewModel.boardNames, id: \.self) { name in
+            ForEach(viewModel.boards) { summary in
                 Button {
-                    Task { await viewModel.select(name) }
+                    Task { await viewModel.select(summary.board) }
                 } label: {
-                    if name == viewModel.selectedBoardName {
-                        Label(name, systemImage: "checkmark")
+                    if summary.board == viewModel.selectedSlug {
+                        Label("\(summary.name) (\(summary.activeCount))", systemImage: "checkmark")
                     } else {
-                        Text(name)
+                        Text("\(summary.name) (\(summary.activeCount))")
                     }
                 }
-            }
-            Divider()
-            Button {
-                showNewBoardAlert = true
-            } label: {
-                Label("새 보드...", systemImage: "plus")
             }
         } label: {
             HStack(spacing: 3) {
@@ -249,7 +222,7 @@ struct KanbanView: View {
             Text(message)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
-                .lineLimit(2)
+                .lineLimit(3)
             Spacer()
         }
         .padding(.horizontal)
@@ -321,23 +294,19 @@ struct KanbanView: View {
                         .background(Color.blue.opacity(0.12))
                         .clipShape(Capsule())
                 }
+                if task.status == .running {
+                    ProgressView()
+                        .controlSize(.mini)
+                }
                 Spacer()
-                Button {
-                    if let previous = task.status.previous {
-                        Task { await viewModel.move(taskID: task.id, to: previous) }
+                if !task.status.actions.isEmpty {
+                    Menu {
+                        actionButtons(for: task)
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
                     }
-                } label: {
-                    Image(systemName: "chevron.left.circle")
+                    .disabled(viewModel.isMutating)
                 }
-                .disabled(task.status.previous == nil)
-                Button {
-                    if let next = task.status.next {
-                        Task { await viewModel.move(taskID: task.id, to: next) }
-                    }
-                } label: {
-                    Image(systemName: "chevron.right.circle")
-                }
-                .disabled(task.status.next == nil)
             }
             .buttonStyle(.borderless)
         }
@@ -346,70 +315,138 @@ struct KanbanView: View {
         .background(Color(.secondarySystemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .contentShape(Rectangle())
-        .onTapGesture {
-            editorIsNew = false
-            editingTask = task
+        .onTapGesture { inspectingTask = task }
+    }
+
+    @ViewBuilder
+    private func actionButtons(for task: KanbanTask) -> some View {
+        ForEach(task.status.actions) { action in
+            Button(role: action.isDestructive ? .destructive : nil) {
+                Task { await viewModel.perform(action, on: task) }
+            } label: {
+                Label(action.label, systemImage: action.systemImage)
+            }
         }
     }
 }
 
-// MARK: - Task Editor
+// MARK: - 새 태스크 작성 시트
 
-private struct KanbanTaskEditor: View {
-    @State var task: KanbanTask
-    let isNew: Bool
-    let onSave: (KanbanTask) -> Void
-    let onDelete: (String) -> Void
+private struct KanbanTaskComposer: View {
+    let profiles: [String]
+    let onCreate: (String, String?, String?, KanbanCreateMode) -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var title = ""
+    @State private var detail = ""
+    @State private var assignee = ""
+    @State private var mode: KanbanCreateMode = .ready
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("제목 (무엇을 할지)", text: $title)
+                    Picker("담당 프로필", selection: $assignee) {
+                        Text("자동").tag("")
+                        ForEach(profiles, id: \.self) { name in
+                            Text(name).tag(name)
+                        }
+                    }
+                }
+                Section("내용") {
+                    TextEditor(text: $detail)
+                        .frame(minHeight: 120)
+                }
+                Section {
+                    Picker("시작 방식", selection: $mode) {
+                        ForEach(KanbanCreateMode.allCases) { mode in
+                            Text(mode.label).tag(mode)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                } footer: {
+                    Text(mode.footnote)
+                }
+            }
+            .navigationTitle("새 작업")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("만들기") {
+                        onCreate(
+                            title.trimmingCharacters(in: .whitespaces),
+                            detail.isEmpty ? nil : detail,
+                            assignee.isEmpty ? nil : assignee,
+                            mode
+                        )
+                        dismiss()
+                    }
+                    .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("취소") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - 태스크 상세 시트
+
+private struct KanbanTaskDetail: View {
+    let task: KanbanTask
+    let onAction: (KanbanAction) -> Void
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("제목", text: $task.title)
-                    Picker("상태", selection: $task.status) {
-                        ForEach(KanbanStatus.allCases) { status in
-                            Text(status.displayName).tag(status)
+                    LabeledContent("상태") {
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(task.status.color)
+                                .frame(width: 8, height: 8)
+                            Text(task.status.displayName)
                         }
                     }
-                    TextField(
-                        "담당 (프로필/서브에이전트)",
-                        text: Binding(
-                            get: { task.assignee ?? "" },
-                            set: { task.assignee = $0.isEmpty ? nil : $0 }
-                        )
-                    )
+                    if let assignee = task.assignee, !assignee.isEmpty {
+                        LabeledContent("담당", value: assignee)
+                    }
+                    LabeledContent("ID", value: task.id)
+                    if let created = task.createdAt {
+                        LabeledContent("생성", value: created)
+                    }
+                    if let updated = task.updatedAt {
+                        LabeledContent("갱신", value: updated)
+                    }
                 }
-                Section("설명") {
-                    TextEditor(
-                        text: Binding(
-                            get: { task.detail ?? "" },
-                            set: { task.detail = $0.isEmpty ? nil : $0 }
-                        )
-                    )
-                    .frame(minHeight: 120)
+                if let detail = task.detail, !detail.isEmpty {
+                    Section("내용") {
+                        Text(detail)
+                            .font(.callout)
+                            .textSelection(.enabled)
+                    }
                 }
-                if !isNew {
+                if !task.status.actions.isEmpty {
                     Section {
-                        Button("삭제", role: .destructive) {
-                            onDelete(task.id)
-                            dismiss()
+                        ForEach(task.status.actions) { action in
+                            Button(role: action.isDestructive ? .destructive : nil) {
+                                onAction(action)
+                                dismiss()
+                            } label: {
+                                Label(action.label, systemImage: action.systemImage)
+                            }
                         }
                     }
                 }
             }
-            .navigationTitle(isNew ? "새 작업" : "작업 편집")
+            .navigationTitle(task.title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("저장") {
-                        onSave(task)
-                        dismiss()
-                    }
-                    .disabled(task.title.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("취소") { dismiss() }
+                    Button("닫기") { dismiss() }
                 }
             }
         }
