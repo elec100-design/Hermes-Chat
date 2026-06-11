@@ -16,7 +16,7 @@ struct HermesChatApp: App {
     @Environment(\.scenePhase) private var scenePhase
 
     /// Info.plist BGTaskSchedulerPermittedIdentifiers와 일치해야 한다 (T-095)
-    private static let refreshTaskID = "ai.hermes.chat.refresh"
+    nonisolated private static let refreshTaskID = "ai.hermes.chat.refresh"
 
     var body: some Scene {
         WindowGroup {
