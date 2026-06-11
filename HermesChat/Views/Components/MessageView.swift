@@ -11,8 +11,13 @@ struct MessageBubble: View {
         HStack {
             if isUser { Spacer(minLength: 40) }
             VStack(alignment: isUser ? .trailing : .leading, spacing: 4) {
-                Text(message.content)
-                    .textSelection(.enabled)
+                if isUser {
+                    // 사용자 버블은 accent 배경+흰 글자라 링크 색/코드 배경이 깨져 평문 유지
+                    Text(message.content)
+                        .textSelection(.enabled)
+                } else {
+                    MarkdownText(content: message.content)
+                }
                 if let toolCalls = message.toolCalls, !toolCalls.isEmpty {
                     ForEach(toolCalls) { tool in
                         ToolResultView(tool: tool)

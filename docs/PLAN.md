@@ -1,6 +1,6 @@
 # HermesChat iOS — 전체 개발 계획 (Master Plan)
 
-> 최종 수정: 2026-06-10 (Claude Code)
+> 최종 수정: 2026-06-11 (Claude Code — Phase 10~13 추가)
 > 진행 상태는 `docs/TASKS.md`, 에이전트 교대 규칙은 `docs/HANDOFF.md` 참조.
 > **어떤 에이전트든 이 3개 문서만 읽으면 즉시 작업을 이어갈 수 있어야 한다.**
 
@@ -164,6 +164,55 @@ bash scripts/setup_profiles_api.sh <API_KEY>
 - 스트리밍 개선: 현재 `dataTask` 완료 후 일괄 파싱 → `URLSession.bytes(for:)` 라인 단위 실시간 SSE (T-071, `HermesAPIClient.streamChat` + `ApiClient.swift` 정리/삭제)
 - 세션 페이지네이션(`has_more`/`offset`) (T-072), iPad 레이아웃, 다크모드 점검 (T-073)
 
+### Phase 10 — 채팅 UX 고도화 (2026-06-11 계획 수립)
+**목표**: 매일 쓰는 채팅 화면의 체감 품질 — 마크다운 렌더링, 복사/공유, 세션 분기.
+1. **마크다운/코드블록** (T-090): 코드펜스(```)만 자체 분리하고 텍스트 구간은
+   `AttributedString(markdown:, interpretedSyntax: .inlineOnlyPreservingWhitespace)`로 인라인 파싱.
+   `.full` 해석은 SwiftUI Text가 블록 인텐트를 렌더링하지 못해 코드블록이 뭉개지므로 쓰지 않는다.
+   코드블록은 모노스페이스+배경+복사 버튼. 미닫힌 펜스(스트리밍 중)는 코드로 취급. **SPM 의존성 금지**
+   (멀티 에이전트가 pbxproj를 수동 편집하는 구조라 패키지 참조 추가는 파손 위험).
+2. **메시지 컨텍스트 메뉴** (T-091): 복사(UIPasteboard)·공유(ShareLink).
+3. **세션 fork** (T-092): 게이트웨이 `POST /api/sessions/{id}/fork` (§0.2에 이미 있음).
+   createSession의 단계적 응답 해석을 공용 메서드로 추출해 재사용 (fork 응답 스키마도 미확인).
+
+**수용 기준**: 코드블록이 모노스페이스+배경+복사 버튼으로 표시, 볼드/링크/인라인코드 렌더링,
+스트리밍 중 깨짐 없음. 길게 눌러 복사/공유. fork → 새 세션에 히스토리 보존 + 이어서 대화.
+다크모드에서 코드블록 가독 확인(버블 tertiary vs 코드 secondary 배경).
+
+### Phase 11 — 알림 (로컬 알림 + 폴링, APNs 없음)
+**목표**: 칸반 태스크 done/blocked 전이·긴 채팅 응답 완료를 로컬 알림으로.
+**원칙**: Bridge 무수정 경로(기존 `GET /kanban*` 폴링 + diff)가 본선 — Bridge 재배포는 맥 에이전트만
+가능하므로(HANDOFF §2.5) 차단 요소에서 제외. Bridge events 엔드포인트(T-096)는 선택적 최적화.
+1. **NotificationService** (T-093): 칸반 스냅샷(taskID→status) diff → done/blocked 전이 시 로컬 알림.
+2. **응답 완료 알림** (T-094): 스트림 완료 시 앱이 비활성이고 10초 이상 경과면 알림.
+3. **BGAppRefreshTask** (T-095): 백그라운드 주기 폴링 — iOS가 실행 시점을 보장하지 않음을 수용.
+4. **(선택) Bridge events API** (T-096): kanban.db events 테이블 — **착수 전 맥 에이전트가
+   `sqlite3 ~/.hermes/kanban.db ".schema events"` 결과를 TASKS.md에 기록**할 것.
+
+**수용 기준**: 앱 포그라운드에서 맥미니 `hermes kanban complete <id>` 후 60초 내 로컬 알림.
+백그라운드 진입 후 응답 완료 알림. BGAppRefresh는 수 시간 내 1회 실행이면 합격(즉시성 미보장).
+
+### Phase 12 — 설정 심화
+1. **Bridge config API** (T-097): `GET /profiles/<n>/config`(key/token/secret 줄 마스킹) +
+   `PATCH /profiles/<n>/config`(`toolsets` 키 화이트리스트만, 라인 단위 블록 치환, `.bak` 백업,
+   비정형 입력은 400 거부 — stdlib만이라 yaml 파서 없음). **착수 전 실제 config.yaml의
+   toolsets 블록 형태를 맥 에이전트가 확인해 기록**.
+2. **툴셋 토글** (T-098, =T-031 본편): SkillsView 토글 → "적용" → Bridge PATCH → 재시작 안내.
+   Bridge 404 시 기존 읽기전용으로 우아하게 강등.
+3. **프로필별 apiKey Keychain 이관** (T-099): Keychain 키 `profileApiKey.<name>`,
+   UserDefaults JSON에는 빈 문자열 직렬화, 로드 시 구버전 평문 1회 이관.
+
+**수용 기준**: 툴셋 토글 적용 → config.yaml에 해당 블록만 변경+`.bak` 생성 → 재시작 후
+`/v1/toolsets` 반영. 구버전 기기 업데이트 후 정상 인증 + UserDefaults에 평문 키 부재.
+
+### Phase 13 — 음성 입출력 (내장 프레임워크만)
+1. **음성 입력** (T-100): SpeechService(SFSpeechRecognizer+AVAudioEngine, ko-KR) + 입력창 마이크 버튼.
+   Info.plist `NSSpeechRecognitionUsageDescription`·`NSMicrophoneUsageDescription`.
+2. **읽어주기** (T-101): AVSpeechSynthesizer, 메시지 컨텍스트 메뉴 "읽어주기/중지".
+   입력은 `MarkdownLite.plainText(from:)`(T-090 파서 재사용). AVAudioSession은 SpeechService 단일 소유.
+
+**수용 기준**: 한국어 받아쓰기 → 입력창 삽입 → 전송. "읽어주기"가 마크다운 기호 없이 낭독, 재탭 중지.
+
 ---
 
 ## 4. 위험 요소 / 주의
@@ -172,3 +221,6 @@ bash scripts/setup_profiles_api.sh <API_KEY>
 3. 프로필 자동 검색은 default 프로필이 `API_SERVER_MODEL_NAME` 미설정이면 이름이 "hermes-agent" 등으로 잡힐 수 있음 → setup 스크립트가 모든 프로필에 MODEL_NAME을 프로필명으로 설정해 해결.
 4. 여러 게이트웨이 상시 기동 = 프로필 수만큼 상주 프로세스. 맥미니 메모리 확인. `hermes-gateways status`로 관리.
 5. 칸반 쓰기는 반드시 `hermes kanban` CLI(또는 에이전트 kanban_* 도구) 경유 — kanban.db를 SQL로 직접 수정하면 이벤트 기록·의존성 재계산·디스패치 불변식이 깨진다. Bridge도 읽기만 sqlite 직접, 쓰기는 CLI subprocess.
+6. 스트리밍 중 마크다운 재파싱(T-090): 토큰마다 메시지 전체를 재파싱한다 — 일반 응답에선 무시
+   가능하나 초장문에서 프레임 드랍 가능. 문제가 보이면 "스트리밍 중 평문, 완료 시 마크다운" 폴백을
+   후속 태스크로.

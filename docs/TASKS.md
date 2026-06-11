@@ -84,6 +84,38 @@
 | T-081 | 앱 칸반을 내장 칸반 스키마로 전환 — 상태 7개(scheduled/running 추가), 보드 목록 카운트, 카드 액션 메뉴(실행/보류/완료/아카이브), 새 작업 시트(담당 프로필 + 시작 방식), GET-병합-PUT 제거 | `Models/KanbanModels.swift`, `Services/BridgeClient.swift`, `Views/KanbanView.swift` | DONE (06-11 — 빌드 검증 완료) |
 | T-082 | 칸반 스킬 v2 배포 (`~/.hermes/skills/kanban/SKILL.md`) + HANDOFF 부록 B 갱신 + PLAN Phase 6 갱신 | `docs/HANDOFF.md`, `docs/PLAN.md`, (맥미니) | DONE (06-11) |
 
+## Phase 10 — 채팅 UX 고도화 (계획: PLAN.md §3 Phase 10)
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-090 | 마크다운/코드블록 렌더링 — 코드펜스 자체 분리 + 인라인은 `AttributedString(markdown:)`. 코드블록 모노스페이스+배경+복사 버튼, 미닫힌 펜스는 코드 취급(스트리밍 안전). SPM 의존성 없음 | `Views/Components/MarkdownText.swift` (신규, pbxproj 등록됨), `Views/Components/MessageView.swift` | NEEDS-BUILD (Claude Code, 06-11 — 실기기 확인 항목: 다크모드 코드블록 가독, 스트리밍 중 깜빡임) |
+| T-091 | 메시지 컨텍스트 메뉴: 복사(UIPasteboard)·공유(ShareLink) | `Views/Components/MessageView.swift` | TODO |
+| T-092 | 세션 fork — `POST /api/sessions/{id}/fork` 메서드(createSession의 단계적 응답 해석을 공용 추출해 재사용) + ChatView 툴바 "분기" + SessionListView leading 스와이프 | `Services/HermesAPIClient.swift`, `Views/ChatView.swift`, `Views/SessionListView.swift` | TODO |
+
+## Phase 11 — 알림 (로컬 알림 + 폴링, APNs 없음 — Bridge 무수정이 본선)
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-093 | NotificationService: UN 권한 요청, 칸반 스냅샷(taskID→status) UserDefaults 보존, 기존 `GET /kanban/<board>` 폴링 diff → done/blocked 전이 시 로컬 알림 (포그라운드 60초 타이머) | `Services/NotificationService.swift` (신규, pbxproj 등록!), `HermesChatApp.swift` | TODO |
+| T-094 | 채팅 긴 응답 완료 알림 — 스트림 완료 시 scenePhase != .active이고 10초 이상 경과면 로컬 알림 | `ViewModels/ChatViewModel.swift`, `Services/NotificationService.swift` | TODO |
+| T-095 | BGAppRefreshTask 백그라운드 폴링 — Info.plist `BGTaskSchedulerPermittedIdentifiers`(`ai.hermes.chat.refresh`)·`UIBackgroundModes` 추가, `.backgroundTask(.appRefresh)`에서 diff 1회 후 재예약 | `HermesChatApp.swift`, `Resources/Info.plist` | TODO |
+| T-096 | (선택·최적화) Bridge `GET /kanban/<board>/events?since=` — events 테이블 존재/스키마 방어적 확인, 미지원 시 `{"supported": false}` → 앱은 diff 유지. **착수 전 맥 에이전트가 `sqlite3 ~/.hermes/kanban.db ".schema events"` 결과를 이 행 비고에 기록할 것** | `server/hermes_bridge.py`, `Services/BridgeClient.swift` | TODO (Bridge 수정 → 완료 시 `NEEDS-BUILD(브리지 재배포 필요)`) |
+
+## Phase 12 — 설정 심화
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-097 | Bridge config 엔드포인트: GET(key/token/secret 줄 마스킹) + PATCH(`toolsets` 키 화이트리스트만, 라인 단위 블록 치환, `.bak` 백업, 비정형이면 400 거부 — stdlib만, yaml 파서 없음). **착수 전 실제 config.yaml의 toolsets 블록 형태를 맥 에이전트가 이 행 비고에 기록할 것** | `server/hermes_bridge.py` | TODO (완료 시 `NEEDS-BUILD(브리지 재배포 필요)`) |
+| T-098 | T-031 본편: SkillsView 툴셋 토글 → "적용" → Bridge PATCH → 재시작 안내+restart 버튼. Bridge 404 시 읽기전용 강등 | `Services/BridgeClient.swift`, `Views/SkillsView.swift` | TODO (T-097 뒤) |
+| T-099 | 프로필별 apiKey Keychain 이관 — `profileApiKey.<name>` 키, persistProfiles()는 JSON에 빈 문자열 직렬화, 로드 시 구버전 평문 1회 이관, 프로필 삭제 시 Keychain도 정리 | `Services/AppDefaults.swift`, `Models/ProfileModels.swift` | TODO |
+
+## Phase 13 — 음성 입출력 (내장 프레임워크만)
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-100 | 음성 입력 — SpeechService(SFSpeechRecognizer+AVAudioEngine, ko-KR), inputBar 마이크 버튼(녹음 중 시각 피드백), Info.plist `NSSpeechRecognitionUsageDescription`·`NSMicrophoneUsageDescription` | `Services/SpeechService.swift` (신규, pbxproj 등록!), `Views/ChatView.swift`, `Resources/Info.plist` | TODO |
+| T-101 | 응답 읽어주기 — AVSpeechSynthesizer, 메시지 컨텍스트 메뉴 "읽어주기/중지", 입력은 `MarkdownLite.plainText(from:)`(T-090 파서 재사용). AVAudioSession은 SpeechService 단일 소유 | `Services/SpeechService.swift`, `Views/Components/MessageView.swift` | TODO (T-090·T-091 뒤) |
+
 ## 빌드 검증 기록 (검증자가 갱신)
 
 | 날짜 | 브랜치/커밋 | 결과 | 비고 |
