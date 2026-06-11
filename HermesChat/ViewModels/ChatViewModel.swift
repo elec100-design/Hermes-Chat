@@ -6,6 +6,12 @@ struct PendingAttachment: Identifiable, Equatable {
     let id = UUID()
     let filename: String
     let data: Data
+    /// 이미지 첨부의 미리보기 — addAttachment 시점에 1회 생성 (T-108)
+    let thumbnail: UIImage?
+
+    static func == (lhs: PendingAttachment, rhs: PendingAttachment) -> Bool {
+        lhs.id == rhs.id
+    }
 }
 
 @MainActor
@@ -66,7 +72,11 @@ final class ChatViewModel: ObservableObject {
             ))
             return
         }
-        attachments.append(PendingAttachment(filename: filename, data: data))
+        // 이미지만 디코딩 (비이미지 파일의 불필요한 UIImage 시도 회피)
+        let thumbnail = ChatImageSource.isImagePath(filename)
+            ? UIImage(data: data)?.preparingThumbnail(of: CGSize(width: 72, height: 72))
+            : nil
+        attachments.append(PendingAttachment(filename: filename, data: data, thumbnail: thumbnail))
     }
 
     func removeAttachment(id: UUID) {

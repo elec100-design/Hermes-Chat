@@ -192,7 +192,15 @@ struct ChatView: View {
                     HStack(spacing: 8) {
                         ForEach(viewModel.attachments) { attachment in
                             HStack(spacing: 4) {
-                                Image(systemName: "paperclip")
+                                if let thumbnail = attachment.thumbnail {
+                                    Image(uiImage: thumbnail)
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 36, height: 36)
+                                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                                } else {
+                                    Image(systemName: "paperclip")
+                                }
                                 Text(attachment.filename)
                                     .lineLimit(1)
                                 Button {

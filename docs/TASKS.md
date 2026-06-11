@@ -97,7 +97,7 @@
 | T-105 | Bridge `GET /files/raw?path=` 바이너리 응답 (이미지 썸네일용) — safe_subpath/is_hidden_path 재사용, 20MB 상한 413, mimetypes Content-Type, 무인증 401 | `server/hermes_bridge.py` | NEEDS-BUILD(브리지 재배포 필요) (Claude Code, 06-11 — 재배포 후 curl로 401/403/404/413/정상 확인. 앱은 미배포여도 placeholder 강등 동작) |
 | T-106 | ChatImageView + NSCache(64MB) + `BridgeClient.fetchRawFile` + `\.bridgeClient` Environment 주입 — 맥 절대경로의 `.hermes/` 마커 뒤를 상대경로로 변환, 800pt 다운스케일, 실패/404/미설정은 placeholder 강등(에러 알럿 금지) | `Views/Components/ChatImageView.swift` (신규, pbxproj 등록됨), `Services/BridgeClient.swift`, `Views/ChatView.swift` | NEEDS-BUILD (Claude Code, 06-11) |
 | T-107 | 본문 이미지 세그먼트 — `![alt](src)`·`[첨부: 경로]` 파싱(.image/.file), 스트리밍 꼬리 미완성 토큰 보류(512자 한도, 미닫힌 코드펜스 안은 제외), 사용자 버블 선두 첨부 줄 썸네일 분리 | `Views/Components/MarkdownText.swift`, `Views/Components/MessageView.swift` | NEEDS-BUILD (Claude Code, 06-11 — 실기기 확인: 이미지 로드 시 스크롤 점프 여부) |
-| T-108 | 입력창 첨부 칩 썸네일 — PendingAttachment.thumbnail(이미지만 72pt 1회 생성), 칩에 36pt 표시 | `ViewModels/ChatViewModel.swift`, `Views/ChatView.swift` | TODO |
+| T-108 | 입력창 첨부 칩 썸네일 — PendingAttachment.thumbnail(이미지만 72px 1회 생성, Equatable은 id 기준), 칩에 36pt 표시(비이미지는 기존 paperclip) | `ViewModels/ChatViewModel.swift`, `Views/ChatView.swift` | NEEDS-BUILD (Claude Code, 06-11) |
 
 ## Phase 11 — 알림 (로컬 알림 + 폴링, APNs 없음 — Bridge 무수정이 본선)
 
