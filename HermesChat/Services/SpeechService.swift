@@ -77,7 +77,8 @@ final class SpeechService: NSObject, ObservableObject {
 
         do {
             let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.record, mode: .measurement, options: .duckOthers)
+            // .allowBluetooth: 에어팟·메타 글라스 등 BT 헤드셋의 HFP 마이크를 입력으로 허용 (T-102)
+            try session.setCategory(.record, mode: .measurement, options: [.duckOthers, .allowBluetooth])
             try session.setActive(true, options: .notifyOthersOnDeactivation)
 
             let request = SFSpeechAudioBufferRecognitionRequest()
