@@ -21,7 +21,8 @@ final class DiscussionViewModel: ObservableObject {
     // MARK: 진행 상태
     @Published var phase: DiscussionPhase = .setup
     @Published var entries: [DiscussionEntry] = []
-    @Published var currentSpeakerName: String?
+    /// 현재 발언(스트리밍/폴백 대기) 중인 참가자 이름들 — 라운드는 동시 진행된다
+    @Published var speakingNames: [String] = []
     @Published var savedDiscussions: [SavedDiscussion] = DiscussionStore.load()
 
     let appSettings: AppSettings
@@ -37,6 +38,9 @@ final class DiscussionViewModel: ObservableObject {
         var lastStatement: String = ""
         /// 게이트웨이 오류로 탈락하면 false
         var isActive: Bool = true
+        /// 이 세션으로 보낸 user 메시지 수 — 폴백 폴링이 직전 턴 답변을
+        /// 새 답변으로 오인하지 않도록 앵커 검증에 쓴다 (speak당 정확히 1 증가)
+        var userTurns: Int = 0
     }
     private var runtimes: [Runtime] = []
 
@@ -79,7 +83,7 @@ final class DiscussionViewModel: ObservableObject {
         guard !phase.isActive else { return }
         entries = []
         runtimes = []
-        currentSpeakerName = nil
+        speakingNames = []
         phase = .setup
     }
 
@@ -122,7 +126,7 @@ final class DiscussionViewModel: ObservableObject {
 
     private func runDiscussion() async {
         defer {
-            currentSpeakerName = nil
+            speakingNames = []
             runTask = nil
         }
         do {
@@ -191,22 +195,55 @@ final class DiscussionViewModel: ObservableObject {
         }
     }
 
+    /// 한 라운드: 활성 참가자 전원이 **동시에** 발언한다.
+    /// 직전 라운드 발언을 스냅샷해 메시지를 사전 조립하고, 참가자 순서대로 빈 entry를
+    /// 먼저 추가해 카드 표시 순서를 고정한 뒤 TaskGroup으로 병렬 스트리밍한다.
     private func runRound(_ round: Int) async throws {
+        struct Job {
+            let runtimeIndex: Int
+            let message: String
+            let entryID: UUID
+        }
+
+        // 라운드 시작 시점의 직전 발언 스냅샷 — 진행 중 갱신되는 lastStatement와 분리
+        let snapshot = runtimes.enumerated()
+            .filter { $0.element.isActive && !$0.element.lastStatement.isEmpty }
+            .map { (index: $0.offset, name: $0.element.profile.name, statement: $0.element.lastStatement) }
+
+        var jobs: [Job] = []
         for index in runtimes.indices where runtimes[index].isActive {
             let message: String
             if round == 1 {
-                // 같은 라운드 선발언자의 발언을 함께 전달해 겹치지 않는 관점을 유도
-                let earlier = runtimes.filter { $0.isActive && !$0.lastStatement.isEmpty }
-                    .map { (name: $0.profile.name, statement: $0.lastStatement) }
-                message = Self.firstRoundMessage(topic: topic, totalRounds: rounds, earlierOpinions: earlier)
+                message = Self.firstRoundMessage(topic: topic, totalRounds: rounds)
             } else {
-                let others = runtimes.enumerated()
-                    .filter { $0.offset != index && $0.element.isActive && !$0.element.lastStatement.isEmpty }
-                    .map { (name: $0.element.profile.name, statement: $0.element.lastStatement) }
+                let others = snapshot
+                    .filter { $0.index != index }
+                    .map { (name: $0.name, statement: $0.statement) }
                 message = Self.reviewRoundMessage(round: round, totalRounds: rounds, opinions: others)
             }
-            try await speak(runtimeIndex: index, message: message, round: round, kind: .statement)
+            let entry = DiscussionEntry(
+                kind: .statement,
+                round: round,
+                speakerName: runtimes[index].profile.name,
+                colorIndex: runtimes[index].colorIndex
+            )
+            appendEntry(entry)
+            jobs.append(Job(runtimeIndex: index, message: message, entryID: entry.id))
         }
+
+        // 비던지는 그룹: 한 참가자의 실패가 형제 발언을 취소하지 않는다
+        await withTaskGroup(of: Void.self) { group in
+            for job in jobs {
+                group.addTask {
+                    await self.speak(
+                        runtimeIndex: job.runtimeIndex,
+                        message: job.message,
+                        entryID: job.entryID
+                    )
+                }
+            }
+        }
+        try Task.checkCancellation()
     }
 
     /// 사회자에게 전체 기록을 보내 결론을 받는다. 지정 사회자가 탈락했거나
@@ -219,67 +256,138 @@ final class DiscussionViewModel: ObservableObject {
             candidates.insert(candidates.remove(at: preferred), at: 0)
         }
         for index in candidates {
-            try await speak(runtimeIndex: index, message: message, round: nil, kind: .conclusion)
-            if runtimes[index].isActive { return }
+            let entry = DiscussionEntry(
+                kind: .conclusion,
+                speakerName: runtimes[index].profile.name,
+                colorIndex: runtimes[index].colorIndex
+            )
+            appendEntry(entry)
+            let succeeded = await speak(runtimeIndex: index, message: message, entryID: entry.id)
+            try Task.checkCancellation()
+            if succeeded { return }
         }
         phase = .failed("결론을 작성할 참가자가 없습니다.")
     }
 
-    /// 한 발언: 빈 entry를 추가하고 스트림을 소비하며 채운 뒤, think 블록을 제거한
-    /// 정리본으로 교체한다. 게이트웨이 오류는 해당 참가자 탈락으로 흡수하고,
-    /// 취소는 CancellationError로 다시 던진다 (스트리밍 중이던 부분 발언은 보존).
-    private func speak(runtimeIndex: Int, message: String, round: Int?, kind: DiscussionEntry.Kind) async throws {
-        try Task.checkCancellation()
+    /// 한 발언: 호출자가 만든 entry를 스트림으로 채우고, think 블록을 제거한 정리본으로
+    /// 교체한다. 스트림이 내용 없이 끝나면 세션 기록을 폴링하는 폴백으로 회수한다
+    /// (게이트웨이가 응답을 세션에는 쓰지만 SSE로는 안 보내는 경우 — 실기기 확인 버그).
+    /// 게이트웨이 오류·폴백 타임아웃은 참가자 탈락으로 흡수하고 false를 돌려준다.
+    /// 던지지 않는다 — TaskGroup에서 형제 발언과 독립적으로 실행되기 위함.
+    /// 취소 시에는 부분 발언을 보존한 채 false (호출자가 Task.isCancelled로 구분).
+    @discardableResult
+    private func speak(runtimeIndex: Int, message: String, entryID: UUID) async -> Bool {
         let runtime = runtimes[runtimeIndex]
-        currentSpeakerName = runtime.profile.name
-        defer { currentSpeakerName = nil }
+        speakingNames.append(runtime.profile.name)
+        defer {
+            if let idx = speakingNames.firstIndex(of: runtime.profile.name) {
+                speakingNames.remove(at: idx)
+            }
+        }
 
-        let entry = DiscussionEntry(
-            kind: kind,
-            round: round,
-            speakerName: runtime.profile.name,
-            colorIndex: runtime.colorIndex
-        )
-        appendEntry(entry)
-
+        var accumulated = ""
+        runtimes[runtimeIndex].userTurns += 1
         do {
-            var accumulated = ""
             let stream = runtime.client.streamChat(sessionId: runtime.sessionID, message: message)
             for try await update in stream {
                 try Task.checkCancellation()
                 if case .content(let chunk) = update {
                     accumulated += chunk
-                    updateEntry(id: entry.id) { $0.content = accumulated }
+                    updateEntry(id: entryID) { $0.content = accumulated }
                 }
                 // .toolCallUpdate는 무시 — 도구 실행 결과는 발언 본문으로 돌아온다
             }
             try Task.checkCancellation()
-            let cleaned = MarkdownLite.strippingThink(accumulated)
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            let final = cleaned.isEmpty ? "(응답 없음)" : cleaned
-            updateEntry(id: entry.id) { $0.content = final }
-            runtimes[runtimeIndex].lastStatement = final
         } catch {
-            // 취소 시 스트림은 HermesAPIError.network(CancellationError)로 끝날 수 있다
+            // 취소 시 스트림은 HermesAPIError.network(URLError(.cancelled))로 끝날 수 있다
             if error is CancellationError || Task.isCancelled {
-                throw CancellationError()
+                return false // 부분 발언 보존 — handleCancellation이 정리
             }
-            entries.removeAll { $0.id == entry.id }
-            runtimes[runtimeIndex].isActive = false
-            appendEntry(DiscussionEntry(
-                kind: .system,
-                content: "\(runtime.profile.name) 프로필이 응답하지 않아 토론에서 제외되었습니다."
-            ))
+            return deactivate(runtimeIndex: runtimeIndex, entryID: entryID)
         }
+
+        var visible = MarkdownLite.strippingThink(accumulated)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if visible.isEmpty {
+            // 스트림이 비어 있으면 세션에 기록된 답변을 폴링으로 회수.
+            // 내용은 왔는데 think 제거 후 비는 경우는 세션 기록도 think-only일
+            // 가능성이 높아 짧게만 시도한다.
+            let deadline: TimeInterval = accumulated.isEmpty ? 300 : 6
+            if let recovered = await pollForMissedReply(runtimeIndex: runtimeIndex, deadline: deadline) {
+                visible = recovered
+            } else if Task.isCancelled {
+                return false // 취소로 인한 nil — 탈락·알림 금지
+            } else {
+                return deactivate(runtimeIndex: runtimeIndex, entryID: entryID)
+            }
+        }
+
+        updateEntry(id: entryID) { $0.content = visible }
+        runtimes[runtimeIndex].lastStatement = visible
+        return true
+    }
+
+    /// 참가자 탈락 처리 — 미완성 entry 제거 + 시스템 알림. 항상 false를 돌려준다.
+    private func deactivate(runtimeIndex: Int, entryID: UUID) -> Bool {
+        entries.removeAll { $0.id == entryID }
+        runtimes[runtimeIndex].isActive = false
+        appendEntry(DiscussionEntry(
+            kind: .system,
+            content: "\(runtimes[runtimeIndex].profile.name) 프로필이 응답하지 않아 토론에서 제외되었습니다."
+        ))
+        return false
+    }
+
+    /// 마지막 user 메시지 뒤에 오는, think 제거 후 내용이 있는 마지막 assistant 발언.
+    /// 토론 세션은 앱 전용이므로 이 술어가 "방금 보낸 메시지에 대한 답"과 일치한다.
+    /// expectedUserCount: 지금까지 보낸 user 메시지 수 — 방금 보낸 메시지가 아직
+    /// 기록되지 않았을 때 직전 턴의 답변을 오인 반환하는 것을 막는다.
+    nonisolated static func missedReply(in messages: [ChatMessage], expectedUserCount: Int) -> String? {
+        let userIndices = messages.indices.filter { messages[$0].role == .user }
+        guard userIndices.count >= expectedUserCount, let lastUser = userIndices.last else { return nil }
+        return messages[messages.index(after: lastUser)...]
+            .filter { $0.role == .assistant }
+            .compactMap { message -> String? in
+                let visible = MarkdownLite.strippingThink(message.content)
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                return visible.isEmpty ? nil : visible
+            }
+            .last
+    }
+
+    /// 세션 기록을 2초 간격으로 폴링해 누락된 답변을 회수한다.
+    /// 타임아웃 또는 취소 시 nil (호출자가 Task.isCancelled로 구분).
+    private func pollForMissedReply(runtimeIndex: Int, deadline: TimeInterval) async -> String? {
+        let client = runtimes[runtimeIndex].client
+        let sessionID = runtimes[runtimeIndex].sessionID
+        let expectedUserCount = runtimes[runtimeIndex].userTurns
+        let limit = Date.now.addingTimeInterval(deadline)
+        while Date.now < limit {
+            if Task.isCancelled { return nil }
+            if let messages = try? await client.fetchMessages(sessionId: sessionID),
+               let reply = Self.missedReply(in: messages, expectedUserCount: expectedUserCount) {
+                return reply
+            }
+            do {
+                try await Task.sleep(nanoseconds: 2_000_000_000)
+            } catch {
+                return nil // 취소
+            }
+        }
+        return nil
     }
 
     private func handleCancellation() {
-        // 스트리밍 중이던 부분 발언은 think 블록만 정리해 보존한다
+        // 부분 발언은 think 블록만 정리해 보존하고, 아직 비어 있는 카드는 제거한다
+        // (동시 라운드에서는 사전 추가된 빈 entry가 여러 개일 수 있다)
         for index in entries.indices
         where entries[index].kind == .statement || entries[index].kind == .conclusion {
-            let cleaned = MarkdownLite.strippingThink(entries[index].content)
+            entries[index].content = MarkdownLite.strippingThink(entries[index].content)
                 .trimmingCharacters(in: .whitespacesAndNewlines)
-            entries[index].content = cleaned.isEmpty ? "(중단됨)" : cleaned
+        }
+        entries.removeAll {
+            ($0.kind == .statement || $0.kind == .conclusion) && $0.content.isEmpty
         }
         appendEntry(DiscussionEntry(kind: .system, content: "사용자가 토론을 중단했습니다."))
         phase = .finished(saved: false)
@@ -345,7 +453,7 @@ final class DiscussionViewModel: ObservableObject {
         당신은 여러 AI 에이전트가 참여하는 토론의 참가자입니다. 각 참가자는 서로 다른 모델과 관점을 가지고 있으며, 토론의 목적은 서로의 오류를 교정하고 더 나은 결론에 도달하는 것입니다.
 
         규칙:
-        1. 답변은 한국어로, 핵심만 간결하게 — 최대 6문장(약 300자) 이내.
+        1. 답변은 한국어로, 핵심 논거 위주로 5~10문장.
         2. 다른 참가자의 의견이 주어지면 동의/반박을 명확히 구분하고 반드시 근거를 제시하세요.
         3. 확실하지 않은 내용은 "추측"임을 명시하고, 모르면 모른다고 답하세요.
         \(toolRule)
@@ -353,20 +461,13 @@ final class DiscussionViewModel: ObservableObject {
         """
     }
 
-    static func firstRoundMessage(
-        topic: String,
-        totalRounds: Int,
-        earlierOpinions: [(name: String, statement: String)]
-    ) -> String {
-        var text = "[토론 시작 — 라운드 1/\(totalRounds)]\n주제: \(topic)\n"
-        if !earlierOpinions.isEmpty {
-            text += "\n앞서 발언한 참가자들의 의견:\n"
-            text += earlierOpinions.map { "- \($0.name): \($0.statement)" }.joined(separator: "\n")
-            text += "\n\n이 주제에 대한 당신의 입장과 핵심 근거를 제시하세요. 앞선 의견과 겹치지 않는 새로운 관점이 있으면 우선하세요."
-        } else {
-            text += "\n이 주제에 대한 당신의 입장과 핵심 근거를 제시하세요."
-        }
-        return text
+    static func firstRoundMessage(topic: String, totalRounds: Int) -> String {
+        """
+        [토론 시작 — 라운드 1/\(totalRounds)]
+        주제: \(topic)
+
+        이 주제에 대한 당신의 입장과 핵심 근거를 제시하세요. 다른 참가자들도 동시에 발언합니다. 당신의 고유한 관점과 근거를 우선하세요.
+        """
     }
 
     static func reviewRoundMessage(

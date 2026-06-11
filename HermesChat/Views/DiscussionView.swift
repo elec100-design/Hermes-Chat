@@ -233,7 +233,10 @@ private struct DiscussionRoomView: View {
                     }
                     .padding()
                 }
-                .onChange(of: viewModel.entries.last?.content) { _, _ in
+                // 동시 라운드에서는 중간 카드도 자라므로 하단 고정 앵커로 따라간다
+                // (사용자가 위로 스크롤하면 자동 해제). 새 entry 추가 시에는 명시적으로 하단 이동.
+                .defaultScrollAnchor(.bottom)
+                .onChange(of: viewModel.entries.count) { _, _ in
                     if let lastID = viewModel.entries.last?.id {
                         proxy.scrollTo(lastID, anchor: .bottom)
                     }
@@ -324,8 +327,11 @@ private struct DiscussionRoomView: View {
         if case .concluding = viewModel.phase {
             return "사회자가 결론을 정리하는 중..."
         }
-        if let speaker = viewModel.currentSpeakerName {
-            return "\(speaker) 발언 중..."
+        if viewModel.speakingNames.count == 1, let name = viewModel.speakingNames.first {
+            return "\(name) 발언 중..."
+        }
+        if viewModel.speakingNames.count > 1 {
+            return "\(viewModel.speakingNames.count)명 발언 중..."
         }
         if case .running(let round, let total) = viewModel.phase {
             return "라운드 \(round)/\(total) 진행 중..."

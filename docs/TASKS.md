@@ -132,6 +132,8 @@
 | T-111 | 토론 오케스트레이션 — 참가자별 게이트웨이 클라이언트/세션 생성(`[Deep think]` 제목), 순차 스트리밍 라운드 루프(라운드 k>1은 타인 최신 발언만 전달), 게이트웨이 오류 탈락·활성<2 중단·취소(부분 발언 보존) 정책, 사회자 결론(탈락 시 승계), 완료 저장, 프롬프트 템플릿(도구 허용 토글 반영) | `ViewModels/DiscussionViewModel.swift` (신규, pbxproj 등록됨) | NEEDS-BUILD (Claude Code, 06-11) |
 | T-112 | 토론룸 UI — setup(참가자 칩 그리드/주제/라운드 Stepper 1~5/사회자 Picker/도구 토글+경고) → running(발언 카드 스트림+라운드 캡슐+"발언 중" 바+중지) → finished(결론 강조 카드+복사/공유/새 토론), 지난 토론 목록/상세(컨텍스트 메뉴 삭제), 진행 중 isIdleTimerDisabled·닫기 confirmationDialog | `Views/DiscussionView.swift` (신규, pbxproj 등록됨) | NEEDS-BUILD (Claude Code, 06-11 — 실기기 확인: SOUL 페르소나가 발언에 유지되는지, 스트리밍 자동 스크롤) |
 | T-113 | 프로필 보드 진입점 — 툴바 "Deep think" 버튼(topBarTrailing, brain.head.profile) + fullScreenCover | `Views/ProfileBoardView.swift` | NEEDS-BUILD (Claude Code, 06-11) |
+| T-114 | 발언 미수신 폴백 — 스트림이 빈 채 끝나면(게이트웨이가 세션에는 답을 쓰지만 SSE로는 안 보내는 실기기 버그) 세션 기록을 2초 간격 폴링(빈 스트림 300초 / think-only 6초)해 회수. 판정은 "마지막 user 메시지 뒤 visible assistant" + userTurns 앵커 검증(직전 턴 오인 방지). "(응답 없음)" 발언 채택 제거 — 타임아웃은 탈락 처리 | `ViewModels/DiscussionViewModel.swift` | NEEDS-BUILD (Claude Code, 06-11) |
+| T-115 | 라운드 동시 진행 — 라운드 시작 시 직전 발언 스냅샷 → 참가자별 메시지 사전 조립 → 빈 카드 사전 추가(순서 고정) → withTaskGroup 병렬 스트리밍(비던지는 그룹: 한 참가자 실패가 형제를 취소하지 않음). currentSpeakerName → speakingNames("N명 발언 중..."), 스크롤 defaultScrollAnchor(.bottom), 발언 길이 5~10문장 완화, 라운드 1 선발언 전달 제거 | `ViewModels/DiscussionViewModel.swift`, `Views/DiscussionView.swift` | NEEDS-BUILD (Claude Code, 06-11 — 실기기 확인: 카드 동시 채움, 빈 스트림 시 폴백 회수, 중지 시 거짓 제외 알림 없음) |
 
 ## 빌드 검증 기록 (검증자가 갱신)
 
