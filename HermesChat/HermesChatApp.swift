@@ -1,3 +1,4 @@
+import BackgroundTasks
 import SwiftUI
 
 enum AppTab: Hashable {
@@ -13,6 +14,9 @@ struct HermesChatApp: App {
     @StateObject private var appSettings = AppSettings()
     @State private var selectedTab: AppTab = .board
     @Environment(\.scenePhase) private var scenePhase
+
+    /// Info.plist BGTaskSchedulerPermittedIdentifiers와 일치해야 한다 (T-095)
+    private static let refreshTaskID = "ai.hermes.chat.refresh"
 
     var body: some Scene {
         WindowGroup {
@@ -49,7 +53,24 @@ struct HermesChatApp: App {
                 } else {
                     NotificationService.shared.stopPolling()
                 }
+                // 백그라운드 진입 시 주기 폴링 예약 — iOS가 기회적으로만 실행 (T-095)
+                if phase == .background {
+                    Self.scheduleBackgroundRefresh()
+                }
             }
         }
+        .backgroundTask(.appRefresh(Self.refreshTaskID)) {
+            let bridge = await appSettings.bridgeClient
+            await NotificationService.shared.checkKanbanTransitions(bridge: bridge)
+            Self.scheduleBackgroundRefresh()
+        }
+    }
+
+    /// 다음 백그라운드 폴링 예약. 실행 보장은 없으며(iOS 스케줄러 재량),
+    /// 실패는 조용히 무시한다 — 다음 백그라운드 진입/실행 때 재예약된다.
+    private static func scheduleBackgroundRefresh() {
+        let request = BGAppRefreshTaskRequest(identifier: refreshTaskID)
+        request.earliestBeginDate = Date(timeIntervalSinceNow: 15 * 60)
+        try? BGTaskScheduler.shared.submit(request)
     }
 }
