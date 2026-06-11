@@ -7,7 +7,8 @@
   - 게이트웨이 재시작 (hermes gateway restart)
   - SOUL.md 읽기/쓰기
   - 파일 업로드 (채팅 첨부용 — 업로드 후 경로를 메시지에 포함)
-  - 칸반 보드 저장소 (~/.hermes/kanban/*.json — Hermes 에이전트와 앱이 공유)
+  - 내장 칸반 조회/조작 (~/.hermes/kanban.db — 게이트웨이 디스패처·대시보드와 동일 데이터.
+    읽기는 sqlite 직접, 쓰기는 `hermes kanban` CLI 경유로 이벤트·디스패치 불변식 보존)
 
 실행:
   HERMES_BRIDGE_TOKEN=<토큰> python3 hermes_bridge.py [--port 8765] [--host 0.0.0.0]
@@ -20,17 +21,19 @@ import json
 import os
 import re
 import shutil
+import sqlite3
 import subprocess
 import sys
 import time
 import urllib.request
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 HERMES_HOME = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes"))
 PROFILES_DIR = HERMES_HOME / "profiles"
-KANBAN_DIR = HERMES_HOME / "kanban"
+KANBAN_BOARDS_DIR = HERMES_HOME / "kanban" / "boards"
 TOKEN = os.environ.get("HERMES_BRIDGE_TOKEN", "")
 MAX_UPLOAD = 50 * 1024 * 1024  # 50MB
 
@@ -110,6 +113,123 @@ def read_env(env_file):
     return values
 
 
+# ── 내장 칸반 (hermes-agent kanban.db) ──────────────────────────
+# default 보드는 ~/.hermes/kanban.db, 그 외는 ~/.hermes/kanban/boards/<slug>/kanban.db.
+# 상태값: triage|todo|scheduled|ready|running|blocked|done|archived
+# ready 태스크는 게이트웨이 디스패처가 워커 프로필을 띄워 자동 실행한다.
+
+def kanban_db_path(board):
+    if board == "default":
+        return HERMES_HOME / "kanban.db"
+    return KANBAN_BOARDS_DIR / board / "kanban.db"
+
+
+def list_kanban_boards():
+    boards = ["default"]
+    if KANBAN_BOARDS_DIR.is_dir():
+        boards += sorted(
+            p.name for p in KANBAN_BOARDS_DIR.iterdir()
+            if p.is_dir() and (p / "kanban.db").is_file()
+        )
+    return boards
+
+
+def kanban_board_display_name(board):
+    meta = KANBAN_BOARDS_DIR / board / "board.json"
+    if meta.is_file():
+        try:
+            return json.loads(meta.read_text()).get("name") or board
+        except ValueError:
+            pass
+    return "Default" if board == "default" else board
+
+
+def epoch_to_iso(ts):
+    if not ts:
+        return None
+    return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def kanban_connect_ro(db):
+    """읽기전용 연결. `file:...?mode=ro` URI는 이 맥의 Xcode Python 3.9 빌드에서
+    'unable to open database file'로 실패해서 query_only 프래그마로 대체한다."""
+    conn = sqlite3.connect(str(db), timeout=5)
+    conn.execute("PRAGMA query_only=ON")
+    return conn
+
+
+def kanban_read(board):
+    """보드의 비아카이브 태스크를 앱 스키마로 반환."""
+    db = kanban_db_path(board)
+    if not db.is_file():
+        return None
+    conn = kanban_connect_ro(db)
+    conn.row_factory = sqlite3.Row
+    try:
+        rows = conn.execute(
+            "SELECT id, title, body, status, assignee, session_id,"
+            " created_at, started_at, completed_at, last_heartbeat_at"
+            " FROM tasks WHERE status != 'archived' ORDER BY created_at DESC"
+        ).fetchall()
+    finally:
+        conn.close()
+    tasks, latest = [], 0
+    for r in rows:
+        updated = max(
+            r["created_at"] or 0, r["started_at"] or 0,
+            r["completed_at"] or 0, r["last_heartbeat_at"] or 0,
+        )
+        latest = max(latest, updated)
+        tasks.append({
+            "id": r["id"],
+            "title": r["title"],
+            "detail": r["body"] or "",
+            "status": r["status"],
+            "assignee": r["assignee"] or "",
+            "session_id": r["session_id"] or "",
+            "created_at": epoch_to_iso(r["created_at"]),
+            "updated_at": epoch_to_iso(updated),
+        })
+    return {
+        "name": kanban_board_display_name(board),
+        "board": board,
+        "updated_at": epoch_to_iso(latest),
+        "tasks": tasks,
+    }
+
+
+def kanban_counts(board):
+    db = kanban_db_path(board)
+    if not db.is_file():
+        return {}
+    conn = kanban_connect_ro(db)
+    try:
+        rows = conn.execute(
+            "SELECT status, COUNT(*) FROM tasks GROUP BY status"
+        ).fetchall()
+    finally:
+        conn.close()
+    return {status: count for status, count in rows}
+
+
+def run_kanban_cli(board, args, timeout=60):
+    """쓰기 작업은 CLI 경유 — 이벤트 기록, 의존성 재계산, 디스패치 트리거를 보존한다."""
+    hermes = find_hermes()
+    if not hermes:
+        return None, "hermes 실행파일을 찾지 못했습니다 (HERMES_BIN 설정 필요)"
+    cmd = [hermes, "kanban", "--board", board] + args
+    try:
+        proc = subprocess.run(
+            cmd, capture_output=True, text=True, timeout=timeout,
+        )
+    except subprocess.TimeoutExpired:
+        return None, "kanban CLI timeout"
+    if proc.returncode != 0:
+        detail = (proc.stderr or proc.stdout or "").strip()[-500:]
+        return None, f"kanban CLI failed (exit {proc.returncode}): {detail}"
+    return proc.stdout, None
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "HermesBridge/1.0"
 
@@ -142,6 +262,12 @@ class Handler(BaseHTTPRequestHandler):
     def check_profile(self, name):
         """프로필 이름 검증 — 실제 존재하는 디렉터리만 허용 (경로조작/명령주입 차단)"""
         if SAFE_NAME.match(name) and name in list_profile_names():
+            return name
+        return None
+
+    def check_kanban_board(self, name):
+        """보드 slug 검증 — 실존 보드만 허용 (경로조작/CLI 인자 주입 차단)"""
+        if SAFE_NAME.match(name) and name in list_kanban_boards():
             return name
         return None
 
@@ -231,21 +357,33 @@ class Handler(BaseHTTPRequestHandler):
             content = soul.read_text(errors="replace") if soul.is_file() else ""
             return self.send_json({"profile": name, "content": content})
 
+        # GET /kanban — 보드 목록 (slug + 표시명 + 상태별 카운트)
         if parts == ["kanban"]:
-            KANBAN_DIR.mkdir(parents=True, exist_ok=True)
-            boards = sorted(p.stem for p in KANBAN_DIR.glob("*.json"))
-            return self.send_json({"data": boards})
+            result = []
+            for board in list_kanban_boards():
+                try:
+                    counts = kanban_counts(board)
+                except sqlite3.Error:
+                    counts = {}
+                result.append({
+                    "board": board,
+                    "name": kanban_board_display_name(board),
+                    "counts": counts,
+                })
+            return self.send_json({"data": result})
 
+        # GET /kanban/<board> — 비아카이브 태스크 전체 (앱 스키마)
         if len(parts) == 2 and parts[0] == "kanban":
-            if not SAFE_NAME.match(parts[1]):
-                return self.fail(400, "invalid board name")
-            board = KANBAN_DIR / f"{parts[1]}.json"
-            if not board.is_file():
+            board = self.check_kanban_board(parts[1])
+            if not board:
                 return self.fail(404, "unknown board")
             try:
-                return self.send_json(json.loads(board.read_text()))
-            except ValueError:
-                return self.fail(500, "corrupt board file")
+                data = kanban_read(board)
+            except sqlite3.Error as e:
+                return self.fail(500, f"kanban db error: {e}")
+            if data is None:
+                return self.fail(404, "unknown board")
+            return self.send_json(data)
 
         return self.fail(404, "not found")
 
@@ -304,6 +442,87 @@ class Handler(BaseHTTPRequestHandler):
             dest.write_bytes(data)
             return self.send_json({"path": str(dest), "size": len(data)}, 201)
 
+        # POST /kanban/<board>/tasks  {"title", "detail"?, "assignee"?, "status"?}
+        # status: "ready"(기본 — 부모 없는 태스크는 곧바로 디스패처가 실행)
+        #         "triage"(스페시파이어가 스펙 구체화 후 진행) | "blocked"(보류, 사람 개입 대기)
+        if len(parts) == 3 and parts[0] == "kanban" and parts[2] == "tasks":
+            board = self.check_kanban_board(parts[1])
+            if not board:
+                return self.fail(404, "unknown board")
+            data = self.read_body(1024 * 1024)
+            if data is None:
+                return self.fail(400, "empty body")
+            try:
+                payload = json.loads(data)
+                title = str(payload["title"]).strip()
+            except (ValueError, KeyError, TypeError):
+                return self.fail(400, "expected JSON {\"title\": ...}")
+            if not title:
+                return self.fail(400, "title is empty")
+            status = payload.get("status", "ready")
+            if status not in ("ready", "triage", "blocked"):
+                return self.fail(400, "status must be ready|triage|blocked")
+            args = ["create", title, "--json", "--created-by", "ios-app"]
+            detail = str(payload.get("detail") or "").strip()
+            if detail:
+                args += ["--body", detail]
+            assignee = str(payload.get("assignee") or "").strip()
+            if assignee:
+                if not self.check_profile(assignee):
+                    return self.fail(400, "unknown assignee profile")
+                args += ["--assignee", assignee]
+            if status == "triage":
+                args += ["--triage"]
+            elif status == "blocked":
+                args += ["--initial-status", "blocked"]
+            stdout, err = run_kanban_cli(board, args)
+            if err:
+                return self.fail(500, err)
+            try:
+                task = json.loads(stdout)
+            except ValueError:
+                task = {}
+            return self.send_json({"board": board, "ok": True, "task": task}, 201)
+
+        # POST /kanban/<board>/tasks/<id>/action  {"action": ..., "reason"?}
+        if len(parts) == 5 and parts[0] == "kanban" and parts[2] == "tasks" \
+                and parts[4] == "action":
+            board = self.check_kanban_board(parts[1])
+            if not board:
+                return self.fail(404, "unknown board")
+            task_id = parts[3]
+            if not SAFE_NAME.match(task_id):
+                return self.fail(400, "invalid task id")
+            data = self.read_body(64 * 1024)
+            if data is None:
+                return self.fail(400, "empty body")
+            try:
+                payload = json.loads(data)
+                action = payload["action"]
+            except (ValueError, KeyError, TypeError):
+                return self.fail(400, "expected JSON {\"action\": ...}")
+            reason = str(payload.get("reason") or "").strip()
+            if action == "promote":
+                args = ["promote", task_id] + ([reason] if reason else [])
+            elif action == "block":
+                args = ["block", task_id, reason or "iOS 앱에서 보류"]
+            elif action == "unblock":
+                args = ["unblock", task_id] + (["--reason", reason] if reason else [])
+            elif action == "complete":
+                args = ["complete", task_id] + (["--result", reason] if reason else [])
+            elif action == "archive":
+                args = ["archive", task_id]
+            elif action == "comment":
+                if not reason:
+                    return self.fail(400, "comment requires reason text")
+                args = ["comment", task_id, reason, "--author", "ios-app"]
+            else:
+                return self.fail(400, "unknown action")
+            _, err = run_kanban_cli(board, args)
+            if err:
+                return self.fail(500, err)
+            return self.send_json({"board": board, "task": task_id, "ok": True})
+
         return self.fail(404, "not found")
 
     def do_PUT(self):
@@ -328,24 +547,6 @@ class Handler(BaseHTTPRequestHandler):
                 soul.with_suffix(".md.bak").write_text(soul.read_text(errors="replace"))
             soul.write_text(content)
             return self.send_json({"profile": name, "ok": True})
-
-        # PUT /kanban/<board>  (보드 전체 JSON 교체)
-        if len(parts) == 2 and parts[0] == "kanban":
-            if not SAFE_NAME.match(parts[1]):
-                return self.fail(400, "invalid board name")
-            data = self.read_body(5 * 1024 * 1024)
-            if data is None:
-                return self.fail(400, "empty body")
-            try:
-                board = json.loads(data)
-            except ValueError:
-                return self.fail(400, "invalid JSON")
-            KANBAN_DIR.mkdir(parents=True, exist_ok=True)
-            path = KANBAN_DIR / f"{parts[1]}.json"
-            tmp = path.with_suffix(".json.tmp")
-            tmp.write_text(json.dumps(board, ensure_ascii=False, indent=2))
-            tmp.replace(path)
-            return self.send_json({"board": parts[1], "ok": True})
 
         return self.fail(404, "not found")
 
