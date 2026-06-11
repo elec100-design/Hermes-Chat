@@ -21,9 +21,7 @@ struct MessageBubble: View {
                     MarkdownText(content: message.content)
                 }
                 if let toolCalls = message.toolCalls, !toolCalls.isEmpty {
-                    ForEach(toolCalls) { tool in
-                        ToolResultView(tool: tool)
-                    }
+                    ToolCallsChip(toolCalls: toolCalls)
                 }
             }
             .padding(.horizontal, 14)

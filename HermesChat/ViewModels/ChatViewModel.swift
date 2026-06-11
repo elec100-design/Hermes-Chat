@@ -122,6 +122,8 @@ final class ChatViewModel: ObservableObject {
                     }
                 }
                 messages[assistantIndex].content = assistant.content
+                // 도구 실행 중에도 칩 카운트가 실시간 갱신되도록 (T-104)
+                messages[assistantIndex].toolCalls = Array(toolDictionary.values)
             }
 
             messages[assistantIndex].content = assistant.content

@@ -1,5 +1,40 @@
 import SwiftUI
 
+/// 접힌 도구 실행 요약 칩 (T-104) — 기본은 "도구 N회 실행" 한 줄,
+/// 탭하면 ToolResultView 목록을 펼쳐 인자를 확인할 수 있다.
+struct ToolCallsChip: View {
+    let toolCalls: [ToolCall]
+    @State private var expanded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() }
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "wrench.and.screwdriver.fill")
+                    Text("도구 \(toolCalls.count)회 실행")
+                    Image(systemName: expanded ? "chevron.up" : "chevron.down")
+                        .font(.caption2)
+                }
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(.ultraThinMaterial)
+                .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+
+            if expanded {
+                ForEach(toolCalls) { tool in
+                    ToolResultView(tool: tool)
+                }
+            }
+        }
+    }
+}
+
 struct ToolResultView: View {
     let tool: ToolCall
 
