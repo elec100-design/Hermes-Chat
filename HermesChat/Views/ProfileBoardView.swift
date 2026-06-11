@@ -14,6 +14,7 @@ struct ProfileBoardView: View {
 
     @State private var status: [UUID: ProfileStatus] = [:]
     @State private var isProbing = false
+    @State private var showDiscussion = false
 
     /// iPhone에선 2열, iPad에선 화면 폭에 맞춰 자동 증가
     private let columns = [
@@ -32,7 +33,14 @@ struct ProfileBoardView: View {
             }
             .navigationTitle("프로필 보드")
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    // 멀티 에이전트 토론룸 진입 (Phase 14)
+                    Button {
+                        showDiscussion = true
+                    } label: {
+                        Label("Deep think", systemImage: "brain.head.profile")
+                            .labelStyle(.titleAndIcon)
+                    }
                     if isProbing {
                         ProgressView().scaleEffect(0.8)
                     } else {
@@ -43,6 +51,9 @@ struct ProfileBoardView: View {
                         }
                     }
                 }
+            }
+            .fullScreenCover(isPresented: $showDiscussion) {
+                DiscussionView(appSettings: appSettings)
             }
             .refreshable { await probeAll() }
             .task { await probeAll() }
