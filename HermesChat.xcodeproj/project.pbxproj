@@ -13,6 +13,7 @@
 		0D3F8A01E5C16B42DA3FFF01 /* ProfileBoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D3F8A02E5C16B42DA3FFF02 /* ProfileBoardView.swift */; };
 		0E4A9B01F6D27C53EB4AAA01 /* KanbanModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E4A9B02F6D27C53EB4AAA02 /* KanbanModels.swift */; };
 		DD17000100000000000DEE01 /* DiscussionModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD17000200000000000DEE02 /* DiscussionModels.swift */; };
+		DD17000300000000000DEE03 /* DiscussionViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD17000400000000000DEE04 /* DiscussionViewModel.swift */; };
 		0F5BAC01A7E38D64FC5BBB01 /* KanbanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F5BAC02A7E38D64FC5BBB02 /* KanbanView.swift */; };
 		1A6CBD01B8F49E75AD6CCC01 /* DashboardWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A6CBD02B8F49E75AD6CCC02 /* DashboardWebView.swift */; };
 		2B7DCE01C9A55B86BE7DDD01 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B7DCE02C9A55B86BE7DDD02 /* KeychainHelper.swift */; };
@@ -45,6 +46,7 @@
 		0D3F8A02E5C16B42DA3FFF02 /* ProfileBoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileBoardView.swift; sourceTree = "<group>"; };
 		0E4A9B02F6D27C53EB4AAA02 /* KanbanModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KanbanModels.swift; sourceTree = "<group>"; };
 		DD17000200000000000DEE02 /* DiscussionModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscussionModels.swift; sourceTree = "<group>"; };
+		DD17000400000000000DEE04 /* DiscussionViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscussionViewModel.swift; sourceTree = "<group>"; };
 		0F5BAC02A7E38D64FC5BBB02 /* KanbanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KanbanView.swift; sourceTree = "<group>"; };
 		1A6CBD02B8F49E75AD6CCC02 /* DashboardWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardWebView.swift; sourceTree = "<group>"; };
 		2B7DCE02C9A55B86BE7DDD02 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
@@ -148,6 +150,7 @@
 			isa = PBXGroup;
 			children = (
 				DEC3DC1D7345FE8A30F5F63E /* ChatViewModel.swift */,
+				DD17000400000000000DEE04 /* DiscussionViewModel.swift */,
 			);
 			path = ViewModels;
 			sourceTree = "<group>";
@@ -242,6 +245,7 @@
 				617FEF64C2A2B4E4986CB1BC /* DashboardModels.swift in Sources */,
 				1A6CBD01B8F49E75AD6CCC01 /* DashboardWebView.swift in Sources */,
 				DD17000100000000000DEE01 /* DiscussionModels.swift in Sources */,
+				DD17000300000000000DEE03 /* DiscussionViewModel.swift in Sources */,
 				3C8EDF01DAB66C97CF8EEE01 /* FileBrowserView.swift in Sources */,
 				0D9CC9C9B49F82C246E793D9 /* HermesAPIClient.swift in Sources */,
 				1C77813AED34B08CD3E08F90 /* HermesChatApp.swift in Sources */,
