@@ -169,19 +169,60 @@ git push -u origin claude/busy-meitner-lhc5os   # 동작 확인
 | 대시보드 | `http://100.83.59.60:8000` |
 | API Key / 토큰 | 앱 설정 화면에서 입력 (저장소에 쓰지 않는다) |
 
-## 부록 B. Hermes 칸반 스킬 (T-052에서 맥미니에 등록할 SKILL.md 초안)
+## 부록 B. Hermes 칸반 스킬 (2026-06-11 v2 — 내장 칸반으로 전환)
+
+> **중요**: 초기 초안의 `~/.hermes/kanban/<보드>.json` 평면 파일 방식은 폐기됐다.
+> hermes-agent에는 내장 칸반 실행 시스템(kanban.db)이 이미 있고 — 게이트웨이 디스패처가
+> ready 태스크를 워커 프로필로 자동 실행, 대시보드 `:8000/kanban` 뷰 제공 — JSON 파일은
+> 그 어디서도 읽지 않아 "보드에 올려도 실행되지 않는" 원인이었다 (T-080~082).
+> 이제 Bridge(`/kanban*`)·iOS 앱·아래 스킬 모두 내장 칸반을 쓴다.
+
+배포 위치: `~/.hermes/skills/kanban/SKILL.md` (맥미니에 배포 완료, 아래는 사본)
 
 ```markdown
-# kanban
-복잡한 작업을 하위 작업으로 분배·추적할 때 사용한다.
-보드 파일: ~/.hermes/kanban/<보드이름>.json
-스키마: {"name", "updated_at", "tasks":[{"id","title","detail","status",
-"assignee","session_id","created_at","updated_at"}]}
-status는 triage|todo|ready|in_progress|blocked|done 만 허용.
+---
+name: kanban
+version: 2.0.0
+description: 내장 칸반(kanban.db)으로 작업을 분배·추적한다. 디스패처가 ready 태스크를 자동 실행한다.
+trigger: 사용자가 칸반/보드/태스크 분배를 언급하거나, 복잡한 작업을 하위 작업으로 나눠 추적할 때
+tags: [orchestration, tasks]
+related_skills: [planning]
+---
 
-규칙:
-- 작업을 새로 분배하면 tasks에 추가(status=todo 또는 ready).
-- 하위 에이전트 작업 시작 시 in_progress, 막히면 blocked(detail에 사유), 끝나면 done.
-- 파일 수정 시 updated_at을 현재 UTC로 갱신. JSON 유효성을 깨뜨리지 말 것.
-- 사용자가 "칸반 보여줘/정리해줘"라고 하면 이 파일을 읽고 요약한다.
+# kanban
+
+## Quick Reference
+| 항목 | 내용 |
+|------|------|
+| 용도 | 복잡한 작업을 태스크로 쪼개 보드에 올리고, 디스패처가 워커 프로필로 자동 실행 |
+| 트리거 | "칸반 보여줘/정리해줘", "이 작업 보드에 올려줘", 다단계 작업 분배 |
+| 주요 출력 | `hermes kanban` CLI 실행 결과 (태스크 id, 상태) |
+| 필수 의존성 | `hermes kanban` CLI (게이트웨이 디스패처가 60초 간격으로 ready 태스크 실행) |
+| 금지 사항 | **`~/.hermes/kanban/*.json` 파일을 직접 만들거나 수정하지 말 것** (구버전 방식 — 디스패처·대시보드·iOS 앱 어디서도 읽지 않는다). kanban.db를 SQL로 직접 수정하지 말 것 |
+
+## 데이터 위치
+- default 보드: `~/.hermes/kanban.db`
+- 그 외 보드: `~/.hermes/kanban/boards/<slug>/kanban.db`
+- 같은 데이터를 대시보드(`:8000/kanban`)와 iOS 앱(HermesChat, Bridge `:8765` 경유)이 본다.
+- 상태: `triage → todo → ready → running → done`, 보류는 `blocked`, 예약은 `scheduled`, 숨김은 `archived`
+
+## Key Commands
+| 명령 | 설명 |
+|------|------|
+| `hermes kanban boards list` | 보드 목록 |
+| `hermes kanban --board <slug> list --json` | 태스크 목록 (default 보드는 --board 생략 가능) |
+| `hermes kanban show <id>` | 태스크 상세 + 코멘트 + 이벤트 |
+| `hermes kanban create "<제목>" --body "<내용>" --assignee <프로필>` | 태스크 생성 — 부모 없으면 곧바로 ready가 되어 **1분 내 자동 실행됨** |
+| `hermes kanban create "<제목>" --triage` | 스펙 구체화가 필요한 태스크 (스페시파이어가 다듬은 뒤 진행) |
+| `hermes kanban create "<제목>" --initial-status blocked` | 실행하지 않고 보관만 |
+| `hermes kanban link <부모id> <자식id>` | 의존성 — 부모가 done 되면 자식이 ready로 승급 |
+| `hermes kanban complete <id> --result "<요약>"` | 완료 처리 |
+| `hermes kanban block <id> <사유>` / `unblock <id>` | 보류 / 재개 |
+| `hermes kanban watch` | 이벤트 실시간 관찰 |
+
+## 규칙
+- 작업을 분배할 때는 create로 태스크를 만들고 `--assignee`로 적절한 프로필(codex/researcher/reviewer 등)을 지정한다.
+- **create 즉시 실행된다는 점에 주의** — 아직 실행하면 안 되는 작업은 `--triage` 또는 `--initial-status blocked`로 만든다.
+- 사용자가 "칸반 보여줘/정리해줘"라고 하면 `list --json`을 읽고 상태별로 요약한다.
+- 태스크 상태는 반드시 CLI(또는 kanban_* 도구)로 바꾼다 — 이벤트 기록과 의존성 재계산이 같이 일어난다.
 ```

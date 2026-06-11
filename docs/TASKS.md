@@ -52,7 +52,7 @@
 |----|------|------|------|
 | T-050 | KanbanBoard/KanbanTask/KanbanStatus 모델 (PLAN §3 Phase 6 JSON 스키마와 일치) | `Models/KanbanModels.swift` (신규) | DONE (06-11) |
 | T-051 | KanbanView: 보드 선택 + 페이지 스와이프 컬럼 + 카드 이동/편집, GET-병합-PUT 저장 | `Views/KanbanView.swift` (신규) | DONE (06-11 — 칸반 탭도 추가됨) |
-| T-052 | 맥미니 Hermes에 칸반 스킬 등록 (HANDOFF 부록 B 내용) | (맥미니) | TODO (사용자가 텔레그램으로 Hermes에게 부록 B 등록 지시) |
+| T-052 | 맥미니 Hermes에 칸반 스킬 등록 (HANDOFF 부록 B 내용) | (맥미니) | DONE (06-11 — 부록 B를 내장 칸반 기준 v2로 재작성해 직접 배포, Phase 9 참조) |
 
 ## Phase 7 — 터미널/파일
 
@@ -71,6 +71,18 @@
 | T-073 | iPad 레이아웃·다크모드 점검 | DONE (06-11 — 코드 차원 수정 완료, 최종 확인은 실기기에서) |
 | T-074 | 세션 탭 상단 메뉴를 소스 필터 전용으로 (프로필 선택은 보드 탭으로 일원화, 제목=프로필명) | DONE (06-11 — 사용자 요청) |
 | T-075 | 새 세션 만들기 디코딩 실패 수정 ("The data couldn't be read...") — 생성 응답 형식 단계적 해석 | DONE (06-11 — 버그 수정) |
+
+## Phase 9 — 내장 칸반 통합 (2026-06-11)
+
+> 배경: 부록 B의 JSON 파일 칸반은 hermes-agent 내장 칸반(kanban.db + 게이트웨이 디스패처 +
+> 대시보드 `:8000/kanban`)과 별개라서, 폰에서 만든 보드가 대시보드에 안 보이고 작업도
+> 실행되지 않았다. Bridge·앱·스킬을 모두 내장 칸반으로 전환.
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-080 | Bridge 칸반 API를 내장 칸반으로 교체 — 읽기는 kanban.db sqlite 직접, 쓰기(create/promote/block/unblock/complete/archive/comment)는 `hermes kanban` CLI 경유. PUT 전체교체 제거 | `server/hermes_bridge.py` | DONE (06-11 — 재배포 + curl 검증 완료) |
+| T-081 | 앱 칸반을 내장 칸반 스키마로 전환 — 상태 7개(scheduled/running 추가), 보드 목록 카운트, 카드 액션 메뉴(실행/보류/완료/아카이브), 새 작업 시트(담당 프로필 + 시작 방식), GET-병합-PUT 제거 | `Models/KanbanModels.swift`, `Services/BridgeClient.swift`, `Views/KanbanView.swift` | DONE (06-11 — 빌드 검증 완료) |
+| T-082 | 칸반 스킬 v2 배포 (`~/.hermes/skills/kanban/SKILL.md`) + HANDOFF 부록 B 갱신 + PLAN Phase 6 갱신 | `docs/HANDOFF.md`, `docs/PLAN.md`, (맥미니) | DONE (06-11) |
 
 ## 빌드 검증 기록 (검증자가 갱신)
 

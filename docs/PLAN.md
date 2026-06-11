@@ -62,15 +62,17 @@
 │  :8765  Hermes Bridge (server/hermes_bridge.py)       │
 │         ← 프로필목록·재시작·SOUL.md·업로드·칸반       │
 │  :8000  대시보드 (기존, 추후 WKWebView 임베드용)      │
-│  ~/.hermes/kanban/*.json  ← 앱과 Hermes가 공유하는    │
-│                              칸반 저장소               │
+│  ~/.hermes/kanban.db (+boards/<slug>/kanban.db)       │
+│         ← 내장 칸반 — 디스패처·대시보드·앱 공유       │
 └───────────────────────────────────────────────────────┘
 ```
 
 원칙:
 1. **세션/대화는 항상 프로필별 게이트웨이 API로 직접** (가장 안정적, 공식 API).
 2. 게이트웨이가 못 하는 것만 Bridge로. Bridge는 stdlib 단일 파일이라 유지보수 부담 최소.
-3. 칸반은 파일(`~/.hermes/kanban/*.json`)이 단일 진실원본 — Hermes 에이전트는 자기 파일 도구로, 앱은 Bridge로 같은 파일을 읽고 쓴다.
+3. 칸반은 hermes-agent **내장 칸반(kanban.db)이 단일 진실원본** (2026-06-11 전환, TASKS Phase 9) —
+   게이트웨이 디스패처가 ready 태스크를 자동 실행하고, 대시보드 `:8000/kanban`·앱(Bridge 경유)·
+   `hermes kanban` CLI가 같은 DB를 본다. 읽기는 Bridge가 sqlite로 직접, 쓰기는 CLI 경유.
 
 ---
 
@@ -134,32 +136,24 @@ bash scripts/setup_profiles_api.sh <API_KEY>
 
 **수용 기준**: 보드에서 프로필 탭→그 프로필의 새 세션/지난 세션 목록 표시.
 
-### Phase 6 — KANBAN 보드
-**목표**: Hermes가 하위 에이전트 작업을 분배·관리하는 칸반. Triage→To Do→Ready→In Progress→Blocked→Done 컬럼 좌우 스와이프, 상단에서 기존 보드/새 보드 선택.
+### Phase 6 — KANBAN 보드 (⚠ 2026-06-11 내장 칸반으로 전면 전환 — TASKS Phase 9)
 
-**데이터 모델** (보드 = `~/.hermes/kanban/<board>.json`, Bridge가 GET/PUT):
-```json
-{
-  "name": "프로젝트X",
-  "updated_at": "2026-06-10T12:00:00Z",
-  "tasks": [
-    {
-      "id": "uuid",
-      "title": "작업 제목",
-      "detail": "설명",
-      "status": "triage|todo|ready|in_progress|blocked|done",
-      "assignee": "프로필명 또는 subagent 이름",
-      "session_id": "연결된 세션 (선택)",
-      "created_at": "...", "updated_at": "..."
-    }
-  ]
-}
-```
-1. **KanbanModels.swift** (T-050, 신규): `KanbanBoard`, `KanbanTask`, `KanbanStatus` enum(6단계, 색상/표시명).
-2. **KanbanView** (T-051, 신규): 상단 보드 Picker(+새 보드), `TabView(.page)` 로 컬럼 좌우 스와이프, 카드에 상태 이동 메뉴(◀▶), 카드 탭→상세(편집/세션 점프). 저장은 보드 전체 PUT(낙관적 업데이트, 30초 주기+pull-to-refresh로 동기화).
-3. **Hermes 스킬** (T-052): 맥미니 Hermes에 칸반 스킬 등록 — 에이전트가 작업을 분배/완료할 때 같은 JSON 파일을 갱신하도록 SKILL.md 작성 (내용 초안은 `docs/HANDOFF.md` 부록 B). 이로써 "Hermes가 관리하고 앱은 본다"가 자동으로 성립.
+> 초기 구현(JSON 파일 + 보드 전체 PUT)은 hermes-agent **내장 칸반과 별개의 데이터**라서
+> 대시보드에 안 보이고 디스패처가 실행하지도 않았다. T-080~082에서 내장 칸반으로 전환.
 
-**수용 기준**: 앱에서 태스크 생성→맥미니 JSON 반영. Hermes에게 텔레그램으로 "칸반 X 작업 done 처리해" 지시→앱 새로고침 시 반영.
+**현행 구조**:
+- 데이터: `~/.hermes/kanban.db`(default) + `~/.hermes/kanban/boards/<slug>/kanban.db`
+- 상태 7단계: `triage|todo|scheduled|ready|running|blocked|done` (+archived는 숨김)
+- **ready 태스크는 게이트웨이 디스패처가 60초 내 워커 프로필로 자동 실행** (running → done/blocked)
+- Bridge API: `GET /kanban`(보드 목록+카운트), `GET /kanban/<board>`(태스크, sqlite 직접 읽기),
+  `POST /kanban/<board>/tasks`(생성 — status: ready|triage|blocked),
+  `POST /kanban/<board>/tasks/<id>/action`(promote/block/unblock/complete/archive/comment — `hermes kanban` CLI 경유)
+- 앱: 카드 상태는 액션 메뉴로만 전이(running은 디스패처 소유라 수동 이동 불가).
+  새 작업 시트에서 담당 프로필 + 시작 방식(바로 실행/구체화 후 실행/보류) 선택.
+- Hermes 스킬: `~/.hermes/skills/kanban/SKILL.md` v2 — `hermes kanban` CLI 사용 (HANDOFF 부록 B).
+
+**수용 기준**: 앱에서 "바로 실행" 태스크 생성 → 대시보드 `:8000/kanban`에 표시 → 1분 내 디스패처가
+워커 실행(running) → done 전이가 앱·대시보드 양쪽에 반영.
 
 ### Phase 7 — 터미널 / 파일 탐색기
 1. **빠른 길** (T-060): 기존 대시보드(`http://100.83.59.60:8000`)를 `WKWebView` 탭으로 임베드(세션 토큰 입력 재활용). 공수 거의 0.
@@ -177,4 +171,4 @@ bash scripts/setup_profiles_api.sh <API_KEY>
 2. `API_SERVER_HOST=0.0.0.0`은 Tailscale 사설망 전제. 공유기 포트포워딩으로 공인망 노출 금지.
 3. 프로필 자동 검색은 default 프로필이 `API_SERVER_MODEL_NAME` 미설정이면 이름이 "hermes-agent" 등으로 잡힐 수 있음 → setup 스크립트가 모든 프로필에 MODEL_NAME을 프로필명으로 설정해 해결.
 4. 여러 게이트웨이 상시 기동 = 프로필 수만큼 상주 프로세스. 맥미니 메모리 확인. `hermes-gateways status`로 관리.
-5. 칸반 동시 수정(앱 PUT vs Hermes 파일 수정)은 마지막 쓰기 승리 — 보드 전체 PUT 전에 GET으로 최신본을 받아 병합하는 규칙을 앱에 구현(T-051에 포함).
+5. 칸반 쓰기는 반드시 `hermes kanban` CLI(또는 에이전트 kanban_* 도구) 경유 — kanban.db를 SQL로 직접 수정하면 이벤트 기록·의존성 재계산·디스패치 불변식이 깨진다. Bridge도 읽기만 sqlite 직접, 쓰기는 CLI subprocess.
