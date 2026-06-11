@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct MessageBubble: View {
     let message: ChatMessage
@@ -29,6 +30,25 @@ struct MessageBubble: View {
             .background(isUser ? Color.accentColor : Color(.tertiarySystemBackground))
             .foregroundStyle(isUser ? .white : .primary)
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .contextMenu {
+                if !message.content.isEmpty {
+                    Button {
+                        UIPasteboard.general.string = message.content
+                    } label: {
+                        Label("복사", systemImage: "doc.on.doc")
+                    }
+                    if !isUser {
+                        Button {
+                            UIPasteboard.general.string = MarkdownLite.plainText(from: message.content)
+                        } label: {
+                            Label("평문 복사 (마크다운 제거)", systemImage: "doc.plaintext")
+                        }
+                    }
+                    ShareLink(item: message.content) {
+                        Label("공유", systemImage: "square.and.arrow.up")
+                    }
+                }
+            }
             if !isUser { Spacer(minLength: 40) }
         }
         .padding(.horizontal, 16)
