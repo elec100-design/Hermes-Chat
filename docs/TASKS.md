@@ -107,7 +107,7 @@
 |----|------|------|------|
 | T-097 | Bridge config 엔드포인트: GET(key/token/secret 줄 마스킹) + PATCH(`toolsets` 키 화이트리스트만, 라인 단위 블록 치환, `.bak` 백업, 비정형이면 400 거부 — stdlib만, yaml 파서 없음). **착수 전 실제 config.yaml의 toolsets 블록 형태를 맥 에이전트가 이 행 비고에 기록할 것** | `server/hermes_bridge.py` | TODO (완료 시 `NEEDS-BUILD(브리지 재배포 필요)`) |
 | T-098 | T-031 본편: SkillsView 툴셋 토글 → "적용" → Bridge PATCH → 재시작 안내+restart 버튼. Bridge 404 시 읽기전용 강등 | `Services/BridgeClient.swift`, `Views/SkillsView.swift` | TODO (T-097 뒤) |
-| T-099 | 프로필별 apiKey Keychain 이관 — `profileApiKey.<name>` 키, persistProfiles()는 JSON에 빈 문자열 직렬화, 로드 시 구버전 평문 1회 이관, 프로필 삭제 시 Keychain도 정리 | `Services/AppDefaults.swift`, `Models/ProfileModels.swift` | TODO |
+| T-099 | 프로필별 apiKey Keychain 이관 — `profileApiKey.<name>` 키, persistProfiles()는 JSON에 빈 문자열 직렬화, 로드 시 구버전 평문 감지하면 Keychain 이관 후 재직렬화, 프로필 삭제 시 Keychain도 정리 (ProfileModels는 무수정 — 메모리 모델은 그대로) | `Services/AppDefaults.swift` | NEEDS-BUILD (Claude Code, 06-11) |
 
 ## Phase 13 — 음성 입출력 (내장 프레임워크만)
 

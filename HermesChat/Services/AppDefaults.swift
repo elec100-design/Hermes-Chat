@@ -38,12 +38,14 @@ final class AppSettings: ObservableObject {
     private var loadGeneration = 0
 
     init() {
-        let stored = Self.loadStoredProfiles()
+        let (stored, migrated) = Self.loadStoredProfiles()
         profiles = stored.isEmpty ? [.default] : stored
         let storedName = UserDefaults.standard.string(forKey: Self.selectedProfileNameKey) ?? "default"
         selectedProfileID = (profiles.first { $0.name == storedName } ?? profiles.first)?.id
         apiKey = Self.loadSecret("apiKey")
         bridgeToken = Self.loadSecret("bridgeToken")
+        // 구버전 평문 apiKey가 있었으면 재직렬화로 UserDefaults에서 제거 (T-099)
+        if migrated { persistProfiles() }
     }
 
     /// Keychain 우선, 없으면 구버전 UserDefaults에서 이관 후 삭제
@@ -123,6 +125,9 @@ final class AppSettings: ObservableObject {
 
     func removeProfiles(at offsets: IndexSet) {
         let removingSelected = offsets.contains { profiles[$0].id == selectedProfileID }
+        for offset in offsets {
+            KeychainHelper.delete(Self.profileKeychainKey(profiles[offset].name))
+        }
         profiles.remove(atOffsets: offsets)
         if profiles.isEmpty { profiles = [.default] }
         if removingSelected, let first = profiles.first {
@@ -202,16 +207,38 @@ final class AppSettings: ObservableObject {
         return (try? JSONDecoder().decode(ModelsResponse.self, from: data))?.data.first?.id
     }
 
+    private static func profileKeychainKey(_ name: String) -> String { "profileApiKey.\(name)" }
+
+    /// 프로필별 apiKey는 Keychain에 보관하고, UserDefaults JSON에는 빈 문자열로 직렬화한다 (T-099).
     private func persistProfiles() {
-        if let data = try? JSONEncoder().encode(profiles) {
+        for profile in profiles {
+            // 빈 값이면 KeychainHelper.set이 삭제 처리
+            KeychainHelper.set(profile.apiKey, for: Self.profileKeychainKey(profile.name))
+        }
+        var sanitized = profiles
+        for idx in sanitized.indices { sanitized[idx].apiKey = "" }
+        if let data = try? JSONEncoder().encode(sanitized) {
             UserDefaults.standard.set(data, forKey: Self.profilesKey)
         }
     }
 
-    private static func loadStoredProfiles() -> [HermesProfile] {
+    /// - Returns: 저장된 프로필과, 구버전 평문 apiKey를 Keychain으로 이관했는지 여부
+    private static func loadStoredProfiles() -> (profiles: [HermesProfile], migrated: Bool) {
         guard let data = UserDefaults.standard.data(forKey: profilesKey),
-              let decoded = try? JSONDecoder().decode([HermesProfile].self, from: data) else { return [] }
-        return decoded
+              var decoded = try? JSONDecoder().decode([HermesProfile].self, from: data)
+        else { return ([], false) }
+        var migrated = false
+        for idx in decoded.indices {
+            let key = profileKeychainKey(decoded[idx].name)
+            if !decoded[idx].apiKey.isEmpty {
+                // 구버전: UserDefaults에 평문으로 남아 있던 키 → Keychain 1회 이관
+                KeychainHelper.set(decoded[idx].apiKey, for: key)
+                migrated = true
+            } else if let stored = KeychainHelper.get(key) {
+                decoded[idx].apiKey = stored
+            }
+        }
+        return (decoded, migrated)
     }
 
     // MARK: - Sessions
