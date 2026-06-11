@@ -18,6 +18,7 @@
 """
 
 import json
+import mimetypes
 import os
 import re
 import shutil
@@ -36,6 +37,7 @@ PROFILES_DIR = HERMES_HOME / "profiles"
 KANBAN_BOARDS_DIR = HERMES_HOME / "kanban" / "boards"
 TOKEN = os.environ.get("HERMES_BRIDGE_TOKEN", "")
 MAX_UPLOAD = 50 * 1024 * 1024  # 50MB
+MAX_RAW_DOWNLOAD = 20 * 1024 * 1024  # 20MB — /files/raw (앱 이미지 썸네일용)
 
 SAFE_NAME = re.compile(r"^[A-Za-z0-9._-]{1,80}$")
 
@@ -318,6 +320,24 @@ class Handler(BaseHTTPRequestHandler):
             if target.stat().st_size > 512 * 1024:
                 return self.fail(413, "file too large (512KB limit)")
             return self.send_text(target.read_text(errors="replace"))
+
+        # GET /files/raw?path=<상대경로> — 바이너리 파일 (이미지 썸네일용, 20MB 제한, T-105)
+        if parts == ["files", "raw"]:
+            target = safe_subpath(query.get("path", ""))
+            if target is None or not target.is_file():
+                return self.fail(404, "file not found")
+            if is_hidden_path(target):
+                return self.fail(403, "hidden files are not accessible")
+            if target.stat().st_size > MAX_RAW_DOWNLOAD:
+                return self.fail(413, "file too large (20MB limit)")
+            ctype = mimetypes.guess_type(target.name)[0] or "application/octet-stream"
+            body = target.read_bytes()
+            self.send_response(200)
+            self.send_header("Content-Type", ctype)
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
 
         # GET /profiles/<name>/logs?tail=200 — 최신 로그 파일 꼬리 (읽기전용)
         if len(parts) == 3 and parts[0] == "profiles" and parts[2] == "logs":
