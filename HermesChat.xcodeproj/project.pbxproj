@@ -18,6 +18,7 @@
 		3C8EDF01DAB66C97CF8EEE01 /* FileBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C8EDF02DAB66C97CF8EEE02 /* FileBrowserView.swift */; };
 		4D9FAE01EBC77DA8DA9FFF01 /* MarkdownText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D9FAE02EBC77DA8DA9FFF02 /* MarkdownText.swift */; };
 		5EABCD01FCD88EB9EB1AAA01 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EABCD02FCD88EB9EB1AAA02 /* NotificationService.swift */; };
+		6FBCDE01ADE99FCAFC2BBB01 /* SpeechService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FBCDE02ADE99FCAFC2BBB02 /* SpeechService.swift */; };
 		0D9CC9C9B49F82C246E793D9 /* HermesAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E785976044540D5051D9A8C /* HermesAPIClient.swift */; };
 		1C77813AED34B08CD3E08F90 /* HermesChatApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65FFA2CC47E47044567F7E36 /* HermesChatApp.swift */; };
 		3658CC72F9CAB88AB9CBA142 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8DCB2A4C45DFD8E5CA9F032 /* SettingsView.swift */; };
@@ -47,6 +48,7 @@
 		3C8EDF02DAB66C97CF8EEE02 /* FileBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileBrowserView.swift; sourceTree = "<group>"; };
 		4D9FAE02EBC77DA8DA9FFF02 /* MarkdownText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownText.swift; sourceTree = "<group>"; };
 		5EABCD02FCD88EB9EB1AAA02 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
+		6FBCDE02ADE99FCAFC2BBB02 /* SpeechService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechService.swift; sourceTree = "<group>"; };
 		0ABF5AB0727489B06D16F6AB /* ToolModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolModels.swift; sourceTree = "<group>"; };
 		1F3BB2D079331A3B8BEBB359 /* ChatModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatModels.swift; sourceTree = "<group>"; };
 		1FB3343782720464725EB49B /* DashboardModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardModels.swift; sourceTree = "<group>"; };
@@ -107,6 +109,7 @@
 				7E785976044540D5051D9A8C /* HermesAPIClient.swift */,
 				2B7DCE02C9A55B86BE7DDD02 /* KeychainHelper.swift */,
 				5EABCD02FCD88EB9EB1AAA02 /* NotificationService.swift */,
+				6FBCDE02ADE99FCAFC2BBB02 /* SpeechService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -241,6 +244,7 @@
 				4D9FAE01EBC77DA8DA9FFF01 /* MarkdownText.swift in Sources */,
 				D37A2F7854931324D14E852F /* MessageView.swift in Sources */,
 				5EABCD01FCD88EB9EB1AAA01 /* NotificationService.swift in Sources */,
+				6FBCDE01ADE99FCAFC2BBB01 /* SpeechService.swift in Sources */,
 				0D3F8A01E5C16B42DA3FFF01 /* ProfileBoardView.swift in Sources */,
 				C29ABD7D6F0C12DFFACAAC42 /* SessionListView.swift in Sources */,
 				7E4B207B5BCA40A070CBF676 /* SessionModels.swift in Sources */,

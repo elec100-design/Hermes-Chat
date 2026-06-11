@@ -113,7 +113,7 @@
 
 | ID | 작업 | 파일 | 상태 |
 |----|------|------|------|
-| T-100 | 음성 입력 — SpeechService(SFSpeechRecognizer+AVAudioEngine, ko-KR), inputBar 마이크 버튼(녹음 중 시각 피드백), Info.plist `NSSpeechRecognitionUsageDescription`·`NSMicrophoneUsageDescription` | `Services/SpeechService.swift` (신규, pbxproj 등록!), `Views/ChatView.swift`, `Resources/Info.plist` | TODO |
+| T-100 | 음성 입력 — SpeechService(SFSpeechRecognizer+AVAudioEngine, ko-KR, 싱글턴 — AVAudioSession 단일 소유), inputBar 마이크 버튼(녹음 중 빨간 mic.fill), 부분 결과를 입력창에 실시간 반영(기존 입력 뒤에 이어붙임), Info.plist 권한 키 2종 | `Services/SpeechService.swift` (신규, pbxproj 등록됨), `Views/ChatView.swift`, `Resources/Info.plist` | NEEDS-BUILD (Claude Code, 06-11) |
 | T-101 | 응답 읽어주기 — AVSpeechSynthesizer, 메시지 컨텍스트 메뉴 "읽어주기/중지", 입력은 `MarkdownLite.plainText(from:)`(T-090 파서 재사용). AVAudioSession은 SpeechService 단일 소유 | `Services/SpeechService.swift`, `Views/Components/MessageView.swift` | TODO (T-090·T-091 뒤) |
 
 ## 빌드 검증 기록 (검증자가 갱신)

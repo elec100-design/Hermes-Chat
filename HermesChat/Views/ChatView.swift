@@ -13,6 +13,9 @@ struct ChatView: View {
     @State private var forkedSession: Session?
     @State private var isForking = false
     @State private var forkError: String?
+    @ObservedObject private var speech = SpeechService.shared
+    /// 받아쓰기 시작 시점의 입력창 내용 — 부분 결과가 갱신될 때마다 그 뒤에 이어 붙인다
+    @State private var dictationBase = ""
 
     init(sessionId: String, appSettings: AppSettings) {
         self.sessionId = sessionId
@@ -81,6 +84,23 @@ struct ChatView: View {
             Button("확인", role: .cancel) {}
         } message: {
             Text(forkError ?? "")
+        }
+        .alert("음성 입력 오류", isPresented: .init(
+            get: { speech.errorMessage != nil },
+            set: { if !$0 { speech.errorMessage = nil } }
+        )) {
+            Button("확인", role: .cancel) {}
+        } message: {
+            Text(speech.errorMessage ?? "")
+        }
+        .onChange(of: speech.transcript) { transcript in
+            guard !transcript.isEmpty else { return }
+            viewModel.inputText = dictationBase.isEmpty
+                ? transcript
+                : dictationBase + " " + transcript
+        }
+        .onDisappear {
+            if speech.isRecording { speech.stopRecording() }
         }
         .photosPicker(
             isPresented: $showPhotoPicker,
@@ -197,6 +217,22 @@ struct ChatView: View {
                 }
                 .disabled(viewModel.isWorking)
                 .accessibilityLabel("첨부 추가")
+
+                Button {
+                    if speech.isRecording {
+                        speech.stopRecording()
+                    } else {
+                        dictationBase = viewModel.inputText
+                            .trimmingCharacters(in: .whitespacesAndNewlines)
+                        Task { await speech.startRecording() }
+                    }
+                } label: {
+                    Image(systemName: speech.isRecording ? "mic.fill" : "mic")
+                        .font(.system(size: 20))
+                        .foregroundStyle(speech.isRecording ? Color.red : Color.accentColor)
+                }
+                .disabled(viewModel.isWorking)
+                .accessibilityLabel(speech.isRecording ? "받아쓰기 중지" : "음성 입력")
 
                 TextField("메시지를 입력하세요", text: $viewModel.inputText, axis: .vertical)
                     .textFieldStyle(.roundedBorder)
