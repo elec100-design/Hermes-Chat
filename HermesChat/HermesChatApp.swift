@@ -46,7 +46,7 @@ struct HermesChatApp: App {
             .task {
                 await NotificationService.shared.requestAuthorization()
             }
-            .onChange(of: scenePhase) { phase in
+            .onChange(of: scenePhase) { _, phase in
                 // 칸반 전이(done/blocked) 감지 폴링 — 포그라운드에서만 (T-093)
                 if phase == .active {
                     NotificationService.shared.startPolling(appSettings: appSettings)
@@ -68,7 +68,7 @@ struct HermesChatApp: App {
 
     /// 다음 백그라운드 폴링 예약. 실행 보장은 없으며(iOS 스케줄러 재량),
     /// 실패는 조용히 무시한다 — 다음 백그라운드 진입/실행 때 재예약된다.
-    private static func scheduleBackgroundRefresh() {
+    nonisolated private static func scheduleBackgroundRefresh() {
         let request = BGAppRefreshTaskRequest(identifier: refreshTaskID)
         request.earliestBeginDate = Date(timeIntervalSinceNow: 15 * 60)
         try? BGTaskScheduler.shared.submit(request)

@@ -123,7 +123,7 @@ final class ChatViewModel: ObservableObject {
                 case .content(let chunk):
                     assistant.content += chunk
                 case .toolCallUpdate(let id, let name, let argumentsDelta):
-                    if var existing = toolDictionary[id] {
+                    if let existing = toolDictionary[id] {
                         let merged = (existing.arguments ?? [:])
                             .merging(["_delta": argumentsDelta], uniquingKeysWith: { cur, _ in cur })
                         toolDictionary[id] = ToolCall(id: existing.id, name: existing.name, arguments: merged, result: existing.result)

@@ -93,7 +93,7 @@ struct ChatView: View {
         } message: {
             Text(speech.errorMessage ?? "")
         }
-        .onChange(of: speech.transcript) { transcript in
+        .onChange(of: speech.transcript) { _, transcript in
             guard !transcript.isEmpty else { return }
             viewModel.inputText = dictationBase.isEmpty
                 ? transcript
@@ -108,7 +108,7 @@ struct ChatView: View {
             maxSelectionCount: 5,
             matching: .images
         )
-        .onChange(of: photoItems) { items in
+        .onChange(of: photoItems) { _, items in
             guard !items.isEmpty else { return }
             photoItems = []
             Task { await loadPhotos(items) }
@@ -175,8 +175,8 @@ struct ChatView: View {
             .listStyle(.plain)
             // 말풍선 썸네일(ChatImageView)이 Bridge로 이미지를 받도록 주입 (T-106)
             .environment(\.bridgeClient, appSettings.bridgeClient)
-            .onChange(of: viewModel.displayMessages.count) { _ in scrollToBottom(proxy: proxy) }
-            .onChange(of: viewModel.displayMessages.last?.content) { _ in scrollToBottom(proxy: proxy) }
+            .onChange(of: viewModel.displayMessages.count) { scrollToBottom(proxy: proxy) }
+            .onChange(of: viewModel.displayMessages.last?.content) { scrollToBottom(proxy: proxy) }
         }
     }
 
