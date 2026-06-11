@@ -12,6 +12,7 @@ enum AppTab: Hashable {
 struct HermesChatApp: App {
     @StateObject private var appSettings = AppSettings()
     @State private var selectedTab: AppTab = .board
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
@@ -37,6 +38,17 @@ struct HermesChatApp: App {
                 }
                 .tabItem { Label("설정", systemImage: "gearshape") }
                 .tag(AppTab.settings)
+            }
+            .task {
+                await NotificationService.shared.requestAuthorization()
+            }
+            .onChange(of: scenePhase) { phase in
+                // 칸반 전이(done/blocked) 감지 폴링 — 포그라운드에서만 (T-093)
+                if phase == .active {
+                    NotificationService.shared.startPolling(appSettings: appSettings)
+                } else {
+                    NotificationService.shared.stopPolling()
+                }
             }
         }
     }
