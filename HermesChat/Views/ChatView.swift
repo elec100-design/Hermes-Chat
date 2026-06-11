@@ -37,7 +37,7 @@ struct ChatView: View {
                 HStack {
                     Spacer()
                     ProgressView().padding(.trailing, 4)
-                    Text(viewModel.messages.last?.content.isEmpty == true ? "응답 생성 중..." : "응답 중")
+                    Text(workingStatusText)
                     Spacer()
                 }
                 .padding(.vertical, 6)
@@ -151,10 +151,21 @@ struct ChatView: View {
         }
     }
 
+    /// 사고 중(<think> 미닫힘)이면 "생각 중...", 보일 내용이 생기면 "응답 중" (T-103)
+    private var workingStatusText: String {
+        guard let last = viewModel.messages.last, last.role == .assistant else {
+            return "응답 생성 중..."
+        }
+        if MarkdownLite.hasOpenThink(last.content) { return "생각 중..." }
+        let visible = MarkdownLite.strippingThink(last.content)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return visible.isEmpty ? "응답 생성 중..." : "응답 중"
+    }
+
     private var messageList: some View {
         ScrollViewReader { proxy in
             List {
-                ForEach(viewModel.messages) { message in
+                ForEach(viewModel.displayMessages) { message in
                     MessageBubble(message: message)
                         .listRowSeparator(.hidden)
                         .listRowInsets(.init(top: 6, leading: 0, bottom: 6, trailing: 0))
@@ -162,13 +173,13 @@ struct ChatView: View {
                 }
             }
             .listStyle(.plain)
-            .onChange(of: viewModel.messages.count) { _ in scrollToBottom(proxy: proxy) }
-            .onChange(of: viewModel.messages.last?.content) { _ in scrollToBottom(proxy: proxy) }
+            .onChange(of: viewModel.displayMessages.count) { _ in scrollToBottom(proxy: proxy) }
+            .onChange(of: viewModel.displayMessages.last?.content) { _ in scrollToBottom(proxy: proxy) }
         }
     }
 
     private func scrollToBottom(proxy: ScrollViewProxy) {
-        guard let last = viewModel.messages.last?.id else { return }
+        guard let last = viewModel.displayMessages.last?.id else { return }
         withAnimation(.easeInOut) { proxy.scrollTo(last, anchor: .bottom) }
     }
 

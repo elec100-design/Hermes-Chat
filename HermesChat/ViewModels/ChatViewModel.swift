@@ -28,6 +28,24 @@ final class ChatViewModel: ObservableObject {
         Task { await loadHistory() }
     }
 
+    /// 채팅 화면에 렌더할 메시지 (T-103) — tool/system 제외,
+    /// 사고 과정(<think>)만 있고 보일 내용이 없는 어시스턴트 버블 제외.
+    /// 스트리밍 갱신은 원본 `messages`의 인덱스를 그대로 쓰므로 여기는 읽기 전용 필터다.
+    var displayMessages: [ChatMessage] {
+        messages.filter { message in
+            switch message.role {
+            case .user:
+                return true
+            case .assistant:
+                let visible = MarkdownLite.strippingThink(message.content)
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                return !visible.isEmpty || !(message.toolCalls?.isEmpty ?? true)
+            case .system, .tool:
+                return false
+            }
+        }
+    }
+
     private func loadHistory() async {
         isLoadingHistory = true
         do {

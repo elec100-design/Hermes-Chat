@@ -19,8 +19,46 @@ struct MarkdownSegment: Identifiable {
 }
 
 enum MarkdownLite {
+    /// `<think>...</think>` 사고 과정을 제거한다 (T-103).
+    /// 미닫힌 `<think>`(스트리밍 중)는 그 지점부터 끝까지 숨기고, 말미에 걸친
+    /// 부분 열림 태그("<", "<t" … "<think")도 보류해 토큰 경계에서 한 글자도 새지 않게 한다.
+    static func strippingThink(_ raw: String) -> String {
+        var result = ""
+        var rest = Substring(raw)
+        while let open = rest.range(of: "<think>") {
+            result += rest[..<open.lowerBound]
+            guard let close = rest.range(of: "</think>", range: open.upperBound..<rest.endIndex) else {
+                return result  // 미닫힘 — 이후는 전부 사고 중인 내용
+            }
+            rest = rest[close.upperBound...]
+        }
+        result += rest
+        return trimmingPartialOpenTag(result)
+    }
+
+    /// 지금 사고 중인가 (미닫힌 `<think>` 존재) — 작업 바 "생각 중..." 표시용
+    static func hasOpenThink(_ raw: String) -> Bool {
+        guard let lastOpen = raw.range(of: "<think>", options: .backwards) else { return false }
+        return raw.range(of: "</think>", range: lastOpen.upperBound..<raw.endIndex) == nil
+    }
+
+    /// 끝에 걸쳐 있는 "<think>"의 접두 부분을 잘라낸다 (다음 토큰이 태그가 아니면 곧 복원됨)
+    private static func trimmingPartialOpenTag(_ text: String) -> String {
+        let tag = "<think>"
+        let maxLen = min(tag.count - 1, text.count)
+        guard maxLen >= 1 else { return text }
+        for length in stride(from: maxLen, through: 1, by: -1) {
+            if tag.hasPrefix(text.suffix(length)) {
+                return String(text.dropLast(length))
+            }
+        }
+        return text
+    }
+
     /// ```lang ... ``` 펜스를 분리한다. 마지막 펜스가 안 닫혀 있으면(스트리밍 중) 그 구간은 코드로 취급.
+    /// 사고 과정(`<think>`)은 진입 시점에 제거된다 — 렌더·복사·TTS·알림 미리보기 모두 동일 적용.
     static func segments(from raw: String) -> [MarkdownSegment] {
+        let cleaned = strippingThink(raw)
         var segments: [MarkdownSegment] = []
         var textLines: [Substring] = []
         var codeLines: [Substring] = []
@@ -42,7 +80,7 @@ enum MarkdownLite {
             segments.append(MarkdownSegment(id: segments.count, kind: .code(language: language, code: code)))
         }
 
-        for line in raw.split(separator: "\n", omittingEmptySubsequences: false) {
+        for line in cleaned.split(separator: "\n", omittingEmptySubsequences: false) {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
             if trimmed.hasPrefix("```") {
                 if inCode {
