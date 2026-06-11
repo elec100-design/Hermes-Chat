@@ -8,11 +8,15 @@ import UIKit
 // `.inlineOnlyPreservingWhitespace`는 볼드/이탤릭/링크/인라인코드 + 개행 보존을 지원한다.
 // 외부 패키지 없음 — pbxproj를 여러 에이전트가 수동 편집하는 구조라 SPM 의존성을 피한다.
 
-/// 메시지 본문을 코드펜스 기준으로 분할한 구간
+/// 메시지 본문을 코드펜스·이미지·첨부 기준으로 분할한 구간
 struct MarkdownSegment: Identifiable {
     enum Kind {
         case text(AttributedString)
         case code(language: String?, code: String)
+        /// `![alt](src)` 또는 이미지 확장자의 `[첨부: 경로]` (T-107)
+        case image(source: ChatImageSource, alt: String?)
+        /// 비이미지 `[첨부: 경로]` — 파일 칩으로 표시
+        case file(name: String)
     }
     let id: Int
     let kind: Kind
@@ -58,7 +62,14 @@ enum MarkdownLite {
     /// ```lang ... ``` 펜스를 분리한다. 마지막 펜스가 안 닫혀 있으면(스트리밍 중) 그 구간은 코드로 취급.
     /// 사고 과정(`<think>`)은 진입 시점에 제거된다 — 렌더·복사·TTS·알림 미리보기 모두 동일 적용.
     static func segments(from raw: String) -> [MarkdownSegment] {
-        let cleaned = strippingThink(raw)
+        var cleaned = strippingThink(raw)
+        // 스트리밍 꼬리의 미완성 이미지/첨부 토큰 보류 — 단, 꼬리가 미닫힌 코드펜스 안이면 건드리지 않는다
+        let fenceCount = cleaned.split(separator: "\n", omittingEmptySubsequences: false)
+            .filter { $0.trimmingCharacters(in: .whitespaces).hasPrefix("```") }
+            .count
+        if fenceCount % 2 == 0 {
+            cleaned = trimmingIncompleteTail(cleaned)
+        }
         var segments: [MarkdownSegment] = []
         var textLines: [Substring] = []
         var codeLines: [Substring] = []
@@ -69,8 +80,7 @@ enum MarkdownLite {
             guard !textLines.isEmpty else { return }
             let joined = textLines.joined(separator: "\n")
             textLines.removeAll()
-            guard !joined.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-            segments.append(MarkdownSegment(id: segments.count, kind: .text(inline(joined))))
+            appendTextBlock(joined, to: &segments)
         }
         func flushCode() {
             let code = codeLines.joined(separator: "\n")
@@ -103,6 +113,88 @@ enum MarkdownLite {
         return segments
     }
 
+    // MARK: 이미지/첨부 세그먼트 (T-107)
+
+    private static let imageRegex = try! NSRegularExpression(
+        pattern: "!\\[([^\\]]*)\\]\\(([^)\\s]+)\\)"
+    )
+
+    /// 코드펜스 밖 텍스트 블록에서 `[첨부: 경로]` 전체 줄과 `![alt](src)`를 분리한다.
+    private static func appendTextBlock(_ text: String, to segments: inout [MarkdownSegment]) {
+        var plainLines: [String] = []
+        func flushPlain() {
+            let joined = plainLines.joined(separator: "\n")
+            plainLines = []
+            appendInlineImages(joined, to: &segments)
+        }
+        for line in text.split(separator: "\n", omittingEmptySubsequences: false) {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix("[첨부:"), trimmed.hasSuffix("]") {
+                let path = String(trimmed.dropFirst("[첨부:".count).dropLast())
+                    .trimmingCharacters(in: .whitespaces)
+                flushPlain()
+                guard !path.isEmpty else { continue }
+                if ChatImageSource.isImagePath(path) {
+                    segments.append(MarkdownSegment(
+                        id: segments.count,
+                        kind: .image(source: ChatImageSource.parse(path), alt: nil)
+                    ))
+                } else {
+                    segments.append(MarkdownSegment(
+                        id: segments.count,
+                        kind: .file(name: (path as NSString).lastPathComponent)
+                    ))
+                }
+                continue
+            }
+            plainLines.append(String(line))
+        }
+        flushPlain()
+    }
+
+    /// 텍스트 안의 `![alt](src)`를 이미지 세그먼트로 분리하고, 나머지는 인라인 마크다운으로.
+    private static func appendInlineImages(_ text: String, to segments: inout [MarkdownSegment]) {
+        let ns = text as NSString
+        var cursor = 0
+        for match in imageRegex.matches(in: text, range: NSRange(location: 0, length: ns.length)) {
+            appendPlain(ns.substring(with: NSRange(location: cursor, length: match.range.location - cursor)),
+                        to: &segments)
+            let alt = ns.substring(with: match.range(at: 1))
+            let src = ns.substring(with: match.range(at: 2))
+            segments.append(MarkdownSegment(
+                id: segments.count,
+                kind: .image(source: ChatImageSource.parse(src), alt: alt.isEmpty ? nil : alt)
+            ))
+            cursor = match.range.location + match.range.length
+        }
+        appendPlain(ns.substring(from: cursor), to: &segments)
+    }
+
+    private static func appendPlain(_ text: String, to segments: inout [MarkdownSegment]) {
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        segments.append(MarkdownSegment(id: segments.count, kind: .text(inline(text))))
+    }
+
+    /// 스트리밍 꼬리의 미완성 토큰 보류 — 닫힘 문자가 도착하는 프레임에 한 번에 나타나
+    /// 중간 상태가 평문으로 번쩍이지 않게 한다. 오검출 방지로 꼬리 512자 이내만 보류.
+    static func trimmingIncompleteTail(_ text: String) -> String {
+        var result = text
+        // 미완성 마크다운 이미지: 마지막 "![" 뒤에 ")"가 아직 없으면 그 지점부터 보류
+        if let bang = result.range(of: "![", options: .backwards),
+           result.range(of: ")", range: bang.upperBound..<result.endIndex) == nil,
+           result.distance(from: bang.lowerBound, to: result.endIndex) <= 512 {
+            result = String(result[..<bang.lowerBound])
+        }
+        // 미완성 첨부 줄: 마지막 줄이 "[첨부:"로 시작하는데 "]"가 없으면 그 줄을 보류
+        let lastLineStart = result.range(of: "\n", options: .backwards)?.upperBound ?? result.startIndex
+        let lastLine = result[lastLineStart...]
+        if lastLine.trimmingCharacters(in: .whitespaces).hasPrefix("[첨부:"), !lastLine.contains("]"),
+           lastLine.count <= 512 {
+            result = String(result[..<lastLineStart])
+        }
+        return result
+    }
+
     /// 인라인 마크다운 → AttributedString. 파싱 실패 시 평문 폴백.
     static func inline(_ text: String) -> AttributedString {
         (try? AttributedString(
@@ -119,6 +211,8 @@ enum MarkdownLite {
             switch segment.kind {
             case .text(let attributed): return String(attributed.characters)
             case .code(_, let code): return code
+            case .image(let source, let alt): return alt ?? source.displayName
+            case .file(let name): return name
             }
         }
         .joined(separator: "\n")
@@ -140,6 +234,16 @@ struct MarkdownText: View {
                         .textSelection(.enabled)
                 case .code(let language, let code):
                     CodeBlockView(language: language, code: code)
+                case .image(let source, _):
+                    ChatImageView(source: source)
+                case .file(let name):
+                    Label(name, systemImage: "doc")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(.ultraThinMaterial)
+                        .clipShape(Capsule())
                 }
             }
         }
