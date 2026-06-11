@@ -97,7 +97,7 @@
 | ID | 작업 | 파일 | 상태 |
 |----|------|------|------|
 | T-093 | NotificationService: UN 권한 요청, 칸반 스냅샷(taskID→status) UserDefaults 보존, 기존 `GET /kanban/<board>` 폴링 diff → done/blocked 전이 시 로컬 알림 (포그라운드 60초 폴링, 첫 폴링은 기록만). 포그라운드 배너 델리게이트 포함 | `Services/NotificationService.swift` (신규, pbxproj 등록됨), `HermesChatApp.swift` | NEEDS-BUILD (Claude Code, 06-11) |
-| T-094 | 채팅 긴 응답 완료 알림 — 스트림 완료 시 scenePhase != .active이고 10초 이상 경과면 로컬 알림 | `ViewModels/ChatViewModel.swift`, `Services/NotificationService.swift` | TODO |
+| T-094 | 채팅 긴 응답 완료 알림 — 스트림 완료 시 앱 비활성(UIApplication.applicationState)이고 10초 이상 경과면 로컬 알림 (본문은 MarkdownLite.plainText 80자 미리보기) | `ViewModels/ChatViewModel.swift` | NEEDS-BUILD (Claude Code, 06-11) |
 | T-095 | BGAppRefreshTask 백그라운드 폴링 — Info.plist `BGTaskSchedulerPermittedIdentifiers`(`ai.hermes.chat.refresh`)·`UIBackgroundModes` 추가, `.backgroundTask(.appRefresh)`에서 diff 1회 후 재예약 | `HermesChatApp.swift`, `Resources/Info.plist` | TODO |
 | T-096 | (선택·최적화) Bridge `GET /kanban/<board>/events?since=` — events 테이블 존재/스키마 방어적 확인, 미지원 시 `{"supported": false}` → 앱은 diff 유지. **착수 전 맥 에이전트가 `sqlite3 ~/.hermes/kanban.db ".schema events"` 결과를 이 행 비고에 기록할 것** | `server/hermes_bridge.py`, `Services/BridgeClient.swift` | TODO (Bridge 수정 → 완료 시 `NEEDS-BUILD(브리지 재배포 필요)`) |
 

@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 
 /// 전송 대기 중인 첨부 파일 (업로드는 send 시점에 일괄 수행)
 struct PendingAttachment: Identifiable, Equatable {
@@ -80,6 +81,7 @@ final class ChatViewModel: ObservableObject {
         inputText = ""
         messages.append(ChatMessage(role: .user, content: outgoing, toolCalls: nil, createdAt: .now))
 
+        let startedAt = Date.now
         let stream = appSettings.hermesClient.streamChat(sessionId: sessionId, message: outgoing)
 
         do {
@@ -110,6 +112,8 @@ final class ChatViewModel: ObservableObject {
             if messages[assistantIndex].content.isEmpty && (messages[assistantIndex].toolCalls?.isEmpty ?? true) {
                 messages.remove(at: assistantIndex)
             }
+
+            notifyCompletionIfBackground(startedAt: startedAt, responseText: assistant.content)
 
             if isFirstMessage {
                 await updateAutoTitle(from: text)
@@ -145,6 +149,20 @@ final class ChatViewModel: ObservableObject {
         attachments = []
         let header = lines.joined(separator: "\n")
         return text.isEmpty ? header : header + "\n\n" + text
+    }
+
+    /// 앱이 비활성(백그라운드/전환 중)이고 응답에 10초 이상 걸렸으면 로컬 알림 (T-094).
+    /// 짧은 응답은 돌아왔을 때 바로 보이므로 알리지 않는다.
+    private func notifyCompletionIfBackground(startedAt: Date, responseText: String) {
+        guard UIApplication.shared.applicationState != .active,
+              Date.now.timeIntervalSince(startedAt) >= 10 else { return }
+        let preview = MarkdownLite.plainText(from: responseText)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        NotificationService.shared.notify(
+            title: "\(appSettings.selectedProfile.name) 응답 완료",
+            body: preview.isEmpty ? "응답이 도착했습니다." : String(preview.prefix(80)),
+            id: "chat-done-\(sessionId)"
+        )
     }
 
     /// 첫 메시지의 앞부분으로 세션 제목을 자동 설정한다.
