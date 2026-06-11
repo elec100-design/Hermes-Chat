@@ -12,6 +12,7 @@
 		0C2E7F01D4B05A31C92EEF01 /* SkillsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C2E7F02D4B05A31C92EEF02 /* SkillsView.swift */; };
 		0D3F8A01E5C16B42DA3FFF01 /* ProfileBoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D3F8A02E5C16B42DA3FFF02 /* ProfileBoardView.swift */; };
 		0E4A9B01F6D27C53EB4AAA01 /* KanbanModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E4A9B02F6D27C53EB4AAA02 /* KanbanModels.swift */; };
+		DD17000100000000000DEE01 /* DiscussionModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD17000200000000000DEE02 /* DiscussionModels.swift */; };
 		0F5BAC01A7E38D64FC5BBB01 /* KanbanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F5BAC02A7E38D64FC5BBB02 /* KanbanView.swift */; };
 		1A6CBD01B8F49E75AD6CCC01 /* DashboardWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A6CBD02B8F49E75AD6CCC02 /* DashboardWebView.swift */; };
 		2B7DCE01C9A55B86BE7DDD01 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B7DCE02C9A55B86BE7DDD02 /* KeychainHelper.swift */; };
@@ -43,6 +44,7 @@
 		0C2E7F02D4B05A31C92EEF02 /* SkillsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillsView.swift; sourceTree = "<group>"; };
 		0D3F8A02E5C16B42DA3FFF02 /* ProfileBoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileBoardView.swift; sourceTree = "<group>"; };
 		0E4A9B02F6D27C53EB4AAA02 /* KanbanModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KanbanModels.swift; sourceTree = "<group>"; };
+		DD17000200000000000DEE02 /* DiscussionModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscussionModels.swift; sourceTree = "<group>"; };
 		0F5BAC02A7E38D64FC5BBB02 /* KanbanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KanbanView.swift; sourceTree = "<group>"; };
 		1A6CBD02B8F49E75AD6CCC02 /* DashboardWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardWebView.swift; sourceTree = "<group>"; };
 		2B7DCE02C9A55B86BE7DDD02 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
@@ -163,6 +165,7 @@
 			children = (
 				1F3BB2D079331A3B8BEBB359 /* ChatModels.swift */,
 				1FB3343782720464725EB49B /* DashboardModels.swift */,
+				DD17000200000000000DEE02 /* DiscussionModels.swift */,
 				0E4A9B02F6D27C53EB4AAA02 /* KanbanModels.swift */,
 				001BE0A159F3AEBDC606263C /* SessionModels.swift */,
 				0ABF5AB0727489B06D16F6AB /* ToolModels.swift */,
@@ -238,6 +241,7 @@
 				B5B4BF8255A8DF60FFE1604F /* ChatViewModel.swift in Sources */,
 				617FEF64C2A2B4E4986CB1BC /* DashboardModels.swift in Sources */,
 				1A6CBD01B8F49E75AD6CCC01 /* DashboardWebView.swift in Sources */,
+				DD17000100000000000DEE01 /* DiscussionModels.swift in Sources */,
 				3C8EDF01DAB66C97CF8EEE01 /* FileBrowserView.swift in Sources */,
 				0D9CC9C9B49F82C246E793D9 /* HermesAPIClient.swift in Sources */,
 				1C77813AED34B08CD3E08F90 /* HermesChatApp.swift in Sources */,
