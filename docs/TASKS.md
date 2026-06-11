@@ -4,6 +4,14 @@
 > 끝나면 `NEEDS-BUILD`(맥에서 빌드 미검증) 또는 `DONE`(빌드+실기기 확인). 막히면 `BLOCKED(사유)`.
 > 상태: `TODO` `DOING` `NEEDS-BUILD` `BLOCKED` `DONE`
 
+> **2026-06-11 현황**: Phase 10~14 전체가 PR #1(`claude/multi-agent-discussion-bcnnbt` → `main`)로
+> 병합되고 사용자 Xcode 빌드 + 실기기에서 Deep think 토론 정상 동작 확인. **main이 최신 기준선.**
+>
+> **다음 세션 예정 작업** (사용자 지정):
+> 1. 음성 입출력 실기기 기능 확인 — T-100~102 (받아쓰기, 읽어주기, 에어팟/글라스 라우팅)
+> 2. 사진/파일 입출력 실기기 기능 확인 — T-020~022 첨부 전송, T-105~108 썸네일 (T-105 브리지 재배포 여부 포함)
+> 3. 남은 TODO: T-096(칸반 events 최적화), T-097/T-098(Bridge config + 툴셋 토글)
+
 ## 즉시 (사람 또는 맥미니 Hermes가 1회 수행)
 
 | ID | 작업 | 상태 |
@@ -88,24 +96,24 @@
 
 | ID | 작업 | 파일 | 상태 |
 |----|------|------|------|
-| T-090 | 마크다운/코드블록 렌더링 — 코드펜스 자체 분리 + 인라인은 `AttributedString(markdown:)`. 코드블록 모노스페이스+배경+복사 버튼, 미닫힌 펜스는 코드 취급(스트리밍 안전). SPM 의존성 없음 | `Views/Components/MarkdownText.swift` (신규, pbxproj 등록됨), `Views/Components/MessageView.swift` | NEEDS-BUILD (Claude Code, 06-11 — 실기기 확인 항목: 다크모드 코드블록 가독, 스트리밍 중 깜빡임) |
-| T-091 | 메시지 컨텍스트 메뉴: 복사(UIPasteboard)·공유(ShareLink) + 어시스턴트는 "평문 복사(마크다운 제거)" 추가 | `Views/Components/MessageView.swift` | NEEDS-BUILD (Claude Code, 06-11) |
-| T-092 | 세션 fork — `POST /api/sessions/{id}/fork` 메서드(createSession의 단계적 응답 해석을 parseSessionResponse로 공용 추출) + ChatView 툴바 ⋯ 메뉴 "이 세션 분기" + SessionListView leading 스와이프 "분기" | `Services/HermesAPIClient.swift`, `Services/AppDefaults.swift`, `Views/ChatView.swift`, `Views/SessionListView.swift` | NEEDS-BUILD (Claude Code, 06-11 — 실기기 확인: fork 응답 형식이 단계적 해석에 걸리는지, 분기 세션에 히스토리 보존 여부) |
+| T-090 | 마크다운/코드블록 렌더링 — 코드펜스 자체 분리 + 인라인은 `AttributedString(markdown:)`. 코드블록 모노스페이스+배경+복사 버튼, 미닫힌 펜스는 코드 취급(스트리밍 안전). SPM 의존성 없음 | `Views/Components/MarkdownText.swift` (신규, pbxproj 등록됨), `Views/Components/MessageView.swift` | DONE (06-11 빌드 검증 · main 병합 — 다크모드/스트리밍 세부는 사용 중 확인) |
+| T-091 | 메시지 컨텍스트 메뉴: 복사(UIPasteboard)·공유(ShareLink) + 어시스턴트는 "평문 복사(마크다운 제거)" 추가 | `Views/Components/MessageView.swift` | DONE (06-11 빌드 검증 · main 병합) |
+| T-092 | 세션 fork — `POST /api/sessions/{id}/fork` 메서드(createSession의 단계적 응답 해석을 parseSessionResponse로 공용 추출) + ChatView 툴바 ⋯ 메뉴 "이 세션 분기" + SessionListView leading 스와이프 "분기" | `Services/HermesAPIClient.swift`, `Services/AppDefaults.swift`, `Views/ChatView.swift`, `Views/SessionListView.swift` | DONE (06-11 빌드 검증 · main 병합) |
 
-| T-103 | 사고과정 숨김 — `MarkdownLite.strippingThink`(미닫힌 `<think>`·부분 태그 토큰까지 스트리밍 안전 처리, segments 진입부 적용 → 렌더·복사·TTS·알림 모두 정리) + `displayMessages`(tool/system 비렌더, think만 있는 버블 숨김) + 작업 바 "생각 중..." | `Views/Components/MarkdownText.swift`, `ViewModels/ChatViewModel.swift`, `Views/ChatView.swift` | NEEDS-BUILD (Claude Code, 06-11 — 실기기 확인: 실제 Hermes 출력의 think 태그 표기가 `<think>`인지) |
-| T-104 | 도구 호출 접힌 칩 — "도구 N회 실행" 캡슐, 탭 시 ToolResultView 목록 펼침, 스트리밍 중 카운트 라이브 갱신 | `Views/Components/ToolResultView.swift`, `Views/Components/MessageView.swift`, `ViewModels/ChatViewModel.swift` | NEEDS-BUILD (Claude Code, 06-11) |
-| T-105 | Bridge `GET /files/raw?path=` 바이너리 응답 (이미지 썸네일용) — safe_subpath/is_hidden_path 재사용, 20MB 상한 413, mimetypes Content-Type, 무인증 401 | `server/hermes_bridge.py` | NEEDS-BUILD(브리지 재배포 필요) (Claude Code, 06-11 — 재배포 후 curl로 401/403/404/413/정상 확인. 앱은 미배포여도 placeholder 강등 동작) |
-| T-106 | ChatImageView + NSCache(64MB) + `BridgeClient.fetchRawFile` + `\.bridgeClient` Environment 주입 — 맥 절대경로의 `.hermes/` 마커 뒤를 상대경로로 변환, 800pt 다운스케일, 실패/404/미설정은 placeholder 강등(에러 알럿 금지) | `Views/Components/ChatImageView.swift` (신규, pbxproj 등록됨), `Services/BridgeClient.swift`, `Views/ChatView.swift` | NEEDS-BUILD (Claude Code, 06-11) |
-| T-107 | 본문 이미지 세그먼트 — `![alt](src)`·`[첨부: 경로]` 파싱(.image/.file), 스트리밍 꼬리 미완성 토큰 보류(512자 한도, 미닫힌 코드펜스 안은 제외), 사용자 버블 선두 첨부 줄 썸네일 분리 | `Views/Components/MarkdownText.swift`, `Views/Components/MessageView.swift` | NEEDS-BUILD (Claude Code, 06-11 — 실기기 확인: 이미지 로드 시 스크롤 점프 여부) |
-| T-108 | 입력창 첨부 칩 썸네일 — PendingAttachment.thumbnail(이미지만 72px 1회 생성, Equatable은 id 기준), 칩에 36pt 표시(비이미지는 기존 paperclip) | `ViewModels/ChatViewModel.swift`, `Views/ChatView.swift` | NEEDS-BUILD (Claude Code, 06-11) |
+| T-103 | 사고과정 숨김 — `MarkdownLite.strippingThink`(미닫힌 `<think>`·부분 태그 토큰까지 스트리밍 안전 처리, segments 진입부 적용 → 렌더·복사·TTS·알림 모두 정리) + `displayMessages`(tool/system 비렌더, think만 있는 버블 숨김) + 작업 바 "생각 중..." | `Views/Components/MarkdownText.swift`, `ViewModels/ChatViewModel.swift`, `Views/ChatView.swift` | DONE (06-11 빌드 검증 · main 병합 — 토론 실사용에서 think 숨김 정상 확인) |
+| T-104 | 도구 호출 접힌 칩 — "도구 N회 실행" 캡슐, 탭 시 ToolResultView 목록 펼침, 스트리밍 중 카운트 라이브 갱신 | `Views/Components/ToolResultView.swift`, `Views/Components/MessageView.swift`, `ViewModels/ChatViewModel.swift` | DONE (06-11 빌드 검증 · main 병합) |
+| T-105 | Bridge `GET /files/raw?path=` 바이너리 응답 (이미지 썸네일용) — safe_subpath/is_hidden_path 재사용, 20MB 상한 413, mimetypes Content-Type, 무인증 401 | `server/hermes_bridge.py` | DONE (06-11 빌드 검증 · main 병합 — 브리지 재배포 여부·사진 썸네일 기능 확인은 사진/파일 검증 세션에서) |
+| T-106 | ChatImageView + NSCache(64MB) + `BridgeClient.fetchRawFile` + `\.bridgeClient` Environment 주입 — 맥 절대경로의 `.hermes/` 마커 뒤를 상대경로로 변환, 800pt 다운스케일, 실패/404/미설정은 placeholder 강등(에러 알럿 금지) | `Views/Components/ChatImageView.swift` (신규, pbxproj 등록됨), `Services/BridgeClient.swift`, `Views/ChatView.swift` | DONE (06-11 빌드 검증 · main 병합) |
+| T-107 | 본문 이미지 세그먼트 — `![alt](src)`·`[첨부: 경로]` 파싱(.image/.file), 스트리밍 꼬리 미완성 토큰 보류(512자 한도, 미닫힌 코드펜스 안은 제외), 사용자 버블 선두 첨부 줄 썸네일 분리 | `Views/Components/MarkdownText.swift`, `Views/Components/MessageView.swift` | DONE (06-11 빌드 검증 · main 병합 — 사진/파일 기능 확인은 새 세션에서) |
+| T-108 | 입력창 첨부 칩 썸네일 — PendingAttachment.thumbnail(이미지만 72px 1회 생성, Equatable은 id 기준), 칩에 36pt 표시(비이미지는 기존 paperclip) | `ViewModels/ChatViewModel.swift`, `Views/ChatView.swift` | DONE (06-11 빌드 검증 · main 병합) |
 
 ## Phase 11 — 알림 (로컬 알림 + 폴링, APNs 없음 — Bridge 무수정이 본선)
 
 | ID | 작업 | 파일 | 상태 |
 |----|------|------|------|
-| T-093 | NotificationService: UN 권한 요청, 칸반 스냅샷(taskID→status) UserDefaults 보존, 기존 `GET /kanban/<board>` 폴링 diff → done/blocked 전이 시 로컬 알림 (포그라운드 60초 폴링, 첫 폴링은 기록만). 포그라운드 배너 델리게이트 포함 | `Services/NotificationService.swift` (신규, pbxproj 등록됨), `HermesChatApp.swift` | NEEDS-BUILD (Claude Code, 06-11) |
-| T-094 | 채팅 긴 응답 완료 알림 — 스트림 완료 시 앱 비활성(UIApplication.applicationState)이고 10초 이상 경과면 로컬 알림 (본문은 MarkdownLite.plainText 80자 미리보기) | `ViewModels/ChatViewModel.swift` | NEEDS-BUILD (Claude Code, 06-11) |
-| T-095 | BGAppRefreshTask 백그라운드 폴링 — Info.plist `BGTaskSchedulerPermittedIdentifiers`(`ai.hermes.chat.refresh`)·`UIBackgroundModes(fetch)` 추가, 백그라운드 진입 시 예약(15분 후 최조기), `.backgroundTask(.appRefresh)`에서 diff 1회 후 재예약 | `HermesChatApp.swift`, `Resources/Info.plist` | NEEDS-BUILD (Claude Code, 06-11 — 실기기 확인: 잠금 후 수 시간 내 백그라운드 폴링 1회 이상 실행) |
+| T-093 | NotificationService: UN 권한 요청, 칸반 스냅샷(taskID→status) UserDefaults 보존, 기존 `GET /kanban/<board>` 폴링 diff → done/blocked 전이 시 로컬 알림 (포그라운드 60초 폴링, 첫 폴링은 기록만). 포그라운드 배너 델리게이트 포함 | `Services/NotificationService.swift` (신규, pbxproj 등록됨), `HermesChatApp.swift` | DONE (06-11 빌드 검증 · main 병합) |
+| T-094 | 채팅 긴 응답 완료 알림 — 스트림 완료 시 앱 비활성(UIApplication.applicationState)이고 10초 이상 경과면 로컬 알림 (본문은 MarkdownLite.plainText 80자 미리보기) | `ViewModels/ChatViewModel.swift` | DONE (06-11 빌드 검증 · main 병합) |
+| T-095 | BGAppRefreshTask 백그라운드 폴링 — Info.plist `BGTaskSchedulerPermittedIdentifiers`(`ai.hermes.chat.refresh`)·`UIBackgroundModes(fetch)` 추가, 백그라운드 진입 시 예약(15분 후 최조기), `.backgroundTask(.appRefresh)`에서 diff 1회 후 재예약 | `HermesChatApp.swift`, `Resources/Info.plist` | DONE (06-11 빌드 검증 · main 병합 — 백그라운드 폴링 실기기 관찰은 추후) |
 | T-096 | (선택·최적화) Bridge `GET /kanban/<board>/events?since=` — events 테이블 존재/스키마 방어적 확인, 미지원 시 `{"supported": false}` → 앱은 diff 유지. **착수 전 맥 에이전트가 `sqlite3 ~/.hermes/kanban.db ".schema events"` 결과를 이 행 비고에 기록할 것** | `server/hermes_bridge.py`, `Services/BridgeClient.swift` | TODO (Bridge 수정 → 완료 시 `NEEDS-BUILD(브리지 재배포 필요)`) |
 
 ## Phase 12 — 설정 심화
@@ -114,26 +122,26 @@
 |----|------|------|------|
 | T-097 | Bridge config 엔드포인트: GET(key/token/secret 줄 마스킹) + PATCH(`toolsets` 키 화이트리스트만, 라인 단위 블록 치환, `.bak` 백업, 비정형이면 400 거부 — stdlib만, yaml 파서 없음). **착수 전 실제 config.yaml의 toolsets 블록 형태를 맥 에이전트가 이 행 비고에 기록할 것** | `server/hermes_bridge.py` | TODO (완료 시 `NEEDS-BUILD(브리지 재배포 필요)`) |
 | T-098 | T-031 본편: SkillsView 툴셋 토글 → "적용" → Bridge PATCH → 재시작 안내+restart 버튼. Bridge 404 시 읽기전용 강등 | `Services/BridgeClient.swift`, `Views/SkillsView.swift` | TODO (T-097 뒤) |
-| T-099 | 프로필별 apiKey Keychain 이관 — `profileApiKey.<name>` 키, persistProfiles()는 JSON에 빈 문자열 직렬화, 로드 시 구버전 평문 감지하면 Keychain 이관 후 재직렬화, 프로필 삭제 시 Keychain도 정리 (ProfileModels는 무수정 — 메모리 모델은 그대로) | `Services/AppDefaults.swift` | NEEDS-BUILD (Claude Code, 06-11) |
+| T-099 | 프로필별 apiKey Keychain 이관 — `profileApiKey.<name>` 키, persistProfiles()는 JSON에 빈 문자열 직렬화, 로드 시 구버전 평문 감지하면 Keychain 이관 후 재직렬화, 프로필 삭제 시 Keychain도 정리 (ProfileModels는 무수정 — 메모리 모델은 그대로) | `Services/AppDefaults.swift` | DONE (06-11 빌드 검증 · main 병합) |
 
 ## Phase 13 — 음성 입출력 (내장 프레임워크만)
 
 | ID | 작업 | 파일 | 상태 |
 |----|------|------|------|
-| T-100 | 음성 입력 — SpeechService(SFSpeechRecognizer+AVAudioEngine, ko-KR, 싱글턴 — AVAudioSession 단일 소유), inputBar 마이크 버튼(녹음 중 빨간 mic.fill), 부분 결과를 입력창에 실시간 반영(기존 입력 뒤에 이어붙임), Info.plist 권한 키 2종 | `Services/SpeechService.swift` (신규, pbxproj 등록됨), `Views/ChatView.swift`, `Resources/Info.plist` | NEEDS-BUILD (Claude Code, 06-11) |
-| T-101 | 응답 읽어주기 — AVSpeechSynthesizer(ko-KR), 어시스턴트 메시지 컨텍스트 메뉴 "읽어주기/중지", 입력은 `MarkdownLite.plainText(from:)`. 받아쓰기/재생 상호 배타(AVAudioSession 단일 소유), 종료 시 세션 해제 | `Services/SpeechService.swift`, `Views/Components/MessageView.swift` | NEEDS-BUILD (Claude Code, 06-11) |
-| T-102 | 받아쓰기 블루투스 마이크(HFP) 허용 — `.record` 카테고리에 `.allowBluetooth` 추가. 에어팟·메타(레이밴) 글라스 마이크 입력 지원 (TTS 출력은 `.playback`이 A2DP 기본 허용이라 무수정). 비고: HFP 협대역이라 내장 마이크 대비 인식 정확도 소폭 저하 가능, Meta AI("Hey Meta")와는 표준 BT 라우팅이라 비간섭 | `Services/SpeechService.swift` | NEEDS-BUILD (Claude Code, 06-11 — 실기기 확인: 에어팟/글라스 연결 후 받아쓰기 입력 라우트, 글라스로 TTS 출력) |
+| T-100 | 음성 입력 — SpeechService(SFSpeechRecognizer+AVAudioEngine, ko-KR, 싱글턴 — AVAudioSession 단일 소유), inputBar 마이크 버튼(녹음 중 빨간 mic.fill), 부분 결과를 입력창에 실시간 반영(기존 입력 뒤에 이어붙임), Info.plist 권한 키 2종 | `Services/SpeechService.swift` (신규, pbxproj 등록됨), `Views/ChatView.swift`, `Resources/Info.plist` | DONE (06-11 빌드 검증 · main 병합) |
+| T-101 | 응답 읽어주기 — AVSpeechSynthesizer(ko-KR), 어시스턴트 메시지 컨텍스트 메뉴 "읽어주기/중지", 입력은 `MarkdownLite.plainText(from:)`. 받아쓰기/재생 상호 배타(AVAudioSession 단일 소유), 종료 시 세션 해제 | `Services/SpeechService.swift`, `Views/Components/MessageView.swift` | DONE (06-11 빌드 검증 · main 병합) |
+| T-102 | 받아쓰기 블루투스 마이크(HFP) 허용 — `.record` 카테고리에 `.allowBluetooth` 추가. 에어팟·메타(레이밴) 글라스 마이크 입력 지원 (TTS 출력은 `.playback`이 A2DP 기본 허용이라 무수정). 비고: HFP 협대역이라 내장 마이크 대비 인식 정확도 소폭 저하 가능, Meta AI("Hey Meta")와는 표준 BT 라우팅이라 비간섭 | `Services/SpeechService.swift` | DONE (06-11 빌드 검증 · main 병합 — 에어팟/글라스 라우팅은 음성 검증 세션에서) |
 
 ## Phase 14 — Deep think 멀티 에이전트 토론룸 (계획: PLAN.md §3 Phase 14)
 
 | ID | 작업 | 파일 | 상태 |
 |----|------|------|------|
-| T-110 | 토론 모델 + 로컬 보관소 — DiscussionPhase/DiscussionEntry/SavedDiscussion/DiscussionStore(UserDefaults `deepThinkDiscussions`, 최대 20건) + 발언자 색 팔레트 | `Models/DiscussionModels.swift` (신규, pbxproj 등록됨) | NEEDS-BUILD (Claude Code, 06-11) |
-| T-111 | 토론 오케스트레이션 — 참가자별 게이트웨이 클라이언트/세션 생성(`[Deep think]` 제목), 순차 스트리밍 라운드 루프(라운드 k>1은 타인 최신 발언만 전달), 게이트웨이 오류 탈락·활성<2 중단·취소(부분 발언 보존) 정책, 사회자 결론(탈락 시 승계), 완료 저장, 프롬프트 템플릿(도구 허용 토글 반영) | `ViewModels/DiscussionViewModel.swift` (신규, pbxproj 등록됨) | NEEDS-BUILD (Claude Code, 06-11) |
-| T-112 | 토론룸 UI — setup(참가자 칩 그리드/주제/라운드 Stepper 1~5/사회자 Picker/도구 토글+경고) → running(발언 카드 스트림+라운드 캡슐+"발언 중" 바+중지) → finished(결론 강조 카드+복사/공유/새 토론), 지난 토론 목록/상세(컨텍스트 메뉴 삭제), 진행 중 isIdleTimerDisabled·닫기 confirmationDialog | `Views/DiscussionView.swift` (신규, pbxproj 등록됨) | NEEDS-BUILD (Claude Code, 06-11 — 실기기 확인: SOUL 페르소나가 발언에 유지되는지, 스트리밍 자동 스크롤) |
-| T-113 | 프로필 보드 진입점 — 툴바 "Deep think" 버튼(topBarTrailing, brain.head.profile) + fullScreenCover | `Views/ProfileBoardView.swift` | NEEDS-BUILD (Claude Code, 06-11) |
-| T-114 | 발언 미수신 폴백 — 스트림이 빈 채 끝나면(게이트웨이가 세션에는 답을 쓰지만 SSE로는 안 보내는 실기기 버그) 세션 기록을 2초 간격 폴링(빈 스트림 300초 / think-only 6초)해 회수. 판정은 "마지막 user 메시지 뒤 visible assistant" + userTurns 앵커 검증(직전 턴 오인 방지). "(응답 없음)" 발언 채택 제거 — 타임아웃은 탈락 처리 | `ViewModels/DiscussionViewModel.swift` | NEEDS-BUILD (Claude Code, 06-11) |
-| T-115 | 라운드 동시 진행 — 라운드 시작 시 직전 발언 스냅샷 → 참가자별 메시지 사전 조립 → 빈 카드 사전 추가(순서 고정) → withTaskGroup 병렬 스트리밍(비던지는 그룹: 한 참가자 실패가 형제를 취소하지 않음). currentSpeakerName → speakingNames("N명 발언 중..."), 스크롤 defaultScrollAnchor(.bottom), 발언 길이 5~10문장 완화, 라운드 1 선발언 전달 제거 | `ViewModels/DiscussionViewModel.swift`, `Views/DiscussionView.swift` | NEEDS-BUILD (Claude Code, 06-11 — 실기기 확인: 카드 동시 채움, 빈 스트림 시 폴백 회수, 중지 시 거짓 제외 알림 없음) |
+| T-110 | 토론 모델 + 로컬 보관소 — DiscussionPhase/DiscussionEntry/SavedDiscussion/DiscussionStore(UserDefaults `deepThinkDiscussions`, 최대 20건) + 발언자 색 팔레트 | `Models/DiscussionModels.swift` (신규, pbxproj 등록됨) | DONE (06-11 빌드 검증 · main 병합) |
+| T-111 | 토론 오케스트레이션 — 참가자별 게이트웨이 클라이언트/세션 생성(`[Deep think]` 제목), 순차 스트리밍 라운드 루프(라운드 k>1은 타인 최신 발언만 전달), 게이트웨이 오류 탈락·활성<2 중단·취소(부분 발언 보존) 정책, 사회자 결론(탈락 시 승계), 완료 저장, 프롬프트 템플릿(도구 허용 토글 반영) | `ViewModels/DiscussionViewModel.swift` (신규, pbxproj 등록됨) | DONE (06-11 빌드 검증 · main 병합) |
+| T-112 | 토론룸 UI — setup(참가자 칩 그리드/주제/라운드 Stepper 1~5/사회자 Picker/도구 토글+경고) → running(발언 카드 스트림+라운드 캡슐+"발언 중" 바+중지) → finished(결론 강조 카드+복사/공유/새 토론), 지난 토론 목록/상세(컨텍스트 메뉴 삭제), 진행 중 isIdleTimerDisabled·닫기 confirmationDialog | `Views/DiscussionView.swift` (신규, pbxproj 등록됨) | DONE (06-11 빌드+실기기 토론 검증 · main 병합) |
+| T-113 | 프로필 보드 진입점 — 툴바 "Deep think" 버튼(topBarTrailing, brain.head.profile) + fullScreenCover | `Views/ProfileBoardView.swift` | DONE (06-11 빌드 검증 · main 병합) |
+| T-114 | 발언 미수신 폴백 — 스트림이 빈 채 끝나면(게이트웨이가 세션에는 답을 쓰지만 SSE로는 안 보내는 실기기 버그) 세션 기록을 2초 간격 폴링(빈 스트림 300초 / think-only 6초)해 회수. 판정은 "마지막 user 메시지 뒤 visible assistant" + userTurns 앵커 검증(직전 턴 오인 방지). "(응답 없음)" 발언 채택 제거 — 타임아웃은 탈락 처리 | `ViewModels/DiscussionViewModel.swift` | DONE (06-11 빌드 검증 · main 병합) |
+| T-115 | 라운드 동시 진행 — 라운드 시작 시 직전 발언 스냅샷 → 참가자별 메시지 사전 조립 → 빈 카드 사전 추가(순서 고정) → withTaskGroup 병렬 스트리밍(비던지는 그룹: 한 참가자 실패가 형제를 취소하지 않음). currentSpeakerName → speakingNames("N명 발언 중..."), 스크롤 defaultScrollAnchor(.bottom), 발언 길이 5~10문장 완화, 라운드 1 선발언 전달 제거 | `ViewModels/DiscussionViewModel.swift`, `Views/DiscussionView.swift` | DONE (06-11 빌드+실기기 토론 검증 · main 병합 — 동시 발언·폴백 회수 정상 확인) |
 
 ## 빌드 검증 기록 (검증자가 갱신)
 
@@ -142,3 +150,4 @@
 | 06-10 | claude/busy-meitner-lhc5os @ 9a9d64b | BUILD SUCCEEDED | Hermes 검증, 실기기 프로필 전환 확인 (T-001) |
 | 06-10 | claude/busy-meitner-lhc5os @ 8438b64 | BUILD SUCCEEDED | Hermes(codex) 검증 (T-011/T-012/T-014), 실기기 SOUL.md 저장 확인 |
 | 06-11 | claude/busy-meitner-lhc5os @ 66bdc93 | BUILD SUCCEEDED | Hermes 빌드검증, NEEDS-BUILD 전수 DONE(T-013/T-020~022/040~041/050~051/060~061/070~075) |
+| 06-11 | main @ 879b47e (PR #1 병합) | BUILD SUCCEEDED | 사용자 Xcode 빌드 + 실기기 확인 — Deep think 토론(동시 발언·폴백 회수·결론) 정상 동작. T-090~115 DONE 전환 (음성·사진/파일 기능 확인은 별도 세션 예정) |
