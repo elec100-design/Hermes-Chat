@@ -124,6 +124,15 @@
 | T-101 | 응답 읽어주기 — AVSpeechSynthesizer(ko-KR), 어시스턴트 메시지 컨텍스트 메뉴 "읽어주기/중지", 입력은 `MarkdownLite.plainText(from:)`. 받아쓰기/재생 상호 배타(AVAudioSession 단일 소유), 종료 시 세션 해제 | `Services/SpeechService.swift`, `Views/Components/MessageView.swift` | NEEDS-BUILD (Claude Code, 06-11) |
 | T-102 | 받아쓰기 블루투스 마이크(HFP) 허용 — `.record` 카테고리에 `.allowBluetooth` 추가. 에어팟·메타(레이밴) 글라스 마이크 입력 지원 (TTS 출력은 `.playback`이 A2DP 기본 허용이라 무수정). 비고: HFP 협대역이라 내장 마이크 대비 인식 정확도 소폭 저하 가능, Meta AI("Hey Meta")와는 표준 BT 라우팅이라 비간섭 | `Services/SpeechService.swift` | NEEDS-BUILD (Claude Code, 06-11 — 실기기 확인: 에어팟/글라스 연결 후 받아쓰기 입력 라우트, 글라스로 TTS 출력) |
 
+## Phase 14 — Deep think 멀티 에이전트 토론룸 (계획: PLAN.md §3 Phase 14)
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-110 | 토론 모델 + 로컬 보관소 — DiscussionPhase/DiscussionEntry/SavedDiscussion/DiscussionStore(UserDefaults `deepThinkDiscussions`, 최대 20건) + 발언자 색 팔레트 | `Models/DiscussionModels.swift` (신규, pbxproj 등록됨) | NEEDS-BUILD (Claude Code, 06-11) |
+| T-111 | 토론 오케스트레이션 — 참가자별 게이트웨이 클라이언트/세션 생성(`[Deep think]` 제목), 순차 스트리밍 라운드 루프(라운드 k>1은 타인 최신 발언만 전달), 게이트웨이 오류 탈락·활성<2 중단·취소(부분 발언 보존) 정책, 사회자 결론(탈락 시 승계), 완료 저장, 프롬프트 템플릿(도구 허용 토글 반영) | `ViewModels/DiscussionViewModel.swift` (신규, pbxproj 등록됨) | NEEDS-BUILD (Claude Code, 06-11) |
+| T-112 | 토론룸 UI — setup(참가자 칩 그리드/주제/라운드 Stepper 1~5/사회자 Picker/도구 토글+경고) → running(발언 카드 스트림+라운드 캡슐+"발언 중" 바+중지) → finished(결론 강조 카드+복사/공유/새 토론), 지난 토론 목록/상세(컨텍스트 메뉴 삭제), 진행 중 isIdleTimerDisabled·닫기 confirmationDialog | `Views/DiscussionView.swift` (신규, pbxproj 등록됨) | NEEDS-BUILD (Claude Code, 06-11 — 실기기 확인: SOUL 페르소나가 발언에 유지되는지, 스트리밍 자동 스크롤) |
+| T-113 | 프로필 보드 진입점 — 툴바 "Deep think" 버튼(topBarTrailing, brain.head.profile) + fullScreenCover | `Views/ProfileBoardView.swift` | NEEDS-BUILD (Claude Code, 06-11) |
+
 ## 빌드 검증 기록 (검증자가 갱신)
 
 | 날짜 | 브랜치/커밋 | 결과 | 비고 |
