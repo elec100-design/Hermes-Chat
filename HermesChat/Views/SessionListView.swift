@@ -4,6 +4,7 @@ struct SessionListView: View {
     @ObservedObject var appSettings: AppSettings
     @State private var navigationPath = NavigationPath()
     @State private var isCreatingSession = false
+    @State private var searchText = ""
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
@@ -51,7 +52,7 @@ struct SessionListView: View {
                 .disabled(isCreatingSession)
 
                 // Session list
-                ForEach(appSettings.filteredSessions) { session in
+                ForEach(displayedSessions) { session in
                     NavigationLink(value: session) {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(session.displayTitle)
@@ -80,13 +81,45 @@ struct SessionListView: View {
                             Label("삭제", systemImage: "trash")
                         }
                     }
+                    .swipeActions(edge: .leading) {
+                        Button {
+                            Task {
+                                do {
+                                    let forked = try await appSettings.forkSession(id: session.id)
+                                    navigationPath.append(forked)
+                                } catch {
+                                    appSettings.sessionLoadError = error.localizedDescription
+                                }
+                            }
+                        } label: {
+                            Label("분기", systemImage: "arrow.triangle.branch")
+                        }
+                        .tint(.indigo)
+                    }
+                }
+
+                // 페이지네이션: 목록 끝에 도달하면 다음 페이지 로드 (T-072)
+                if appSettings.hasMoreSessions && searchText.isEmpty {
+                    HStack {
+                        Spacer()
+                        if appSettings.isLoadingMoreSessions {
+                            ProgressView().scaleEffect(0.8)
+                        } else {
+                            Text("더 보기")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                    }
+                    .onAppear { appSettings.loadMoreSessions() }
                 }
             }
             .listStyle(.insetGrouped)
-            .navigationTitle("세션")
+            .navigationTitle(appSettings.selectedProfile.name)
+            .searchable(text: $searchText, prompt: "세션 검색")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    sourceMenu
+                    sourceFilterMenu
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     HStack(spacing: 12) {
@@ -110,22 +143,31 @@ struct SessionListView: View {
         }
     }
 
-    // MARK: - Source Menu
+    // MARK: - Profile / Source Menu
 
-    private var sourceMenu: some View {
-        Menu {
-            Button {
-                appSettings.selectedSource = nil
-            } label: {
-                if appSettings.selectedSource == nil {
-                    Label("전체", systemImage: "checkmark")
-                } else {
-                    Text("전체")
+    private var displayedSessions: [Session] {
+        let base = appSettings.filteredSessions
+        guard !searchText.isEmpty else { return base }
+        return base.filter {
+            $0.displayTitle.localizedCaseInsensitiveContains(searchText)
+                || ($0.preview ?? "").localizedCaseInsensitiveContains(searchText)
+        }
+    }
+
+    /// 프로필 선택은 보드 탭으로 일원화 — 여기는 소스 필터만 (T-074)
+    @ViewBuilder
+    private var sourceFilterMenu: some View {
+        if !appSettings.availableSources.isEmpty {
+            Menu {
+                Button {
+                    appSettings.selectedSource = nil
+                } label: {
+                    if appSettings.selectedSource == nil {
+                        Label("전체", systemImage: "checkmark")
+                    } else {
+                        Text("전체")
+                    }
                 }
-            }
-
-            if !appSettings.availableSources.isEmpty {
-                Divider()
                 ForEach(appSettings.availableSources, id: \.self) { source in
                     Button {
                         appSettings.selectedSource = source
@@ -137,13 +179,16 @@ struct SessionListView: View {
                         }
                     }
                 }
-            }
-        } label: {
-            HStack(spacing: 3) {
-                Text(appSettings.selectedSource.map { sourceDisplayName($0) } ?? "전체")
-                    .font(.headline)
-                Image(systemName: "chevron.down")
-                    .font(.caption.weight(.semibold))
+            } label: {
+                HStack(spacing: 3) {
+                    Image(systemName: appSettings.selectedSource == nil
+                          ? "line.3.horizontal.decrease.circle"
+                          : "line.3.horizontal.decrease.circle.fill")
+                    if let source = appSettings.selectedSource {
+                        Text(sourceDisplayName(source))
+                            .font(.subheadline)
+                    }
+                }
             }
         }
     }
