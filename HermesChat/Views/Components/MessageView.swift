@@ -3,6 +3,7 @@ import UIKit
 
 struct MessageBubble: View {
     let message: ChatMessage
+    @ObservedObject private var speech = SpeechService.shared
 
     var isUser: Bool {
         message.role == .user
@@ -42,6 +43,22 @@ struct MessageBubble: View {
                             UIPasteboard.general.string = MarkdownLite.plainText(from: message.content)
                         } label: {
                             Label("평문 복사 (마크다운 제거)", systemImage: "doc.plaintext")
+                        }
+                        if speech.speakingMessageID == message.id {
+                            Button {
+                                speech.stopSpeaking()
+                            } label: {
+                                Label("읽기 중지", systemImage: "stop.circle")
+                            }
+                        } else {
+                            Button {
+                                speech.speak(
+                                    MarkdownLite.plainText(from: message.content),
+                                    messageID: message.id
+                                )
+                            } label: {
+                                Label("읽어주기", systemImage: "speaker.wave.2")
+                            }
                         }
                     }
                     ShareLink(item: message.content) {
