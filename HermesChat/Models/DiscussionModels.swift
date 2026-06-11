@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 
 /// Deep think 토론의 진행 단계

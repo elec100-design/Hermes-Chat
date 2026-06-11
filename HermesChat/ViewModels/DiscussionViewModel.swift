@@ -243,16 +243,18 @@ final class DiscussionViewModel: ObservableObject {
         appendEntry(entry)
 
         do {
+            var accumulated = ""
             let stream = runtime.client.streamChat(sessionId: runtime.sessionID, message: message)
             for try await update in stream {
                 try Task.checkCancellation()
                 if case .content(let chunk) = update {
-                    updateEntry(id: entry.id) { $0.content += chunk }
+                    accumulated += chunk
+                    updateEntry(id: entry.id) { $0.content = accumulated }
                 }
                 // .toolCallUpdate는 무시 — 도구 실행 결과는 발언 본문으로 돌아온다
             }
             try Task.checkCancellation()
-            let cleaned = MarkdownLite.strippingThink(currentContent(of: entry.id))
+            let cleaned = MarkdownLite.strippingThink(accumulated)
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             let final = cleaned.isEmpty ? "(응답 없음)" : cleaned
             updateEntry(id: entry.id) { $0.content = final }
@@ -308,10 +310,6 @@ final class DiscussionViewModel: ObservableObject {
     private func updateEntry(id: UUID, _ mutate: (inout DiscussionEntry) -> Void) {
         guard let idx = entries.firstIndex(where: { $0.id == id }) else { return }
         mutate(&entries[idx])
-    }
-
-    private func currentContent(of id: UUID) -> String {
-        entries.first { $0.id == id }?.content ?? ""
     }
 
     private func makeClient(for profile: HermesProfile) -> HermesAPIClient {
