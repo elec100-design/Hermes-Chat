@@ -17,6 +17,7 @@
 		2B7DCE01C9A55B86BE7DDD01 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B7DCE02C9A55B86BE7DDD02 /* KeychainHelper.swift */; };
 		3C8EDF01DAB66C97CF8EEE01 /* FileBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C8EDF02DAB66C97CF8EEE02 /* FileBrowserView.swift */; };
 		4D9FAE01EBC77DA8DA9FFF01 /* MarkdownText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D9FAE02EBC77DA8DA9FFF02 /* MarkdownText.swift */; };
+		7ACDEF01BEFAAADBAD3CCC01 /* ChatImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7ACDEF02BEFAAADBAD3CCC02 /* ChatImageView.swift */; };
 		5EABCD01FCD88EB9EB1AAA01 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EABCD02FCD88EB9EB1AAA02 /* NotificationService.swift */; };
 		6FBCDE01ADE99FCAFC2BBB01 /* SpeechService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FBCDE02ADE99FCAFC2BBB02 /* SpeechService.swift */; };
 		0D9CC9C9B49F82C246E793D9 /* HermesAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E785976044540D5051D9A8C /* HermesAPIClient.swift */; };
@@ -47,6 +48,7 @@
 		2B7DCE02C9A55B86BE7DDD02 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
 		3C8EDF02DAB66C97CF8EEE02 /* FileBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileBrowserView.swift; sourceTree = "<group>"; };
 		4D9FAE02EBC77DA8DA9FFF02 /* MarkdownText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownText.swift; sourceTree = "<group>"; };
+		7ACDEF02BEFAAADBAD3CCC02 /* ChatImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatImageView.swift; sourceTree = "<group>"; };
 		5EABCD02FCD88EB9EB1AAA02 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		6FBCDE02ADE99FCAFC2BBB02 /* SpeechService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechService.swift; sourceTree = "<group>"; };
 		0ABF5AB0727489B06D16F6AB /* ToolModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolModels.swift; sourceTree = "<group>"; };
@@ -72,6 +74,7 @@
 		2DBCD9AC0F176525E1C50AB6 /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				7ACDEF02BEFAAADBAD3CCC02 /* ChatImageView.swift */,
 				4D9FAE02EBC77DA8DA9FFF02 /* MarkdownText.swift */,
 				E6079AD100F5FFAC1B2FE955 /* MessageView.swift */,
 				6743DB1D930CC2F7E9C650CC /* ToolResultView.swift */,
@@ -241,6 +244,7 @@
 				0E4A9B01F6D27C53EB4AAA01 /* KanbanModels.swift in Sources */,
 				2B7DCE01C9A55B86BE7DDD01 /* KeychainHelper.swift in Sources */,
 				0F5BAC01A7E38D64FC5BBB01 /* KanbanView.swift in Sources */,
+				7ACDEF01BEFAAADBAD3CCC01 /* ChatImageView.swift in Sources */,
 				4D9FAE01EBC77DA8DA9FFF01 /* MarkdownText.swift in Sources */,
 				D37A2F7854931324D14E852F /* MessageView.swift in Sources */,
 				5EABCD01FCD88EB9EB1AAA01 /* NotificationService.swift in Sources */,

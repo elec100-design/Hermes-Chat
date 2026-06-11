@@ -108,6 +108,11 @@ final class BridgeClient {
         return String(decoding: data, as: UTF8.self)
     }
 
+    /// 바이너리 파일 (T-106 — 이미지 썸네일). 브리지 구버전이면 404 → 호출부가 placeholder로 강등.
+    func fetchRawFile(path: String) async throws -> Data {
+        try await request("GET", "files/raw", query: ["path": path], timeout: 30)
+    }
+
     /// 해당 프로필의 최신 로그 꼬리
     func fetchLogs(profile: String, tail: Int = 200) async throws -> String {
         let data = try await request("GET", "profiles/\(profile)/logs", query: ["tail": String(tail)])

@@ -173,6 +173,8 @@ struct ChatView: View {
                 }
             }
             .listStyle(.plain)
+            // 말풍선 썸네일(ChatImageView)이 Bridge로 이미지를 받도록 주입 (T-106)
+            .environment(\.bridgeClient, appSettings.bridgeClient)
             .onChange(of: viewModel.displayMessages.count) { _ in scrollToBottom(proxy: proxy) }
             .onChange(of: viewModel.displayMessages.last?.content) { _ in scrollToBottom(proxy: proxy) }
         }
