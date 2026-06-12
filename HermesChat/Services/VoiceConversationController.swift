@@ -22,7 +22,7 @@ final class VoiceConversationController: ObservableObject {
     /// 청취 중 실시간 부분 인식 결과 (배너 표시용)
     @Published private(set) var liveTranscript = ""
     /// true면 핸즈프리 루프, false면 받아쓰기 자동 낭독 1회
-    private(set) var handsFree = false
+    @Published private(set) var handsFree = false
 
     /// 부분 결과가 이 시간 동안 멈추면 발화가 끝난 것으로 보고 자동 전송
     static let silenceInterval: TimeInterval = 1.8
