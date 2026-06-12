@@ -328,11 +328,28 @@ final class HermesAPIClient {
                         return
                     }
 
+                    // SSE 이벤트명 추적 — `event: error`의 data는 StreamChunk가 아니라
+                    // {"message": ...}라서 조용히 버려지던 것을 에러로 표면화한다 (T-122).
+                    // 게이트웨이 코드 불일치(import 오류) 같은 서버 장애가 "무반응"으로 보이던 원인.
+                    var currentEvent = ""
                     for try await line in bytes.lines {
+                        if line.hasPrefix("event:") {
+                            currentEvent = line.dropFirst(6).trimmingCharacters(in: .whitespaces)
+                            continue
+                        }
                         guard line.hasPrefix("data:") else { continue }
                         let payload = line.dropFirst(5).trimmingCharacters(in: .whitespaces)
+                        let eventName = currentEvent
+                        currentEvent = ""  // SSE 규격: event는 바로 다음 data에만 적용
                         if payload == "[DONE]" {
                             continuation.finish()
+                            return
+                        }
+                        if eventName == "error" {
+                            let message = (try? JSONDecoder().decode(
+                                StreamErrorPayload.self, from: Data(payload.utf8)
+                            ))?.message ?? payload
+                            continuation.finish(throwing: HermesAPIError.serverError(message))
                             return
                         }
                         guard let chunkData = payload.data(using: .utf8),

@@ -40,6 +40,11 @@ struct StreamChunk: Codable {
     }
 }
 
+/// 게이트웨이 `event: error`의 페이로드 — {"message": "..."} (T-122)
+struct StreamErrorPayload: Codable {
+    let message: String?
+}
+
 struct StreamChoice: Codable {
     let delta: StreamDelta
     let finishReason: String?
