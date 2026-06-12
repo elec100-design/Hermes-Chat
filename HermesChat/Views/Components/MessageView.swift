@@ -31,7 +31,14 @@ struct MessageBubble: View {
                             .textSelection(.enabled)
                     }
                 } else {
-                    MarkdownText(content: message.content)
+                    // 스트리밍 사고(<think>) 단계엔 보일 내용이 없다 — 빈 버블 대신 "생각 중" 표시 (T-116)
+                    let visible = MarkdownLite.strippingThink(message.content)
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+                    if visible.isEmpty && (message.toolCalls?.isEmpty ?? true) {
+                        ThinkingIndicator()
+                    } else {
+                        MarkdownText(content: message.content)
+                    }
                 }
                 if let toolCalls = message.toolCalls, !toolCalls.isEmpty {
                     ToolCallsChip(toolCalls: toolCalls)
@@ -110,5 +117,25 @@ struct MessageBubble: View {
         let rest = lines.joined(separator: "\n")
             .trimmingCharacters(in: .whitespacesAndNewlines)
         return (attachments, rest)
+    }
+}
+
+/// 스트리밍 사고(<think>) 단계에서 빈 버블 대신 보이는 애니메이션 점 3개 (T-116).
+/// 보일 내용이 도착하면 MessageBubble이 MarkdownText로 전환한다.
+struct ThinkingIndicator: View {
+    @State private var phase = 0
+    private let timer = Timer.publish(every: 0.35, on: .main, in: .common).autoconnect()
+
+    var body: some View {
+        HStack(spacing: 5) {
+            ForEach(0..<3, id: \.self) { index in
+                Circle()
+                    .frame(width: 6, height: 6)
+                    .opacity(phase == index ? 1 : 0.3)
+            }
+        }
+        .foregroundStyle(.secondary)
+        .onReceive(timer) { _ in phase = (phase + 1) % 3 }
+        .accessibilityLabel("생각 중")
     }
 }

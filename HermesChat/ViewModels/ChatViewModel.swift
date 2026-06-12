@@ -37,13 +37,18 @@ final class ChatViewModel: ObservableObject {
 
     /// 채팅 화면에 렌더할 메시지 (T-103) — tool/system 제외,
     /// 사고 과정(<think>)만 있고 보일 내용이 없는 어시스턴트 버블 제외.
+    /// 단, **스트리밍 중인 어시스턴트 버블은 사고만 있어 보일 내용이 없어도 항상 포함**한다 (T-116).
+    /// (제외하면 사고 단계 내내 화면에 말풍선이 없어 "응답 생성 중…"에서 멈춘 듯 보이고,
+    ///  답이 끝나 재진입(loadHistory)해야 보이던 회귀가 발생한다.)
     /// 스트리밍 갱신은 원본 `messages`의 인덱스를 그대로 쓰므로 여기는 읽기 전용 필터다.
     var displayMessages: [ChatMessage] {
-        messages.filter { message in
+        let streamingID = streamingAssistantID
+        return messages.filter { message in
             switch message.role {
             case .user:
                 return true
             case .assistant:
+                if message.id == streamingID { return true }
                 let visible = MarkdownLite.strippingThink(message.content)
                     .trimmingCharacters(in: .whitespacesAndNewlines)
                 return !visible.isEmpty || !(message.toolCalls?.isEmpty ?? true)
@@ -51,6 +56,12 @@ final class ChatViewModel: ObservableObject {
                 return false
             }
         }
+    }
+
+    /// 지금 스트리밍 중인 어시스턴트 버블 id (send()가 마지막에 append한 것). 없으면 nil. (T-116)
+    private var streamingAssistantID: UUID? {
+        guard isWorking, let last = messages.last, last.role == .assistant else { return nil }
+        return last.id
     }
 
     private func loadHistory() async {
