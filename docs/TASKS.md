@@ -143,6 +143,20 @@
 | T-114 | 발언 미수신 폴백 — 스트림이 빈 채 끝나면(게이트웨이가 세션에는 답을 쓰지만 SSE로는 안 보내는 실기기 버그) 세션 기록을 2초 간격 폴링(빈 스트림 300초 / think-only 6초)해 회수. 판정은 "마지막 user 메시지 뒤 visible assistant" + userTurns 앵커 검증(직전 턴 오인 방지). "(응답 없음)" 발언 채택 제거 — 타임아웃은 탈락 처리 | `ViewModels/DiscussionViewModel.swift` | DONE (06-11 빌드 검증 · main 병합) |
 | T-115 | 라운드 동시 진행 — 라운드 시작 시 직전 발언 스냅샷 → 참가자별 메시지 사전 조립 → 빈 카드 사전 추가(순서 고정) → withTaskGroup 병렬 스트리밍(비던지는 그룹: 한 참가자 실패가 형제를 취소하지 않음). currentSpeakerName → speakingNames("N명 발언 중..."), 스크롤 defaultScrollAnchor(.bottom), 발언 길이 5~10문장 완화, 라운드 1 선발언 전달 제거 | `ViewModels/DiscussionViewModel.swift`, `Views/DiscussionView.swift` | DONE (06-11 빌드+실기기 토론 검증 · main 병합 — 동시 발언·폴백 회수 정상 확인) |
 
+## Phase 15 — 핸즈프리 음성 대화 (에어팟·메타 글라스 자연스러운 음성 입출력)
+
+> 배경: T-100~102는 동작하지만 녹음·재생 시마다 세션 카테고리를 전환해 BT 라우트 재협상(끊김)이
+> 발생하고, 음성으로 물어봐도 답을 읽어주지 않았다. 받아쓰기 전송 시 응답 자동 낭독을 기본 동작으로,
+> 그 위에 핸즈프리 대화 루프(침묵 자동 전송→문장 단위 낭독→자동 재청취)를 얹는다.
+> 개발 브랜치: `claude/clever-wozniak-oairxi`
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-117 | 오디오 세션 통일 — 멱등 프로필 2종(.voice=`.playAndRecord/.voiceChat/HFP`(A2DP는 의도적 제외: 입력이 내장 마이크로 떨어짐), .playback=기존 A2DP 고음질) + 라우트 분리(oldDeviceUnavailable→녹음 정리·onRouteLost)·인터럽션(전화→중단, 종료 시 onInterruptionEnded) 옵저버 | `Services/SpeechService.swift` | NEEDS-BUILD |
+| T-118 | 핸즈프리 음성 대화 — VoiceConversationController(신규, **pbxproj 등록**): ①받아쓰기 전송 시 응답 문장 단위 자동 낭독(기본 동작), ②핸즈프리 루프(waveform 버튼: 침묵 1.8초 자동 전송→think-안전 문장 분할 스트리밍 TTS→자동 재청취, 무발화 60초 종료). 음성 모드 중 엔진 상시 가동(탭만 교체). ChatViewModel voiceStreamHandler 후킹, ChatView 상태 배너 | `Services/VoiceConversationController.swift`(신규), `Services/SpeechService.swift`, `ViewModels/ChatViewModel.swift`, `Views/ChatView.swift` | TODO |
+| T-119 | 에어팟 스템 탭/글라스 탭 제어 — MPRemoteCommandCenter(play/pause/toggle): idle=모드 시작, 청취 중=즉시 전송(발화 없으면 종료), 낭독 중=바지-인 재청취. Now Playing 등록("Hermes 음성 대화") | `Services/VoiceConversationController.swift` | TODO |
+| T-120 | 백그라운드 음성 — `UIBackgroundModes`에 `audio` 추가 (잠금화면·주머니 속에서 음성 대화 유지, 생존 메커니즘은 T-118 엔진 상시 가동) | `Resources/Info.plist` | TODO |
+
 ## 빌드 검증 기록 (검증자가 갱신)
 
 | 날짜 | 브랜치/커밋 | 결과 | 비고 |
