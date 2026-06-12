@@ -7,10 +7,17 @@
 > **2026-06-11 현황**: Phase 10~14 전체가 PR #1(`claude/multi-agent-discussion-bcnnbt` → `main`)로
 > 병합되고 사용자 Xcode 빌드 + 실기기에서 Deep think 토론 정상 동작 확인. **main이 최신 기준선.**
 >
+> **2026-06-12 현황**:
+> - **브랜치 전략 확정** — main 기준선 + 세션별 피처 브랜치(완료 시 PR로 main 병합).
+>   구 `claude/busy-meitner-lhc5os`는 폐기(삭제 예정). CLAUDE.md·HANDOFF.md 갱신 완료.
+> - **T-116** 스트리밍 응답 버블 라이브 표시 회귀 수정 — 사고(<think>) 단계 내내 말풍선이
+>   숨겨져 "응답 생성 중…"에서 멈춘 듯 보이고 재진입해야 답이 보이던 문제. `NEEDS-BUILD`(실기기 확인).
+>
 > **다음 세션 예정 작업** (사용자 지정):
-> 1. 음성 입출력 실기기 기능 확인 — T-100~102 (받아쓰기, 읽어주기, 에어팟/글라스 라우팅)
-> 2. 사진/파일 입출력 실기기 기능 확인 — T-020~022 첨부 전송, T-105~108 썸네일 (T-105 브리지 재배포 여부 포함)
-> 3. 남은 TODO: T-096(칸반 events 최적화), T-097/T-098(Bridge config + 툴셋 토글)
+> 1. T-116 실기기 확인 — 전송 즉시 말풍선 "생각 중" 표시 → 본문 라이브 스트리밍(재진입 불필요)
+> 2. 음성 입출력 실기기 기능 확인 — T-100~102 (받아쓰기, 읽어주기, 에어팟/글라스 라우팅)
+> 3. 사진/파일 입출력 실기기 기능 확인 — T-020~022 첨부 전송, T-105~108 썸네일 (T-105 브리지 재배포 여부 포함)
+> 4. 남은 TODO: T-096(칸반 events 최적화), T-097/T-098(Bridge config + 툴셋 토글)
 
 ## 즉시 (사람 또는 맥미니 Hermes가 1회 수행)
 
@@ -106,6 +113,7 @@
 | T-106 | ChatImageView + NSCache(64MB) + `BridgeClient.fetchRawFile` + `\.bridgeClient` Environment 주입 — 맥 절대경로의 `.hermes/` 마커 뒤를 상대경로로 변환, 800pt 다운스케일, 실패/404/미설정은 placeholder 강등(에러 알럿 금지) | `Views/Components/ChatImageView.swift` (신규, pbxproj 등록됨), `Services/BridgeClient.swift`, `Views/ChatView.swift` | DONE (06-11 빌드 검증 · main 병합) |
 | T-107 | 본문 이미지 세그먼트 — `![alt](src)`·`[첨부: 경로]` 파싱(.image/.file), 스트리밍 꼬리 미완성 토큰 보류(512자 한도, 미닫힌 코드펜스 안은 제외), 사용자 버블 선두 첨부 줄 썸네일 분리 | `Views/Components/MarkdownText.swift`, `Views/Components/MessageView.swift` | DONE (06-11 빌드 검증 · main 병합 — 사진/파일 기능 확인은 새 세션에서) |
 | T-108 | 입력창 첨부 칩 썸네일 — PendingAttachment.thumbnail(이미지만 72px 1회 생성, Equatable은 id 기준), 칩에 36pt 표시(비이미지는 기존 paperclip) | `ViewModels/ChatViewModel.swift`, `Views/ChatView.swift` | DONE (06-11 빌드 검증 · main 병합) |
+| T-116 | 스트리밍 응답 버블 라이브 표시 회귀 수정 (T-103 후속) — `displayMessages`가 사고(<think>)만 있는 **스트리밍 중** 버블을 항상 포함(`streamingAssistantID`), 빈 동안엔 `ThinkingIndicator`(점 3개)로 "생각 중" 표시 후 본문 도착 시 같은 버블에서 라이브 스트리밍. 완료 버블의 think 숨김(T-103)·tool 칩(T-104)은 보존. 새 파일 없음(pbxproj 무수정) | `ViewModels/ChatViewModel.swift`, `Views/Components/MessageView.swift` | NEEDS-BUILD (실기기 확인: 전송 즉시 말풍선 갱신·재진입 불필요) |
 
 ## Phase 11 — 알림 (로컬 알림 + 폴링, APNs 없음 — Bridge 무수정이 본선)
 
