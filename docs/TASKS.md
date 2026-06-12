@@ -8,7 +8,7 @@
 > 병합되고 사용자 Xcode 빌드 + 실기기에서 Deep think 토론 정상 동작 확인. **main이 최신 기준선.**
 >
 > **다음 세션 예정 작업** (사용자 지정):
-> 1. 음성 입출력 실기기 기능 확인 — T-100~102 (받아쓰기, 읽어주기, 에어팟/글라스 라우팅)
+> 1. **Phase 15 빌드 + 실기기 검증** — T-117~120 핸즈프리 음성 대화 (체크리스트는 Phase 15 절 참조, 브랜치 `claude/clever-wozniak-oairxi`)
 > 2. 사진/파일 입출력 실기기 기능 확인 — T-020~022 첨부 전송, T-105~108 썸네일 (T-105 브리지 재배포 여부 포함)
 > 3. 남은 TODO: T-096(칸반 events 최적화), T-097/T-098(Bridge config + 툴셋 토글)
 
@@ -155,7 +155,19 @@
 | T-117 | 오디오 세션 통일 — 멱등 프로필 2종(.voice=`.playAndRecord/.voiceChat/HFP`(A2DP는 의도적 제외: 입력이 내장 마이크로 떨어짐), .playback=기존 A2DP 고음질) + 라우트 분리(oldDeviceUnavailable→녹음 정리·onRouteLost)·인터럽션(전화→중단, 종료 시 onInterruptionEnded) 옵저버 | `Services/SpeechService.swift` | NEEDS-BUILD |
 | T-118 | 핸즈프리 음성 대화 — VoiceConversationController(신규, **pbxproj 등록**): ①받아쓰기 전송 시 응답 문장 단위 자동 낭독(기본 동작), ②핸즈프리 루프(waveform 버튼: 침묵 1.8초 자동 전송→think-안전 문장 분할 스트리밍 TTS→자동 재청취, 무발화 60초 종료). 음성 모드 중 엔진 상시 가동(탭만 교체). ChatViewModel voiceStreamHandler 후킹, ChatView 상태 배너 | `Services/VoiceConversationController.swift`(신규), `Services/SpeechService.swift`, `ViewModels/ChatViewModel.swift`, `Views/ChatView.swift` | NEEDS-BUILD |
 | T-119 | 에어팟 스템 탭/글라스 탭 제어 — MPRemoteCommandCenter(play/pause/toggle): idle=모드 시작, 청취 중=즉시 전송(발화 없으면 종료), 낭독 중=바지-인 재청취. Now Playing 등록("Hermes 음성 대화"). 자동 낭독 중 탭은 "그만 읽기" | `Services/VoiceConversationController.swift` | NEEDS-BUILD |
-| T-120 | 백그라운드 음성 — `UIBackgroundModes`에 `audio` 추가 (잠금화면·주머니 속에서 음성 대화 유지, 생존 메커니즘은 T-118 엔진 상시 가동) | `Resources/Info.plist` | TODO |
+| T-120 | 백그라운드 음성 — `UIBackgroundModes`에 `audio` 추가 (잠금화면·주머니 속에서 음성 대화 유지, 생존 메커니즘은 T-118 엔진 상시 가동) | `Resources/Info.plist` | NEEDS-BUILD |
+
+**Phase 15 실기기 검증 체크리스트** (맥 빌드 후 에어팟·메타 글라스로):
+1. 받아쓰기 단독(에어팟→글라스): BT 마이크 사용, 종료 후 덕킹된 음악 복귀
+2. **받아쓰기→전송→응답 자동 낭독**: 마이크로 말하고 전송하면 별도 조작 없이 문장 단위로 읽힘. 키보드 입력 전송은 낭독 없음. 낭독 중 입력창 터치/마이크 탭 시 즉시 조용히 중단
+3. 읽어주기 단독(컨텍스트 메뉴): A2DP 고음질 유지
+4. 핸즈프리 루프 연속 5턴(waveform 버튼): 말하기→1.8초 침묵 자동 전송→스트리밍 낭독→자동 재청취, 턴 사이 라우트 끊김 없음
+5. think 많은 응답: think 내용 낭독 안 됨, 루프 정상 복귀
+6. 탭 제어: 낭독 중 탭=바지-인 재청취, 청취 중 탭=즉시 전송(무발화면 종료), 뮤직 앱 안 뜸
+7. 잠금화면/주머니: 잠근 채 30초+ 응답 대기 포함 풀 턴 완료 (마이크 표시등 상시 점등은 의도된 동작)
+8. 에어팟 분리 중 청취: 모드 정상 종료, 크래시 없음 / 낭독 중 전화 수신: 중단 후 통화 종료 시 복구
+9. 메타 글라스: 마이크 라우팅 + 탭 제어 end-to-end, "Hey Meta" 충돌 없음
+10. 회귀: dictationBase 이어붙이기, 컨텍스트 메뉴 읽어주기, Deep think 토론방 정상
 
 ## 빌드 검증 기록 (검증자가 갱신)
 
