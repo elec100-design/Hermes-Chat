@@ -152,6 +152,23 @@ final class ChatViewModel: ObservableObject {
             messages[assistantIndex].content = assistant.content
             messages[assistantIndex].toolCalls = Array(toolDictionary.values)
 
+            // 스트림이 빈(또는 think-only) 채 끝나면 세션 기록을 폴링해 답을 회수한다 (T-116).
+            // 게이트웨이가 응답을 세션에는 쓰지만 SSE로는 안 보내는 실기기 버그 대응 — 토론룸의
+            // T-114와 동종. 이 폴백이 없으면 화면엔 답이 안 뜨고, 세션을 나갔다 다시 들어와야
+            // (loadHistory 재호출) 비로소 답이 보였다.
+            let streamedVisible = MarkdownLite.strippingThink(assistant.content)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            let hasTool = !(messages[assistantIndex].toolCalls?.isEmpty ?? true)
+            if streamedVisible.isEmpty && !hasTool {
+                // 내용이 아예 안 왔으면 게이트웨이가 생성 중일 수 있어 길게(300초), 내용은 왔지만
+                // think 제거 후 비면 세션 기록도 think-only일 확률이 높아 짧게(6초)만 시도.
+                let deadline: TimeInterval = assistant.content.isEmpty ? 300 : 6
+                if let recovered = await pollForMissedReply(deadline: deadline) {
+                    messages[assistantIndex].content = recovered
+                    assistant.content = recovered
+                }
+            }
+
             if messages[assistantIndex].content.isEmpty && (messages[assistantIndex].toolCalls?.isEmpty ?? true) {
                 messages.remove(at: assistantIndex)
             }
@@ -169,6 +186,27 @@ final class ChatViewModel: ObservableObject {
                 createdAt: .now
             ))
         }
+    }
+
+    /// 스트림이 빈 채 끝났을 때(SSE 미전송 실기기 버그) 세션 기록을 2초 간격으로 폴링해
+    /// 마지막 user 메시지 뒤의 "보이는" assistant 답을 회수한다 (T-116).
+    /// 판정은 토론룸 폴백과 동일한 `DiscussionViewModel.missedReply`를 재사용한다 — 직전 턴
+    /// 답을 오인하지 않도록 지금까지 보낸 user 메시지 수로 앵커링한다. 타임아웃/취소 시 nil.
+    private func pollForMissedReply(deadline: TimeInterval) async -> String? {
+        let expectedUserCount = messages.filter { $0.role == .user }.count
+        let limit = Date.now.addingTimeInterval(deadline)
+        while Date.now < limit {
+            if let server = try? await appSettings.hermesClient.fetchMessages(sessionId: sessionId),
+               let reply = DiscussionViewModel.missedReply(in: server, expectedUserCount: expectedUserCount) {
+                return reply
+            }
+            do {
+                try await Task.sleep(nanoseconds: 2_000_000_000)
+            } catch {
+                return nil  // 취소
+            }
+        }
+        return nil
     }
 
     /// 첨부를 Bridge로 업로드하고 맥미니 절대경로를 메시지 앞에 붙인다.
