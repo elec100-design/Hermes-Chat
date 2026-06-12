@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import MediaPlayer
 
 /// 음성 대화 오케스트레이션 (T-118).
 /// 두 가지 동작 모드가 같은 문장 분할·낭독 엔진을 공유한다:
@@ -39,6 +40,8 @@ final class VoiceConversationController: ObservableObject {
     private var pendingSentences = 0
     /// 바지-인 후 남은 스트림 문장의 낭독 생략 (T-119)
     private var skipRemainingTTS = false
+    /// 해제를 위해 보관하는 리모트 커맨드 타깃 (T-119)
+    private var commandTargets: [(MPRemoteCommand, Any)] = []
 
     private init() {
         speech.onSentenceFinished = { [weak self] in self?.sentenceFinished() }
@@ -64,6 +67,8 @@ final class VoiceConversationController: ObservableObject {
         handsFree = false
         resetTurn()
         attachStreamHandler(to: viewModel)
+        enableRemoteCommands()
+        setNowPlaying()
         state = .waitingResponse
     }
 
@@ -86,7 +91,10 @@ final class VoiceConversationController: ObservableObject {
         handsFree = true
         resetTurn()
         attachStreamHandler(to: viewModel)
-        // 진입 멘트 — 청취 시작의 청각 피드백 (didFinish 정산이 beginListening으로 이어진다)
+        enableRemoteCommands()
+        setNowPlaying()
+        // 진입 멘트 — 청취 시작의 청각 피드백 + 실제 재생으로 now-playing 지위 확보 (T-119).
+        // (didFinish 정산이 beginListening으로 이어진다)
         streamFinished = true
         pendingSentences = 1
         state = .speaking
@@ -103,6 +111,8 @@ final class VoiceConversationController: ObservableObject {
         speech.voiceListenStop()
         speech.endSentenceReading(cancel: true)
         speech.voiceModeEnd()
+        disableRemoteCommands()
+        clearNowPlaying()
         handsFree = false
         resetTurn()
         state = .idle
@@ -240,6 +250,75 @@ final class VoiceConversationController: ObservableObject {
     private func sentenceFinished() {
         pendingSentences = max(0, pendingSentences - 1)
         advanceIfDone()
+    }
+
+    // MARK: - 에어팟 스템 탭 / 글라스 탭 (T-119)
+
+    /// 에어팟 스템 탭·메타 글라스 탭은 같은 AVRCP play/pause로 들어온다.
+    /// 리모트 커맨드는 now-playing 앱에만 전달되므로 진입 멘트/첫 문장 재생이 지위를 확보한다.
+    private func enableRemoteCommands() {
+        guard commandTargets.isEmpty else { return }
+        let center = MPRemoteCommandCenter.shared()
+        for command in [center.togglePlayPauseCommand, center.playCommand, center.pauseCommand] {
+            command.isEnabled = true
+            let target = command.addTarget { [weak self] _ in
+                Task { @MainActor [weak self] in self?.handleRemoteToggle() }
+                return .success
+            }
+            commandTargets.append((command, target))
+        }
+    }
+
+    /// 음악 앱 등에 제어권을 돌려준다
+    private func disableRemoteCommands() {
+        for (command, target) in commandTargets {
+            command.removeTarget(target)
+            command.isEnabled = false
+        }
+        commandTargets = []
+    }
+
+    /// 탭 한 번의 의미 — 상태별로 "가장 자연스러운 다음 행동"
+    private func handleRemoteToggle() {
+        switch state {
+        case .idle:
+            // 커맨드 해제 직전의 늦은 탭 등 — 연결된 화면이 있으면 모드 재시작
+            if let viewModel {
+                Task { await start(viewModel: viewModel) }
+            }
+        case .listening:
+            if liveTranscript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                stop()  // 아직 아무 말 안 함 — 탭은 "그만 듣기"
+            } else {
+                finishListening()  // 말하던 중 탭 — "끝, 바로 보내"
+            }
+        case .speaking:
+            guard handsFree else {
+                stop()  // 자동 낭독 — 탭은 "그만 읽기"
+                return
+            }
+            // 바지-인: 남은 낭독을 끊고 듣기로 — 취소 정산은 didCancel→sentenceFinished가 처리
+            skipRemainingTTS = true
+            speech.flushSentenceQueue()
+            pendingSentences = 0
+            if streamFinished {
+                beginListening()
+            }
+            // 스트림 진행 중이면 handleStream(finished:)의 advanceIfDone이 재청취로 이어준다
+        case .waitingResponse:
+            if !handsFree { stop() }  // 자동 낭독 대기 중 취소; 핸즈프리는 응답을 기다린다
+        }
+    }
+
+    private func setNowPlaying() {
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = [
+            MPMediaItemPropertyTitle: "Hermes 음성 대화",
+            MPNowPlayingInfoPropertyPlaybackRate: 1.0
+        ]
+    }
+
+    private func clearNowPlaying() {
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
     }
 
     /// 스트림과 낭독 큐가 모두 끝났을 때 — 핸즈프리면 재청취, 자동 낭독이면 종료
