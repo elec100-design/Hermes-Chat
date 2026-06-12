@@ -14,8 +14,11 @@ struct ChatView: View {
     @State private var isForking = false
     @State private var forkError: String?
     @ObservedObject private var speech = SpeechService.shared
+    @ObservedObject private var voice = VoiceConversationController.shared
     /// 받아쓰기 시작 시점의 입력창 내용 — 부분 결과가 갱신될 때마다 그 뒤에 이어 붙인다
     @State private var dictationBase = ""
+    /// 현재 입력에 받아쓰기가 쓰였는지 — true면 전송 시 응답을 자동 낭독한다 (T-118)
+    @State private var usedDictation = false
 
     init(sessionId: String, appSettings: AppSettings) {
         self.sessionId = sessionId
@@ -50,6 +53,11 @@ struct ChatView: View {
                 }
                 .padding(.vertical, 6)
                 .background(.thinMaterial)
+            }
+
+            if voice.state != .idle {
+                Divider()
+                voiceStatusBanner
             }
 
             Divider()
@@ -102,13 +110,24 @@ struct ChatView: View {
             Text(speech.errorMessage ?? "")
         }
         .onChange(of: speech.transcript) { _, transcript in
-            guard !transcript.isEmpty else { return }
+            // 핸즈프리 부분 결과는 컨트롤러가 소비 — 입력창에는 받아쓰기만 반영
+            guard voice.state == .idle, !transcript.isEmpty else { return }
+            usedDictation = true
             viewModel.inputText = dictationBase.isEmpty
                 ? transcript
                 : dictationBase + " " + transcript
         }
+        .onChange(of: viewModel.inputText) { _, text in
+            // 입력을 비우면(전송 포함) 받아쓰기 흔적도 초기화
+            if text.isEmpty { usedDictation = false }
+        }
+        .onChange(of: isInputFocused) { _, focused in
+            // 자동 낭독 중 입력창을 만지면 조용히 멈춘다 — 끝까지 듣게 강요하지 않는다
+            if focused, voice.state != .idle, !voice.handsFree { voice.stop() }
+        }
         .onDisappear {
             if speech.isRecording { speech.stopRecording() }
+            if voice.state != .idle { voice.stop() }
         }
         .photosPicker(
             isPresented: $showPhotoPicker,
@@ -168,6 +187,52 @@ struct ChatView: View {
         let visible = MarkdownLite.strippingThink(last.content)
             .trimmingCharacters(in: .whitespacesAndNewlines)
         return visible.isEmpty ? "응답 생성 중..." : "응답 중"
+    }
+
+    /// 음성 대화 상태 배너 (T-118) — 듣는 중/생각 중/말하는 중 + 실시간 받아쓰기 한 줄
+    private var voiceStatusBanner: some View {
+        HStack(spacing: 8) {
+            Image(systemName: voiceStatusIcon)
+                .foregroundStyle(voice.state == .listening ? Color.red : Color.accentColor)
+            Text(voiceStatusText)
+                .font(.subheadline)
+            if voice.state == .listening, !voice.liveTranscript.isEmpty {
+                Text(voice.liveTranscript)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.head)
+            }
+            Spacer()
+            Button {
+                voice.stop()
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundStyle(.secondary)
+            }
+            .accessibilityLabel(voice.handsFree ? "음성 대화 종료" : "낭독 중지")
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+        .background(.thinMaterial)
+    }
+
+    private var voiceStatusIcon: String {
+        switch voice.state {
+        case .listening: return "mic.fill"
+        case .waitingResponse: return "ellipsis.bubble"
+        case .speaking: return "speaker.wave.2.fill"
+        case .idle: return "waveform"
+        }
+    }
+
+    private var voiceStatusText: String {
+        switch voice.state {
+        case .listening: return "듣는 중…"
+        case .waitingResponse: return "생각 중…"
+        case .speaking: return "말하는 중…"
+        case .idle: return ""
+        }
     }
 
     private var messageList: some View {
@@ -251,6 +316,7 @@ struct ChatView: View {
                     if speech.isRecording {
                         speech.stopRecording()
                     } else {
+                        if voice.state != .idle { voice.stop() }  // 자동 낭독 중이면 멈추고 받아쓰기
                         dictationBase = viewModel.inputText
                             .trimmingCharacters(in: .whitespacesAndNewlines)
                         Task { await speech.startRecording() }
@@ -260,14 +326,34 @@ struct ChatView: View {
                         .font(.system(size: 20))
                         .foregroundStyle(speech.isRecording ? Color.red : Color.accentColor)
                 }
-                .disabled(viewModel.isWorking)
+                .disabled(viewModel.isWorking || voice.handsFree)
                 .accessibilityLabel(speech.isRecording ? "받아쓰기 중지" : "음성 입력")
+
+                Button {
+                    if voice.handsFree {
+                        voice.stop()
+                    } else {
+                        isInputFocused = false
+                        Task { await voice.start(viewModel: viewModel) }
+                    }
+                } label: {
+                    Image(systemName: voice.handsFree ? "waveform.slash" : "waveform")
+                        .font(.system(size: 20))
+                        .foregroundStyle(voice.handsFree ? Color.red : Color.accentColor)
+                }
+                .accessibilityLabel(voice.handsFree ? "음성 대화 종료" : "음성 대화 시작")
 
                 TextField("메시지를 입력하세요", text: $viewModel.inputText, axis: .vertical)
                     .textFieldStyle(.roundedBorder)
                     .focused($isInputFocused)
 
                 Button {
+                    if speech.isRecording { speech.stopRecording() }  // 말하다 바로 전송해도 부드럽게
+                    if usedDictation {
+                        // 음성으로 물었으면 응답도 음성으로 — 문장 단위 자동 낭독 (T-118)
+                        voice.autoRead(viewModel: viewModel)
+                        usedDictation = false
+                    }
                     Task { await viewModel.send() }
                     isInputFocused = false
                 } label: {
