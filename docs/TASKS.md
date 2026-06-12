@@ -156,6 +156,7 @@
 | T-118 | 핸즈프리 음성 대화 — VoiceConversationController(신규, **pbxproj 등록**): ①받아쓰기 전송 시 응답 문장 단위 자동 낭독(기본 동작), ②핸즈프리 루프(waveform 버튼: 침묵 1.8초 자동 전송→think-안전 문장 분할 스트리밍 TTS→자동 재청취, 무발화 60초 종료). 음성 모드 중 엔진 상시 가동(탭만 교체). ChatViewModel voiceStreamHandler 후킹, ChatView 상태 배너 | `Services/VoiceConversationController.swift`(신규), `Services/SpeechService.swift`, `ViewModels/ChatViewModel.swift`, `Views/ChatView.swift` | NEEDS-BUILD |
 | T-119 | 에어팟 스템 탭/글라스 탭 제어 — MPRemoteCommandCenter(play/pause/toggle): idle=모드 시작, 청취 중=즉시 전송(발화 없으면 종료), 낭독 중=바지-인 재청취. Now Playing 등록("Hermes 음성 대화"). 자동 낭독 중 탭은 "그만 읽기" | `Services/VoiceConversationController.swift` | NEEDS-BUILD |
 | T-120 | 백그라운드 음성 — `UIBackgroundModes`에 `audio` 추가 (잠금화면·주머니 속에서 음성 대화 유지, 생존 메커니즘은 T-118 엔진 상시 가동) | `Resources/Info.plist` | NEEDS-BUILD |
+| T-121 | 챗 응답 미수신 폴백 — 스트림이 보일 내용 없이 끝나면 세션 기록 2초 간격 폴링(빈 스트림 300초/think-only 6초)으로 회수. 게이트웨이가 답을 세션에는 쓰지만 SSE로는 안 보내는 실기기 버그(토론룸 T-114와 동일 원인)의 일반 챗 버전 — "챗을 나갔다 와야 답이 보이고 TTS도 안 됨" 증상 해결. 판정은 `DiscussionViewModel.missedReply` 재사용, 회수 본문으로 자동 낭독(T-118)도 정상 동작 | `ViewModels/ChatViewModel.swift` | NEEDS-BUILD |
 
 **Phase 15 실기기 검증 체크리스트** (맥 빌드 후 에어팟·메타 글라스로):
 1. 받아쓰기 단독(에어팟→글라스): BT 마이크 사용, 종료 후 덕킹된 음악 복귀

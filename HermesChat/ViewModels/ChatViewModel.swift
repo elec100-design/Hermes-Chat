@@ -150,6 +150,21 @@ final class ChatViewModel: ObservableObject {
 
             messages[assistantIndex].content = assistant.content
             messages[assistantIndex].toolCalls = Array(toolDictionary.values)
+
+            // 스트림이 보일 내용 없이 끝나면 세션 기록을 폴링해 회수 (T-121).
+            // 게이트웨이가 답을 세션에는 쓰지만 SSE로는 안 보내는 실기기 버그 — 토론룸
+            // T-114와 동일 원인·동일 처리. think 제거 후 비는 경우는 기록도 think-only일
+            // 가능성이 높아 짧게만 시도한다.
+            let visible = MarkdownLite.strippingThink(assistant.content)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            if visible.isEmpty {
+                let deadline: TimeInterval = assistant.content.isEmpty ? 300 : 6
+                if let recovered = await pollForMissedReply(deadline: deadline) {
+                    assistant.content = recovered
+                    messages[assistantIndex].content = recovered
+                }
+            }
+            // 음성 낭독은 회수분까지 확정된 최종 본문으로 마무리 알림 (T-118)
             voiceStreamHandler?(assistant.content, true)
 
             if messages[assistantIndex].content.isEmpty && (messages[assistantIndex].toolCalls?.isEmpty ?? true) {
@@ -171,6 +186,29 @@ final class ChatViewModel: ObservableObject {
             // 음성 루프가 에러 후에도 재청취/종료로 자연 복귀하도록 완료를 알린다 (T-118)
             voiceStreamHandler?("", true)
         }
+    }
+
+    /// 세션 기록을 2초 간격으로 폴링해 SSE로 못 받은 답변을 회수한다 (T-121).
+    /// 판정은 토론룸과 동일한 `DiscussionViewModel.missedReply` 재사용 —
+    /// "마지막 user 메시지 뒤의 보이는 assistant 답변" + user 수 앵커(직전 턴 오인 방지).
+    /// 타임아웃 시 nil — 호출자는 기존의 빈 응답 처리(말풍선 제거)로 강등한다.
+    private func pollForMissedReply(deadline: TimeInterval) async -> String? {
+        let expectedUserCount = messages.filter { $0.role == .user }.count
+        let limit = Date.now.addingTimeInterval(deadline)
+        while Date.now < limit {
+            if let fetched = try? await appSettings.hermesClient.fetchMessages(sessionId: sessionId),
+               let reply = DiscussionViewModel.missedReply(
+                   in: fetched, expectedUserCount: expectedUserCount
+               ) {
+                return reply
+            }
+            do {
+                try await Task.sleep(nanoseconds: 2_000_000_000)
+            } catch {
+                return nil // 취소
+            }
+        }
+        return nil
     }
 
     /// 첨부를 Bridge로 업로드하고 맥미니 절대경로를 메시지 앞에 붙인다.
