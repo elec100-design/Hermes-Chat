@@ -98,11 +98,27 @@ final class ChatViewModel: ObservableObject {
             ))
             return
         }
+        // HEIC/HEIF는 LLM 비전 API가 거부하므로 업로드 전 JPEG로 정규화한다 (T-130).
+        // 세 진입점(사진선택·파일·글라스 워처)이 모두 여기를 거치므로 한 곳에서 해결된다.
+        let (data, filename) = Self.normalizedImageForUpload(data: data, filename: filename)
         // 이미지만 디코딩 (비이미지 파일의 불필요한 UIImage 시도 회피)
         let thumbnail = ChatImageSource.isImagePath(filename)
             ? UIImage(data: data)?.preparingThumbnail(of: CGSize(width: 72, height: 72))
             : nil
         attachments.append(PendingAttachment(filename: filename, data: data, thumbnail: thumbnail))
+    }
+
+    /// HEIC/HEIF 이미지를 JPEG로 변환하고 확장자를 `.jpg`로 바꾼다 (T-130).
+    /// HEIC가 아니거나 변환 실패면 원본을 그대로 돌려준다(방어). PNG/JPEG/WebP/GIF·비이미지는 무변환.
+    /// UIImage가 EXIF 방향을 반영해 디코드하고 jpegData가 정방향으로 기록하므로 회전 문제는 없다.
+    private static func normalizedImageForUpload(data: Data, filename: String) -> (Data, String) {
+        let ext = (filename as NSString).pathExtension.lowercased()
+        guard ext == "heic" || ext == "heif" else { return (data, filename) }
+        guard let jpeg = UIImage(data: data)?.jpegData(compressionQuality: 0.85) else {
+            return (data, filename)
+        }
+        let base = (filename as NSString).deletingPathExtension
+        return (jpeg, base + ".jpg")
     }
 
     func removeAttachment(id: UUID) {

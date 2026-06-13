@@ -200,6 +200,7 @@
 | T-127 | VoiceConversationController `announcePhotoArrival` — idle이면 음성 세션 시작/listening이면 청취 접고/진행 중이면 플래그만, "사진이 도착했습니다" 문장 큐 낭독 후 핸즈프리 청취 진입. 사용자 질문은 기존 `finishListening`→`send()`가 대기 첨부와 함께 전송, 응답 자동 낭독·재청취. 무발화 타임아웃은 `noSpeechTimedOut`이 기본 프롬프트로 사진 전송(폴백). 음성 불가 시 `sendPhotoFallback`. 전송을 컨트롤러 단일 경로로 일원화해 이중 전송 방지 | `Services/VoiceConversationController.swift` | NEEDS-BUILD |
 | T-128 | ChatView UI — 입력 바 `eyeglasses` 토글(활성 시 초록), 권한 부족 안내 알럿, `onAppear`에서 `onNewPhoto`→`handleCapturedPhoto` 연결, `onDisappear`에서 워처 stop. Info.plist `NSPhotoLibraryUsageDescription` 문구 보강(전체 접근 필요 명시) | `Views/ChatView.swift`, `Resources/Info.plist` | NEEDS-BUILD |
 | T-129 | 글라스 사진 감지 가시성 — 서버 응답과 무관하게 "감시 중/사진 감지됨 N장·최근 파일명" 상태 배너 + 도착 햅틱(`UINotificationFeedbackGenerator`). 첫 실기기 테스트에서 서버 import 오류(T-122 표면화, 앱 무관)와 사진 미감지를 구분 못 한 UX 공백 대응. 모드 OFF 시 리셋 | `ViewModels/ChatViewModel.swift`, `Views/ChatView.swift` | NEEDS-BUILD |
+| T-130 | HEIC 첨부 자동 JPEG 변환 — 주요 LLM 비전 API(Claude/OpenAI/Gemini)가 HEIC를 사실상 거부해 "분석 불가"가 나던 문제. `addAttachment`에서 확장자 heic/heif면 `UIImage.jpegData(0.85)`로 변환·파일명 `.jpg`로 교체(세 진입점 공통 통로). 변환 실패 시 원본 유지, PNG/JPEG/비이미지는 무변환. 일반 아이폰 사진(기본 HEIC)도 함께 해결 | `ViewModels/ChatViewModel.swift` | NEEDS-BUILD |
 
 **Phase 16 실기기 검증 체크리스트** (맥 빌드 후 메타 글라스 + Meta AI 앱 사진 동기화 ON):
 1. 사진 권한을 **전체 접근**으로 허용. 제한 접근으로 주면 안내 알럿이 뜨고 모드가 안 켜지는지.
