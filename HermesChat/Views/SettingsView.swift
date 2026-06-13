@@ -98,7 +98,7 @@ struct SettingsView: View {
                     Task {
                         discoveryResult = nil
                         let added = await appSettings.discoverProfiles()
-                        discoveryResult = added > 0 ? "\(added)개 프로필 발견" : "새 프로필 없음 (8642–8651 스캔)"
+                        discoveryResult = added > 0 ? "\(added)개 프로필 추가·갱신" : "변경 없음 (8642–8651 스캔)"
                     }
                 } label: {
                     if appSettings.isDiscoveringProfiles {

@@ -16,9 +16,10 @@
 >
 > **다음 세션 예정 작업** (사용자 지정):
 > 1. T-116 실기기 확인 — 전송 즉시 말풍선 "생각 중" 표시 → 본문 라이브 스트리밍(재진입 불필요)
-> 2. 음성 입출력 실기기 기능 확인 — T-100~102 (받아쓰기, 읽어주기, 에어팟/글라스 라우팅)
-> 3. 사진/파일 입출력 실기기 기능 확인 — T-020~022 첨부 전송, T-105~108 썸네일 (T-105 브리지 재배포 여부 포함)
-> 4. 남은 TODO: T-096(칸반 events 최적화), T-097/T-098(Bridge config + 툴셋 토글)
+> 2. **Phase 15 빌드 + 실기기 검증** — T-117~120 핸즈프리 음성 대화 (체크리스트는 Phase 15 절 참조, 브랜치 `claude/clever-wozniak-oairxi`)
+> 3. 음성 입출력 실기기 기능 확인 — T-100~102 (받아쓰기, 읽어주기, 에어팟/글라스 라우팅)
+> 4. 사진/파일 입출력 실기기 기능 확인 — T-020~022 첨부 전송, T-105~108 썸네일 (T-105 브리지 재배포 여부 포함)
+> 5. 남은 TODO: T-096(칸반 events 최적화), T-097/T-098(Bridge config + 툴셋 토글)
 
 ## 즉시 (사람 또는 맥미니 Hermes가 1회 수행)
 
@@ -151,6 +152,36 @@
 | T-113 | 프로필 보드 진입점 — 툴바 "Deep think" 버튼(topBarTrailing, brain.head.profile) + fullScreenCover | `Views/ProfileBoardView.swift` | DONE (06-11 빌드 검증 · main 병합) |
 | T-114 | 발언 미수신 폴백 — 스트림이 빈 채 끝나면(게이트웨이가 세션에는 답을 쓰지만 SSE로는 안 보내는 실기기 버그) 세션 기록을 2초 간격 폴링(빈 스트림 300초 / think-only 6초)해 회수. 판정은 "마지막 user 메시지 뒤 visible assistant" + userTurns 앵커 검증(직전 턴 오인 방지). "(응답 없음)" 발언 채택 제거 — 타임아웃은 탈락 처리 | `ViewModels/DiscussionViewModel.swift` | DONE (06-11 빌드 검증 · main 병합) |
 | T-115 | 라운드 동시 진행 — 라운드 시작 시 직전 발언 스냅샷 → 참가자별 메시지 사전 조립 → 빈 카드 사전 추가(순서 고정) → withTaskGroup 병렬 스트리밍(비던지는 그룹: 한 참가자 실패가 형제를 취소하지 않음). currentSpeakerName → speakingNames("N명 발언 중..."), 스크롤 defaultScrollAnchor(.bottom), 발언 길이 5~10문장 완화, 라운드 1 선발언 전달 제거 | `ViewModels/DiscussionViewModel.swift`, `Views/DiscussionView.swift` | DONE (06-11 빌드+실기기 토론 검증 · main 병합 — 동시 발언·폴백 회수 정상 확인) |
+
+## Phase 15 — 핸즈프리 음성 대화 (에어팟·메타 글라스 자연스러운 음성 입출력)
+
+> 배경: T-100~102는 동작하지만 녹음·재생 시마다 세션 카테고리를 전환해 BT 라우트 재협상(끊김)이
+> 발생하고, 음성으로 물어봐도 답을 읽어주지 않았다. 받아쓰기 전송 시 응답 자동 낭독을 기본 동작으로,
+> 그 위에 핸즈프리 대화 루프(침묵 자동 전송→문장 단위 낭독→자동 재청취)를 얹는다.
+> 개발 브랜치: `claude/clever-wozniak-oairxi`
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-117 | 오디오 세션 통일 — 멱등 프로필 2종(.voice=`.playAndRecord/.voiceChat/HFP`(A2DP는 의도적 제외: 입력이 내장 마이크로 떨어짐), .playback=기존 A2DP 고음질) + 라우트 분리(oldDeviceUnavailable→녹음 정리·onRouteLost)·인터럽션(전화→중단, 종료 시 onInterruptionEnded) 옵저버 | `Services/SpeechService.swift` | NEEDS-BUILD |
+| T-118 | 핸즈프리 음성 대화 — VoiceConversationController(신규, **pbxproj 등록**): ①받아쓰기 전송 시 응답 문장 단위 자동 낭독(기본 동작), ②핸즈프리 루프(waveform 버튼: 침묵 1.8초 자동 전송→think-안전 문장 분할 스트리밍 TTS→자동 재청취, 무발화 60초 종료). 음성 모드 중 엔진 상시 가동(탭만 교체). ChatViewModel voiceStreamHandler 후킹, ChatView 상태 배너 | `Services/VoiceConversationController.swift`(신규), `Services/SpeechService.swift`, `ViewModels/ChatViewModel.swift`, `Views/ChatView.swift` | NEEDS-BUILD |
+| T-119 | 에어팟 스템 탭/글라스 탭 제어 — MPRemoteCommandCenter(play/pause/toggle): idle=모드 시작, 청취 중=즉시 전송(발화 없으면 종료), 낭독 중=바지-인 재청취. Now Playing 등록("Hermes 음성 대화"). 자동 낭독 중 탭은 "그만 읽기" | `Services/VoiceConversationController.swift` | NEEDS-BUILD |
+| T-120 | 백그라운드 음성 — `UIBackgroundModes`에 `audio` 추가 (잠금화면·주머니 속에서 음성 대화 유지, 생존 메커니즘은 T-118 엔진 상시 가동) | `Resources/Info.plist` | NEEDS-BUILD |
+| T-121 | 챗 응답 미수신 폴백 — 스트림이 보일 내용 없이 끝나면 세션 기록 2초 간격 폴링(빈 스트림 300초/think-only 6초)으로 회수. 게이트웨이가 답을 세션에는 쓰지만 SSE로는 안 보내는 실기기 버그(토론룸 T-114와 동일 원인)의 일반 챗 버전 — "챗을 나갔다 와야 답이 보이고 TTS도 안 됨" 증상 해결. 판정은 `DiscussionViewModel.missedReply` 재사용, 회수 본문으로 자동 낭독(T-118)도 정상 동작 | `ViewModels/ChatViewModel.swift` | NEEDS-BUILD |
+| T-122 | SSE `event: error` 표면화 — 게이트웨이가 에러 이벤트({"message": ...})를 보내면 StreamChunk 디코딩 실패로 조용히 버려져 "무반응"으로 보이던 것을 serverError throw로 전환 → 챗은 `[에러]` 말풍선, 토론은 탈락 처리, 음성 루프는 정상 복귀. 실사례: safety 게이트웨이가 hermes-agent 업데이트 전 스테일 프로세스로 돌며 매 요청 import 오류를 SSE error로 응답(증상: safety만 앱에서 무반응, 조치: 게이트웨이 재시작) | `Services/HermesAPIClient.swift`, `StreamModels.swift` | NEEDS-BUILD |
+| T-123 | 자동 검색 이름 동기화 — 맥에서 프로필 폴더명을 바꾸면(codex→builder) 같은 포트가 이미 등록돼 있어 새 이름이 영영 안 나타나던 것을, 같은 포트 항목의 이름을 서버 보고(Bridge 폴더명/MODEL_NAME)에 맞춰 갱신하도록 수정. 프로필별 apiKey Keychain·선택 저장명도 새 이름으로 이전. 주의: 맥에서 이름 변경 시 .env의 API_SERVER_MODEL_NAME 갱신 + 게이트웨이 서비스 재등록 필요(`setup_profiles_api.sh` 재실행 권장) | `Services/AppDefaults.swift`, `Views/SettingsView.swift` | NEEDS-BUILD |
+| T-124 | setup_profiles_api.sh 포트 중복 배정 버그 수정 — 포트 없는 프로필에 NEXT_PORT를 줄 때 뒤따르는 "이미 그 포트가 박힌" 프로필과 중복되던 것을, 2패스(명시 포트 먼저 예약 → 나머지에 빈 포트 배정)로 교체. 실사례: builder(8643)+codex(부활,포트없음)+designer(8644)가 codex/designer 8644 충돌. **비고: codex 폴더가 삭제 후에도 부활하는 건 스크립트가 아니라 hermes 프로필 레지스트리에 codex가 남아서임 — 폴더 삭제만으론 안 되고 hermes 레지스트리/설정에서 codex 제거 필요(스크립트 무관)** | `scripts/setup_profiles_api.sh` | 스크립트(빌드 무관) |
+
+**Phase 15 실기기 검증 체크리스트** (맥 빌드 후 에어팟·메타 글라스로):
+1. 받아쓰기 단독(에어팟→글라스): BT 마이크 사용, 종료 후 덕킹된 음악 복귀
+2. **받아쓰기→전송→응답 자동 낭독**: 마이크로 말하고 전송하면 별도 조작 없이 문장 단위로 읽힘. 키보드 입력 전송은 낭독 없음. 낭독 중 입력창 터치/마이크 탭 시 즉시 조용히 중단
+3. 읽어주기 단독(컨텍스트 메뉴): A2DP 고음질 유지
+4. 핸즈프리 루프 연속 5턴(waveform 버튼): 말하기→1.8초 침묵 자동 전송→스트리밍 낭독→자동 재청취, 턴 사이 라우트 끊김 없음
+5. think 많은 응답: think 내용 낭독 안 됨, 루프 정상 복귀
+6. 탭 제어: 낭독 중 탭=바지-인 재청취, 청취 중 탭=즉시 전송(무발화면 종료), 뮤직 앱 안 뜸
+7. 잠금화면/주머니: 잠근 채 30초+ 응답 대기 포함 풀 턴 완료 (마이크 표시등 상시 점등은 의도된 동작)
+8. 에어팟 분리 중 청취: 모드 정상 종료, 크래시 없음 / 낭독 중 전화 수신: 중단 후 통화 종료 시 복구
+9. 메타 글라스: 마이크 라우팅 + 탭 제어 end-to-end, "Hey Meta" 충돌 없음
+10. 회귀: dictationBase 이어붙이기, 컨텍스트 메뉴 읽어주기, Deep think 토론방 정상
 
 ## 빌드 검증 기록 (검증자가 갱신)
 

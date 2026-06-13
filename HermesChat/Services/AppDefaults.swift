@@ -148,7 +148,9 @@ final class AppSettings: ObservableObject {
     /// 아니면 호스트의 포트 범위를 스캔해서 응답하는 hermes API 서버를 등록한다.
     /// 스캔 시 프로필 이름은 각 API 서버가 /v1/models 로 알려주는 모델 식별자
     /// (API_SERVER_MODEL_NAME, 기본값 = 프로필 이름)를 사용한다.
-    /// - Returns: 새로 추가된 프로필 수
+    /// 이미 등록된 포트의 이름이 서버 보고와 다르면 갱신한다 — 맥에서 프로필
+    /// 폴더명을 바꾼 경우(codex→builder 등) 삭제·재검색 없이 따라간다 (T-123).
+    /// - Returns: 추가되거나 이름이 갱신된 프로필 수
     @discardableResult
     func discoverProfiles(ports: [Int] = Array(8642...8651)) async -> Int {
         guard !isDiscoveringProfiles else { return 0 }
@@ -157,17 +159,20 @@ final class AppSettings: ObservableObject {
 
         if let bridge = bridgeClient,
            let bridgeProfiles = try? await bridge.fetchProfiles() {
-            var added = 0
-            for bp in bridgeProfiles
-            where bp.apiEnabled && !profiles.contains(where: { $0.port == bp.port }) {
-                profiles.append(HermesProfile(name: bp.name, port: bp.port))
-                added += 1
+            var changed = 0
+            for bp in bridgeProfiles where bp.apiEnabled {
+                if profiles.contains(where: { $0.port == bp.port }) {
+                    if renameProfileIfNeeded(port: bp.port, to: bp.name) { changed += 1 }
+                } else {
+                    profiles.append(HermesProfile(name: bp.name, port: bp.port))
+                    changed += 1
+                }
             }
-            if added > 0 {
+            if changed > 0 {
                 profiles.sort { $0.port < $1.port }
                 persistProfiles()
             }
-            return added
+            return changed
         }
 
         var found: [(port: Int, name: String)] = []
@@ -185,16 +190,37 @@ final class AppSettings: ObservableObject {
             }
         }
 
-        var added = 0
-        for item in found where !profiles.contains(where: { $0.port == item.port }) {
-            profiles.append(HermesProfile(name: item.name, port: item.port))
-            added += 1
+        var changed = 0
+        for item in found {
+            if profiles.contains(where: { $0.port == item.port }) {
+                if renameProfileIfNeeded(port: item.port, to: item.name) { changed += 1 }
+            } else {
+                profiles.append(HermesProfile(name: item.name, port: item.port))
+                changed += 1
+            }
         }
-        if added > 0 {
+        if changed > 0 {
             profiles.sort { $0.port < $1.port }
             persistProfiles()
         }
-        return added
+        return changed
+    }
+
+    /// 같은 포트의 등록 항목 이름을 서버 보고에 맞춰 갱신한다 (T-123).
+    /// 프로필별 apiKey Keychain 항목(T-099 체계)과 선택 저장명도 새 이름으로 이전.
+    private func renameProfileIfNeeded(port: Int, to name: String) -> Bool {
+        guard let idx = profiles.firstIndex(where: { $0.port == port }),
+              profiles[idx].name != name, !name.isEmpty else { return false }
+        let oldKey = Self.profileKeychainKey(profiles[idx].name)
+        if let stored = KeychainHelper.get(oldKey), !stored.isEmpty {
+            KeychainHelper.set(stored, for: Self.profileKeychainKey(name))
+        }
+        KeychainHelper.delete(oldKey)
+        profiles[idx].name = name
+        if profiles[idx].id == selectedProfileID {
+            UserDefaults.standard.set(name, forKey: Self.selectedProfileNameKey)
+        }
+        return true
     }
 
     nonisolated private static func probeModelName(baseURL: URL, apiKey: String) async -> String? {

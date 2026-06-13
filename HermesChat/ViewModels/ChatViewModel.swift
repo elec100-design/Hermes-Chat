@@ -26,6 +26,10 @@ final class ChatViewModel: ObservableObject {
     /// Bridge 업로드 한도와 동일 (server/hermes_bridge.py MAX_UPLOAD)
     static let maxAttachmentBytes = 50 * 1024 * 1024
 
+    /// 음성 자동 낭독/핸즈프리(T-118)가 스트리밍 응답을 구독하는 후킹 —
+    /// (지금까지 누적된 본문, 스트림 완료 여부). 음성 기능을 안 쓸 땐 nil
+    var voiceStreamHandler: ((String, Bool) -> Void)?
+
     let sessionId: String
     let appSettings: AppSettings
 
@@ -98,7 +102,11 @@ final class ChatViewModel: ObservableObject {
 
     func send() async {
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty || !attachments.isEmpty, !isWorking else { return }
+        guard !text.isEmpty || !attachments.isEmpty, !isWorking else {
+            // 음성 루프가 응답을 기다리다 멈추지 않도록 즉시 완료를 알린다 (T-118)
+            voiceStreamHandler?("", true)
+            return
+        }
 
         isWorking = true
         defer { isWorking = false }
@@ -114,6 +122,7 @@ final class ChatViewModel: ObservableObject {
                     toolCalls: nil,
                     createdAt: .now
                 ))
+                voiceStreamHandler?("", true)
                 return
             }
         }
@@ -135,6 +144,7 @@ final class ChatViewModel: ObservableObject {
                 switch update {
                 case .content(let chunk):
                     assistant.content += chunk
+                    voiceStreamHandler?(assistant.content, false)
                 case .toolCallUpdate(let id, let name, let argumentsDelta):
                     if let existing = toolDictionary[id] {
                         let merged = (existing.arguments ?? [:])
@@ -168,6 +178,8 @@ final class ChatViewModel: ObservableObject {
                     assistant.content = recovered
                 }
             }
+            // 음성 낭독은 회수분까지 확정된 최종 본문으로 마무리 알림 (T-118)
+            voiceStreamHandler?(assistant.content, true)
 
             if messages[assistantIndex].content.isEmpty && (messages[assistantIndex].toolCalls?.isEmpty ?? true) {
                 messages.remove(at: assistantIndex)
@@ -185,6 +197,8 @@ final class ChatViewModel: ObservableObject {
                 toolCalls: nil,
                 createdAt: .now
             ))
+            // 음성 루프가 에러 후에도 재청취/종료로 자연 복귀하도록 완료를 알린다 (T-118)
+            voiceStreamHandler?("", true)
         }
     }
 
@@ -203,7 +217,7 @@ final class ChatViewModel: ObservableObject {
             do {
                 try await Task.sleep(nanoseconds: 2_000_000_000)
             } catch {
-                return nil  // 취소
+                return nil // 취소
             }
         }
         return nil
