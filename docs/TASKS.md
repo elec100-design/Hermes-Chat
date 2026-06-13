@@ -159,6 +159,7 @@
 | T-121 | 챗 응답 미수신 폴백 — 스트림이 보일 내용 없이 끝나면 세션 기록 2초 간격 폴링(빈 스트림 300초/think-only 6초)으로 회수. 게이트웨이가 답을 세션에는 쓰지만 SSE로는 안 보내는 실기기 버그(토론룸 T-114와 동일 원인)의 일반 챗 버전 — "챗을 나갔다 와야 답이 보이고 TTS도 안 됨" 증상 해결. 판정은 `DiscussionViewModel.missedReply` 재사용, 회수 본문으로 자동 낭독(T-118)도 정상 동작 | `ViewModels/ChatViewModel.swift` | NEEDS-BUILD |
 | T-122 | SSE `event: error` 표면화 — 게이트웨이가 에러 이벤트({"message": ...})를 보내면 StreamChunk 디코딩 실패로 조용히 버려져 "무반응"으로 보이던 것을 serverError throw로 전환 → 챗은 `[에러]` 말풍선, 토론은 탈락 처리, 음성 루프는 정상 복귀. 실사례: safety 게이트웨이가 hermes-agent 업데이트 전 스테일 프로세스로 돌며 매 요청 import 오류를 SSE error로 응답(증상: safety만 앱에서 무반응, 조치: 게이트웨이 재시작) | `Services/HermesAPIClient.swift`, `StreamModels.swift` | NEEDS-BUILD |
 | T-123 | 자동 검색 이름 동기화 — 맥에서 프로필 폴더명을 바꾸면(codex→builder) 같은 포트가 이미 등록돼 있어 새 이름이 영영 안 나타나던 것을, 같은 포트 항목의 이름을 서버 보고(Bridge 폴더명/MODEL_NAME)에 맞춰 갱신하도록 수정. 프로필별 apiKey Keychain·선택 저장명도 새 이름으로 이전. 주의: 맥에서 이름 변경 시 .env의 API_SERVER_MODEL_NAME 갱신 + 게이트웨이 서비스 재등록 필요(`setup_profiles_api.sh` 재실행 권장) | `Services/AppDefaults.swift`, `Views/SettingsView.swift` | NEEDS-BUILD |
+| T-124 | setup_profiles_api.sh 포트 중복 배정 버그 수정 — 포트 없는 프로필에 NEXT_PORT를 줄 때 뒤따르는 "이미 그 포트가 박힌" 프로필과 중복되던 것을, 2패스(명시 포트 먼저 예약 → 나머지에 빈 포트 배정)로 교체. 실사례: builder(8643)+codex(부활,포트없음)+designer(8644)가 codex/designer 8644 충돌. **비고: codex 폴더가 삭제 후에도 부활하는 건 스크립트가 아니라 hermes 프로필 레지스트리에 codex가 남아서임 — 폴더 삭제만으론 안 되고 hermes 레지스트리/설정에서 codex 제거 필요(스크립트 무관)** | `scripts/setup_profiles_api.sh` | 스크립트(빌드 무관) |
 
 **Phase 15 실기기 검증 체크리스트** (맥 빌드 후 에어팟·메타 글라스로):
 1. 받아쓰기 단독(에어팟→글라스): BT 마이크 사용, 종료 후 덕킹된 음악 복귀

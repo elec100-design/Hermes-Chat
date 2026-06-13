@@ -30,6 +30,19 @@ fi
 HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
 NEXT_PORT=8643
 PROFILE_PORTS=""   # "name port" 줄 목록 (bash 3.2 호환 — 연관배열 없음)
+USED_PORTS=" 8642 "   # 이미 배정된 포트 (default 예약). 중복 배정 방지용
+
+# 포트가 이미 사용 중인지 (공백 구분 문자열 검색 — bash 3.2 연관배열 없음)
+port_in_use() {
+    case "$USED_PORTS" in *" $1 "*) return 0 ;; *) return 1 ;; esac
+}
+
+# NEXT_PORT부터 비어 있는 첫 포트를 돌려준다 (사용 중인 포트는 건너뜀)
+next_free_port() {
+    local p="$NEXT_PORT"
+    while port_in_use "$p"; do p=$((p + 1)); done
+    echo "$p"
+}
 
 # .env 파일에서 key를 value로 설정(있으면 교체, 없으면 추가)
 set_env() {
@@ -95,21 +108,38 @@ restart_gateway() {
 echo "═══ 설정 (${HERMES_HOME})"
 configure_profile "$HERMES_HOME/.env" "default" 8642
 
-# 2) 나머지 프로필 (이름 순으로 안정적 포트 배정)
+# 2) 나머지 프로필 — 2패스로 포트 충돌 방지
+#    패스1: 이미 .env에 박힌 포트를 먼저 전부 예약 (이게 우선권을 가진다)
+#    패스2: 포트가 없는 프로필에만 빈 포트를 배정 (예약된 포트는 건너뜀)
+#    → 과거 버그: 포트 없는 프로필에 NEXT_PORT를 주면서, 뒤따라오는
+#      "이미 그 포트를 가진" 프로필과 중복 배정되던 문제를 막는다.
 if [ -d "$HERMES_HOME/profiles" ]; then
-    for dir in $(ls -d "$HERMES_HOME/profiles"/*/ 2>/dev/null | sort); do
+    PROFILE_DIRS="$(ls -d "$HERMES_HOME/profiles"/*/ 2>/dev/null | sort)"
+
+    # 패스1: 명시된 포트 예약
+    for dir in $PROFILE_DIRS; do
+        existing="$(get_env "${dir}.env" "API_SERVER_PORT")"
+        if [ -n "$existing" ]; then
+            if port_in_use "$existing"; then
+                echo "  ⚠ ${dir} 의 포트 ${existing} 가 이미 사용 중 — 패스2에서 재배정"
+            else
+                USED_PORTS="${USED_PORTS}${existing} "
+            fi
+        fi
+    done
+
+    # 패스2: 설정 + (포트 없거나 중복이면) 빈 포트 배정
+    for dir in $PROFILE_DIRS; do
         name="$(basename "$dir")"
         env_file="${dir}.env"
         existing="$(get_env "$env_file" "API_SERVER_PORT")"
-        if [ -n "$existing" ]; then
-            port="$existing"
+        if [ -n "$existing" ] && port_in_use "$existing"; then
+            port="$existing"   # 패스1에서 예약된 자기 포트
         else
-            port="$NEXT_PORT"
+            port="$(next_free_port)"
+            USED_PORTS="${USED_PORTS}${port} "
         fi
         configure_profile "$env_file" "$name" "$port"
-        if [ "$port" -ge "$NEXT_PORT" ] 2>/dev/null; then
-            NEXT_PORT=$((port + 1))
-        fi
     done
 fi
 
