@@ -20,13 +20,21 @@ Claude Code (Xcode 내장/웹) ↔ Hermes+Step-3.7-flash (맥미니 상주) ↔ 
 
 ## 1. 세션 시작 시 (모든 에이전트 공통)
 
+> **브랜치 전략 (2026-06-12 개정): `main`이 기준선이다.**
+> 각 세션은 main에서 새 피처 브랜치 `claude/<topic>`를 따서 작업하고, 완료되면 PR로 main에 병합한다.
+> 빌드 검증은 리뷰 중인 피처 브랜치(없으면 main)에서 수행한다.
+> 구 `claude/busy-meitner-lhc5os`는 폐기됐다 — PR #1(`multi-agent-discussion` → main) 병합 후
+> 낡은 상태로 남아 삭제 예정. 아래 명령에 그 브랜치명이 남아 있으면 main/피처 브랜치로 바꿔 읽는다.
+
 맥미니 저장소 경로 (**2026-06-11 iCloud → 로컬 이전** — iCloud 동기화가 .git까지 손상시킨 사고 이후):
 `REPO="/Users/macmini/projects/HermesChat"`
 (구 경로 `~/Library/Mobile Documents/.../busy-meitner-lhc5os` 는 폐기됨 — 절대 사용 금지)
 
 1. `cd "$REPO" && git status --porcelain` — **출력이 있으면(더러우면) pull 하지 말 것.**
    Hermes(codex)는 여기서 멈추고 상태를 보고한다. Claude Code만 정리 후 진행한다.
-2. `git fetch origin claude/busy-meitner-lhc5os && git checkout claude/busy-meitner-lhc5os && git pull --ff-only`
+2. `git fetch origin main && git checkout main && git pull --ff-only` — main 기준선을 최신화한다.
+   새 작업은 여기서 `git switch -c claude/<topic>`로 피처 브랜치를 딴다.
+   (리뷰 중인 PR 브랜치를 이어받는 경우엔 그 브랜치를 fetch·checkout한다.)
    — `--ff-only`가 실패하면 머지하지 말고 §7을 따른다.
 3. **읽기 순서**: `docs/PLAN.md` → `docs/TASKS.md` → 이 문서.
 4. 작업 선택 (§0의 역할 범위 안에서만):
@@ -39,7 +47,7 @@ Claude Code (Xcode 내장/웹) ↔ Hermes+Step-3.7-flash (맥미니 상주) ↔ 
 
 1. TASKS.md 상태 갱신: 빌드 검증을 했으면 `DONE`, 못 했으면 `NEEDS-BUILD`.
 2. 커밋 메시지 형식: `T-0NN: <한 줄 설명> [DONE|NEEDS-BUILD]`
-3. `git push -u origin claude/busy-meitner-lhc5os` (실패 시 2s/4s/8s/16s 백오프 재시도).
+3. `git push -u origin claude/<topic>` — 작업 중인 피처 브랜치로 푸시 (실패 시 2s/4s/8s/16s 백오프 재시도). 완료되면 main으로 PR을 연다.
 4. **작업 도중 중단되더라도** 컴파일 가능한 단위로 자주 커밋·푸시할 것. 중단된 작업은 TASKS.md에 `DOING` + 마지막 상황 한 줄을 남기면 다음 에이전트가 이어받는다.
 5. **`server/hermes_bridge.py`를 수정했다면 배포까지 한다** (맥에서 작업하는 에이전트만 가능):
    ```bash
@@ -87,7 +95,7 @@ xcodebuild -project HermesChat.xcodeproj -scheme HermesChat \
 앞으로 "HermesChat 빌드 검증해줘"라고 하면 아래 절차만 정확히 수행해. 코드 수정 금지.
 1. cd "/Users/macmini/projects/HermesChat"
 2. git status --porcelain 출력이 비어 있지 않으면 → 아무것도 하지 말고 출력을 그대로 보고 후 종료.
-3. git fetch origin && git checkout claude/busy-meitner-lhc5os && git pull --ff-only
+3. git fetch origin && git checkout <검증할 브랜치 (기본 main)> && git pull --ff-only
    → 실패하면 머지/리베이스 하지 말고 에러를 그대로 보고 후 종료.
 4. xcodebuild -project HermesChat.xcodeproj -scheme HermesChat -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build 2>&1 | tail -5
 5. 성공: docs/TASKS.md의 NEEDS-BUILD를 DONE으로 바꾸고 빌드 검증 기록에
@@ -106,7 +114,8 @@ Hermes에게 1회 지시 (기존 cron이 있으면 교체):
 기존 HermesChat cron 작업을 삭제하고 새로 등록해줘: 매 시간마다
 1. cd "/Users/macmini/projects/HermesChat"
 2. git status --porcelain 출력이 비어 있지 않으면 조용히 종료 (절대 커밋/정리하지 말 것).
-3. git fetch origin && git pull --ff-only — 실패하면 조용히 종료 (머지 금지).
+3. git fetch origin && git checkout main && git pull --ff-only — 실패하면 조용히 종료 (머지 금지).
+   (병합 전 피처 브랜치의 NEEDS-BUILD 검증은 사용자가 Xcode/PR 시점에 수행한다.)
 4. docs/TASKS.md에 NEEDS-BUILD가 있을 때만 HANDOFF.md §3의 xcodebuild 명령으로 빌드.
 5. 성공: 해당 태스크를 DONE으로, 빌드 검증 기록에 커밋해시와 함께 한 줄 추가.
    실패: 코드를 수정하지 말고 에러를 docs/BUILD_STATUS.md에 저장, 태스크를 BLOCKED로.
@@ -116,11 +125,11 @@ Hermes에게 1회 지시 (기존 cron이 있으면 교체):
 
 ### 5-C. Grok Build에게 (빌드 불가 환경 → 코드 작성 전담)
 ```
-GitHub 저장소 elec100-design/Hermes-Chat 의 브랜치 claude/busy-meitner-lhc5os 에서 작업해.
+GitHub 저장소 elec100-design/Hermes-Chat 의 main에서 새 피처 브랜치 claude/<topic> 를 따서 작업해.
 먼저 docs/PLAN.md, docs/TASKS.md, docs/HANDOFF.md를 읽고, TASKS.md에서 가장 낮은 번호의
 TODO 태스크 하나를 골라 HANDOFF.md 프로토콜대로 구현해. 빌드는 못 하니 상태는
-NEEDS-BUILD로 기록하고 커밋·푸시해. 새 Swift 파일을 만들면 반드시 HANDOFF.md §4대로
-project.pbxproj에 등록해. 완료하면 태스크 ID와 변경 파일을 보고해.
+NEEDS-BUILD로 기록하고 그 피처 브랜치로 커밋·푸시해(완료 시 main으로 PR). 새 Swift 파일을 만들면
+반드시 HANDOFF.md §4대로 project.pbxproj에 등록해. 완료하면 태스크 ID와 변경 파일을 보고해.
 ```
 
 ### 5-D. Claude Code(Xcode/웹)에게
@@ -143,7 +152,7 @@ cd "/Users/macmini/projects/HermesChat"
 git config credential.helper "store --file ~/.hermes/.git-credentials"
 printf 'https://elec100-design:%s@github.com\n' '<발급한 토큰>' > ~/.hermes/.git-credentials
 chmod 600 ~/.hermes/.git-credentials
-git push -u origin claude/busy-meitner-lhc5os   # 동작 확인
+git push -u origin claude/<topic>   # 작업 중인 피처 브랜치로 동작 확인
 ```
 토큰은 저장소 밖(~/.hermes/)에 있으므로 커밋될 일이 없다. 토큰을 텔레그램 등
 채팅으로 에이전트에게 보내지 말 것 — 위 명령은 사람이 직접 실행한다.

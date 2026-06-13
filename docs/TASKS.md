@@ -7,10 +7,18 @@
 > **2026-06-11 현황**: Phase 10~14 전체가 PR #1(`claude/multi-agent-discussion-bcnnbt` → `main`)로
 > 병합되고 사용자 Xcode 빌드 + 실기기에서 Deep think 토론 정상 동작 확인. **main이 최신 기준선.**
 >
+> **2026-06-12 현황**:
+> - **브랜치 전략 확정** — main 기준선 + 세션별 피처 브랜치(완료 시 PR로 main 병합).
+>   구 `claude/busy-meitner-lhc5os`는 폐기(삭제 예정). CLAUDE.md·HANDOFF.md 갱신 완료.
+> - **T-116** 채팅 답이 화면에 안 뜨고 세션 재진입해야 보이던 버그 수정 — 핵심 원인은 SSE가
+>   실기기에서 답을 안 흘리는 버그(T-114와 동종). 일반 채팅에 폴링 폴백 이식 + 스트리밍 버블
+>   라이브 표시. `NEEDS-BUILD`(실기기 확인: 재진입 없이 답 도착하는지).
+>
 > **다음 세션 예정 작업** (사용자 지정):
-> 1. 음성 입출력 실기기 기능 확인 — T-100~102 (받아쓰기, 읽어주기, 에어팟/글라스 라우팅)
-> 2. 사진/파일 입출력 실기기 기능 확인 — T-020~022 첨부 전송, T-105~108 썸네일 (T-105 브리지 재배포 여부 포함)
-> 3. 남은 TODO: T-096(칸반 events 최적화), T-097/T-098(Bridge config + 툴셋 토글)
+> 1. T-116 실기기 확인 — 전송 즉시 말풍선 "생각 중" 표시 → 본문 라이브 스트리밍(재진입 불필요)
+> 2. 음성 입출력 실기기 기능 확인 — T-100~102 (받아쓰기, 읽어주기, 에어팟/글라스 라우팅)
+> 3. 사진/파일 입출력 실기기 기능 확인 — T-020~022 첨부 전송, T-105~108 썸네일 (T-105 브리지 재배포 여부 포함)
+> 4. 남은 TODO: T-096(칸반 events 최적화), T-097/T-098(Bridge config + 툴셋 토글)
 
 ## 즉시 (사람 또는 맥미니 Hermes가 1회 수행)
 
@@ -106,6 +114,7 @@
 | T-106 | ChatImageView + NSCache(64MB) + `BridgeClient.fetchRawFile` + `\.bridgeClient` Environment 주입 — 맥 절대경로의 `.hermes/` 마커 뒤를 상대경로로 변환, 800pt 다운스케일, 실패/404/미설정은 placeholder 강등(에러 알럿 금지) | `Views/Components/ChatImageView.swift` (신규, pbxproj 등록됨), `Services/BridgeClient.swift`, `Views/ChatView.swift` | DONE (06-11 빌드 검증 · main 병합) |
 | T-107 | 본문 이미지 세그먼트 — `![alt](src)`·`[첨부: 경로]` 파싱(.image/.file), 스트리밍 꼬리 미완성 토큰 보류(512자 한도, 미닫힌 코드펜스 안은 제외), 사용자 버블 선두 첨부 줄 썸네일 분리 | `Views/Components/MarkdownText.swift`, `Views/Components/MessageView.swift` | DONE (06-11 빌드 검증 · main 병합 — 사진/파일 기능 확인은 새 세션에서) |
 | T-108 | 입력창 첨부 칩 썸네일 — PendingAttachment.thumbnail(이미지만 72px 1회 생성, Equatable은 id 기준), 칩에 36pt 표시(비이미지는 기존 paperclip) | `ViewModels/ChatViewModel.swift`, `Views/ChatView.swift` | DONE (06-11 빌드 검증 · main 병합) |
+| T-116 | 채팅 응답이 화면에 안 뜨고 재진입해야 보이던 버그 수정 — **핵심: SSE 미전송 실기기 버그 폴백**. 일반 채팅 `send()`가 스트림이 빈(또는 think-only) 채 끝나면 세션 기록을 2초 간격 폴링(빈 300초/think-only 6초)해 답을 회수(`pollForMissedReply` + 토론룸 `DiscussionViewModel.missedReply` 재사용, 게이트웨이가 세션엔 쓰지만 SSE로는 안 보내는 버그 — T-114와 동종). 보조: `displayMessages`가 스트리밍 중 버블을 항상 포함(`streamingAssistantID`) + `ThinkingIndicator`(점 3개)로 "생각 중" 표시. T-103 think 숨김·T-104 tool 칩 보존, 새 파일 없음(pbxproj 무수정) | `ViewModels/ChatViewModel.swift`, `Views/Components/MessageView.swift` | NEEDS-BUILD (실기기 확인: 전송 후 재진입 없이 답이 같은 화면에 도착하는지) |
 
 ## Phase 11 — 알림 (로컬 알림 + 폴링, APNs 없음 — Bridge 무수정이 본선)
 

@@ -37,13 +37,18 @@ final class ChatViewModel: ObservableObject {
 
     /// 채팅 화면에 렌더할 메시지 (T-103) — tool/system 제외,
     /// 사고 과정(<think>)만 있고 보일 내용이 없는 어시스턴트 버블 제외.
+    /// 단, **스트리밍 중인 어시스턴트 버블은 사고만 있어 보일 내용이 없어도 항상 포함**한다 (T-116).
+    /// (제외하면 사고 단계 내내 화면에 말풍선이 없어 "응답 생성 중…"에서 멈춘 듯 보이고,
+    ///  답이 끝나 재진입(loadHistory)해야 보이던 회귀가 발생한다.)
     /// 스트리밍 갱신은 원본 `messages`의 인덱스를 그대로 쓰므로 여기는 읽기 전용 필터다.
     var displayMessages: [ChatMessage] {
-        messages.filter { message in
+        let streamingID = streamingAssistantID
+        return messages.filter { message in
             switch message.role {
             case .user:
                 return true
             case .assistant:
+                if message.id == streamingID { return true }
                 let visible = MarkdownLite.strippingThink(message.content)
                     .trimmingCharacters(in: .whitespacesAndNewlines)
                 return !visible.isEmpty || !(message.toolCalls?.isEmpty ?? true)
@@ -51,6 +56,12 @@ final class ChatViewModel: ObservableObject {
                 return false
             }
         }
+    }
+
+    /// 지금 스트리밍 중인 어시스턴트 버블 id (send()가 마지막에 append한 것). 없으면 nil. (T-116)
+    private var streamingAssistantID: UUID? {
+        guard isWorking, let last = messages.last, last.role == .assistant else { return nil }
+        return last.id
     }
 
     private func loadHistory() async {
@@ -141,6 +152,23 @@ final class ChatViewModel: ObservableObject {
             messages[assistantIndex].content = assistant.content
             messages[assistantIndex].toolCalls = Array(toolDictionary.values)
 
+            // 스트림이 빈(또는 think-only) 채 끝나면 세션 기록을 폴링해 답을 회수한다 (T-116).
+            // 게이트웨이가 응답을 세션에는 쓰지만 SSE로는 안 보내는 실기기 버그 대응 — 토론룸의
+            // T-114와 동종. 이 폴백이 없으면 화면엔 답이 안 뜨고, 세션을 나갔다 다시 들어와야
+            // (loadHistory 재호출) 비로소 답이 보였다.
+            let streamedVisible = MarkdownLite.strippingThink(assistant.content)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            let hasTool = !(messages[assistantIndex].toolCalls?.isEmpty ?? true)
+            if streamedVisible.isEmpty && !hasTool {
+                // 내용이 아예 안 왔으면 게이트웨이가 생성 중일 수 있어 길게(300초), 내용은 왔지만
+                // think 제거 후 비면 세션 기록도 think-only일 확률이 높아 짧게(6초)만 시도.
+                let deadline: TimeInterval = assistant.content.isEmpty ? 300 : 6
+                if let recovered = await pollForMissedReply(deadline: deadline) {
+                    messages[assistantIndex].content = recovered
+                    assistant.content = recovered
+                }
+            }
+
             if messages[assistantIndex].content.isEmpty && (messages[assistantIndex].toolCalls?.isEmpty ?? true) {
                 messages.remove(at: assistantIndex)
             }
@@ -158,6 +186,27 @@ final class ChatViewModel: ObservableObject {
                 createdAt: .now
             ))
         }
+    }
+
+    /// 스트림이 빈 채 끝났을 때(SSE 미전송 실기기 버그) 세션 기록을 2초 간격으로 폴링해
+    /// 마지막 user 메시지 뒤의 "보이는" assistant 답을 회수한다 (T-116).
+    /// 판정은 토론룸 폴백과 동일한 `DiscussionViewModel.missedReply`를 재사용한다 — 직전 턴
+    /// 답을 오인하지 않도록 지금까지 보낸 user 메시지 수로 앵커링한다. 타임아웃/취소 시 nil.
+    private func pollForMissedReply(deadline: TimeInterval) async -> String? {
+        let expectedUserCount = messages.filter { $0.role == .user }.count
+        let limit = Date.now.addingTimeInterval(deadline)
+        while Date.now < limit {
+            if let server = try? await appSettings.hermesClient.fetchMessages(sessionId: sessionId),
+               let reply = DiscussionViewModel.missedReply(in: server, expectedUserCount: expectedUserCount) {
+                return reply
+            }
+            do {
+                try await Task.sleep(nanoseconds: 2_000_000_000)
+            } catch {
+                return nil  // 취소
+            }
+        }
+        return nil
     }
 
     /// 첨부를 Bridge로 업로드하고 맥미니 절대경로를 메시지 앞에 붙인다.
