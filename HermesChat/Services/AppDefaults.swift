@@ -119,7 +119,12 @@ final class AppSettings: ObservableObject {
 
     func updateProfile(_ profile: HermesProfile) {
         guard let idx = profiles.firstIndex(where: { $0.id == profile.id }) else { return }
+        let oldName = profiles[idx].name
         profiles[idx] = profile
+        // 프로필 이름이 변경된 경우, 이전 이름의 Keychain 값을 정리
+        if oldName != profile.name {
+            KeychainHelper.delete(Self.profileKeychainKey(oldName))
+        }
         persistProfiles()
     }
 

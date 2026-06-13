@@ -11,6 +11,9 @@ struct SettingsView: View {
     @State private var newProfilePort = ""
     @State private var discoveryResult: String? = nil
     @State private var detailProfile: HermesProfile? = nil
+    @State private var editingProfile: HermesProfile? = nil
+    @State private var editingProfileName = ""
+    @State private var showEditAlert = false
 
     var body: some View {
         Form {
@@ -67,6 +70,11 @@ struct SettingsView: View {
                     }
                     .contentShape(Rectangle())
                     .onTapGesture { appSettings.selectProfile(profile) }
+                    .onLongPressGesture {
+                        editingProfile = profile
+                        editingProfileName = profile.name
+                        showEditAlert = true
+                    }
                 }
                 .onDelete { appSettings.removeProfiles(at: $0) }
 
@@ -167,6 +175,17 @@ struct SettingsView: View {
         .navigationBarTitleDisplayMode(.large)
         .navigationDestination(item: $detailProfile) { profile in
             ProfileDetailView(appSettings: appSettings, profileID: profile.id)
+        }
+        .alert("프로필 이름 수정", isPresented: $showEditAlert, presenting: editingProfile) { profile in
+            TextField("프로필 이름", text: $editingProfileName)
+            Button("취소", role: .cancel) { }
+            Button("저장") {
+                var updated = profile
+                updated.name = editingProfileName.trimmingCharacters(in: .whitespaces)
+                appSettings.updateProfile(updated)
+            }
+        } message: { profile in
+            Text("프로필 이름을 변경하세요.")
         }
     }
 
