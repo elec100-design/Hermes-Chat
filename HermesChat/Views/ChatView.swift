@@ -64,6 +64,11 @@ struct ChatView: View {
                 voiceStatusBanner
             }
 
+            if viewModel.glassesCaptureActive {
+                Divider()
+                glassesStatusBanner
+            }
+
             Divider()
             inputBar
                 .padding()
@@ -194,6 +199,7 @@ struct ChatView: View {
         if viewModel.glassesCaptureActive {
             photoWatcher.stop()
             viewModel.glassesCaptureActive = false
+            viewModel.resetGlassesStatus()
             return
         }
         Task {
@@ -273,6 +279,28 @@ struct ChatView: View {
         case .speaking: return "말하는 중…"
         case .idle: return ""
         }
+    }
+
+    /// 글라스 사진 모드 상태 배너 (T-129) — 서버 응답과 무관하게 감시/감지 상태를 보여준다
+    private var glassesStatusBanner: some View {
+        HStack(spacing: 8) {
+            Image(systemName: viewModel.lastGlassesPhotoName == nil ? "eyeglasses" : "camera.fill")
+                .foregroundStyle(Color.green)
+            if let name = viewModel.lastGlassesPhotoName {
+                Text("사진 감지됨 (\(viewModel.glassesPhotosDetected)장) · 최근: \(name)")
+                    .font(.subheadline)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            } else {
+                Text("글라스 사진 감시 중 — 찍으면 자동 첨부됩니다")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+        .background(.thinMaterial)
     }
 
     private var messageList: some View {

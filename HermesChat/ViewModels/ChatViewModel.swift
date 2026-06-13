@@ -24,6 +24,10 @@ final class ChatViewModel: ObservableObject {
     @Published var historyError: String?
     /// 글라스 사진 자동 전송 모드(Phase 16) 활성 여부 — ChatView 토글이 켜고 끈다
     @Published var glassesCaptureActive = false
+    /// 이번 모드에서 감지한 글라스 사진 수 (T-129, 서버 응답과 무관한 감지 가시성)
+    @Published private(set) var glassesPhotosDetected = 0
+    /// 가장 최근 감지한 글라스 사진 파일명 (T-129)
+    @Published private(set) var lastGlassesPhotoName: String?
 
     /// Bridge 업로드 한도와 동일 (server/hermes_bridge.py MAX_UPLOAD)
     static let maxAttachmentBytes = 50 * 1024 * 1024
@@ -113,7 +117,17 @@ final class ChatViewModel: ObservableObject {
         addAttachment(filename: filename, data: data)
         // 50MB 초과 등으로 첨부가 거부됐으면 알림/전송을 진행하지 않는다
         guard attachments.count > before else { return }
+        // 감지 가시성: 카운트·파일명 기록 + 햅틱 (서버 응답과 무관하게 "도착"을 알 수 있게, T-129)
+        glassesPhotosDetected += 1
+        lastGlassesPhotoName = filename
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
         VoiceConversationController.shared.announcePhotoArrival(viewModel: self)
+    }
+
+    /// 글라스 모드를 끌 때 감지 표시를 초기화한다 (T-129)
+    func resetGlassesStatus() {
+        glassesPhotosDetected = 0
+        lastGlassesPhotoName = nil
     }
 
     func send() async {
