@@ -42,6 +42,9 @@ final class VoiceConversationController: ObservableObject {
     private var skipRemainingTTS = false
     /// 해제를 위해 보관하는 리모트 커맨드 타깃 (T-119)
     private var commandTargets: [(MPRemoteCommand, Any)] = []
+    /// 글라스 사진이 도착해 질문을 기다리는 중 (Phase 16, T-127). true면 무발화 타임아웃 시
+    /// 모드를 끄지 않고 기본 프롬프트로 사진을 전송한다.
+    private var awaitingPhotoQuestion = false
 
     private init() {
         speech.onSentenceFinished = { [weak self] in self?.sentenceFinished() }
@@ -114,6 +117,7 @@ final class VoiceConversationController: ObservableObject {
         disableRemoteCommands()
         clearNowPlaying()
         handsFree = false
+        awaitingPhotoQuestion = false
         resetTurn()
         state = .idle
     }
@@ -123,6 +127,91 @@ final class VoiceConversationController: ObservableObject {
         streamFinished = false
         pendingSentences = 0
         skipRemainingTTS = false
+    }
+
+    // MARK: - 글라스 사진 도착 (Phase 16, T-127)
+
+    /// 글라스로 찍은 사진이 보관함에 도착했을 때: "사진이 도착했습니다"를 음성으로 알리고
+    /// 핸즈프리 청취로 들어가, 사용자가 사진에 대해 물으면 그 질문을 대기 첨부 사진과 함께 보낸다.
+    /// 마이크/음성을 쓸 수 없으면 기본 프롬프트로 사진만 바로 전송하는 폴백을 쓴다.
+    func announcePhotoArrival(viewModel: ChatViewModel) {
+        Task { await announcePhotoArrivalAsync(viewModel: viewModel) }
+    }
+
+    private func announcePhotoArrivalAsync(viewModel: ChatViewModel) async {
+        switch state {
+        case .idle:
+            // 음성 세션을 새로 시작한다 — start()와 같은 준비 절차
+            guard await speech.ensureVoicePermissions() else {
+                await sendPhotoFallback(viewModel: viewModel)
+                return
+            }
+            do {
+                try speech.voiceModeBegin()
+                try speech.beginSentenceReading()
+            } catch {
+                speech.voiceModeEnd()
+                await sendPhotoFallback(viewModel: viewModel)
+                return
+            }
+            self.viewModel = viewModel
+            handsFree = true
+            attachStreamHandler(to: viewModel)
+            enableRemoteCommands()
+            setNowPlaying()
+            beginPhotoAnnouncement()
+        case .listening:
+            // 청취 중이면 청취를 접고 안내를 끼워 넣는다
+            self.viewModel = viewModel
+            handsFree = true
+            beginPhotoAnnouncement()
+        case .speaking, .waitingResponse:
+            // 다른 턴이 진행 중 — 안내만 큐에 얹고, 진행 중 루프가 끝나 재청취로 돌아올 때
+            // 도착한 사진에 대한 질문을 받도록 플래그만 세운다 (진행 중 카운트는 건드리지 않음)
+            self.viewModel = viewModel
+            handsFree = true
+            awaitingPhotoQuestion = true
+            speech.enqueueSentence("사진이 도착했습니다")
+        }
+    }
+
+    /// 안내 멘트를 한 문장 큐에 넣고 낭독 상태로 — 멘트가 끝나면 advanceIfDone이 청취로 이어준다
+    private func beginPhotoAnnouncement() {
+        if state == .listening { cancelListening() }
+        resetTurn()
+        awaitingPhotoQuestion = true
+        streamFinished = true
+        pendingSentences = 1
+        state = .speaking
+        speech.enqueueSentence("사진이 도착했습니다")
+    }
+
+    /// 무발화 타임아웃 등에서 현재 입력(또는 기본 프롬프트)을 대기 첨부와 함께 전송한다 (T-127)
+    private func sendCurrentInput(viewModel: ChatViewModel) {
+        silenceTask?.cancel(); silenceTask = nil
+        noSpeechTask?.cancel(); noSpeechTask = nil
+        transcriptCancellable = nil
+        speech.voiceListenStop()
+        liveTranscript = ""
+        awaitingPhotoQuestion = false
+        state = .waitingResponse
+        Task { [weak viewModel] in
+            guard let viewModel else { return }
+            var waited = 0
+            while viewModel.isWorking, waited < 50 {
+                try? await Task.sleep(nanoseconds: 100_000_000)
+                waited += 1
+            }
+            await viewModel.send()
+        }
+    }
+
+    /// 음성을 쓸 수 없을 때(권한 거부 등) 사진을 기본 프롬프트로 바로 전송하는 폴백
+    private func sendPhotoFallback(viewModel: ChatViewModel) async {
+        if viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            viewModel.inputText = ChatViewModel.glassesPhotoPrompt
+        }
+        await viewModel.send()
     }
 
     // MARK: - 청취 (핸즈프리)
@@ -162,13 +251,27 @@ final class VoiceConversationController: ObservableObject {
         noSpeechTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(Self.noSpeechTimeout * 1_000_000_000))
             guard !Task.isCancelled else { return }
-            self?.stop()
+            self?.noSpeechTimedOut()
+        }
+    }
+
+    /// 무발화 타임아웃 — 평소엔 모드를 끄지만, 글라스 사진이 도착해 질문을 기다리는 중이면
+    /// 모드를 끄지 않고 기본 프롬프트로 사진을 전송한다 (Phase 16 폴백, T-127)
+    private func noSpeechTimedOut() {
+        if awaitingPhotoQuestion, let viewModel, !viewModel.attachments.isEmpty {
+            awaitingPhotoQuestion = false
+            viewModel.inputText = ChatViewModel.glassesPhotoPrompt
+            sendCurrentInput(viewModel: viewModel)
+        } else {
+            stop()
         }
     }
 
     /// 발화 종료 — 받아 적은 내용을 전송하고 응답 대기로
     private func finishListening() {
         guard state == .listening else { return }
+        // 사용자가 직접 질문을 말했으니 무발화 폴백은 더 이상 필요 없다 (Phase 16)
+        awaitingPhotoQuestion = false
         silenceTask?.cancel(); silenceTask = nil
         noSpeechTask?.cancel(); noSpeechTask = nil
         transcriptCancellable = nil

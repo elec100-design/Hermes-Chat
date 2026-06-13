@@ -183,6 +183,33 @@
 9. 메타 글라스: 마이크 라우팅 + 탭 제어 end-to-end, "Hey Meta" 충돌 없음
 10. 회귀: dictationBase 이어붙이기, 컨텍스트 메뉴 읽어주기, Deep think 토론방 정상
 
+## Phase 16 — 메타 글라스 사진 자동 전송 + 음성 후속 질의
+
+> 배경: 음성 입력 중 글라스로 사진을 찍으면 자동 전송하고 그에 대해 음성으로 이어 묻고 싶다.
+> Meta Wearables DAT 조사 결과 **물리 '촬영' 버튼·더블탭은 3rd-party 앱이 못 가로채고**(더블탭은
+> 표준 BT AVRCP로, 이미 T-119가 받는 그 신호일 뿐 사진을 주지 않음), DAT 카메라 스트림은 Meta
+> 개발자 등록·개발자 프리뷰라 도입 안 함(사용자 결정). 대신 글라스 사진이 Meta AI 앱을 통해 카메라
+> 롤에 동기화되는 것을 `PHPhotoLibrary` 변화 감지로 포착해 기존 첨부·음성 파이프라인으로 넘긴다.
+> 동기화 지연(수초~수십초)이 있어, 도착 시 **"사진이 도착했습니다" 음성 알림** 후 사용자의 음성
+> 질문을 사진과 함께 전송한다. 개발 브랜치: `claude/happy-gauss-0p39f0`
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-125 | PhotoImportWatcher 신규(**pbxproj 등록**) — PHPhotoLibrary 전체 접근(.authorized만) 요청 + 변화 감지로 시작 시각 이후·이미지·비스크린샷·미처리 에셋만 포착, `requestImageDataAndOrientation`로 데이터·원본 파일명 콜백. 제한 접근(.limited)은 비활성 반환 | `Services/PhotoImportWatcher.swift` (신규) | NEEDS-BUILD |
+| T-126 | ChatViewModel 글라스 사진 처리 — `glassesCaptureActive`, `glassesPhotoPrompt`, `handleCapturedPhoto`(기존 `addAttachment`로 대기 첨부 후 컨트롤러에 위임). 50MB 가드 통과 시에만 진행 | `ViewModels/ChatViewModel.swift` | NEEDS-BUILD |
+| T-127 | VoiceConversationController `announcePhotoArrival` — idle이면 음성 세션 시작/listening이면 청취 접고/진행 중이면 플래그만, "사진이 도착했습니다" 문장 큐 낭독 후 핸즈프리 청취 진입. 사용자 질문은 기존 `finishListening`→`send()`가 대기 첨부와 함께 전송, 응답 자동 낭독·재청취. 무발화 타임아웃은 `noSpeechTimedOut`이 기본 프롬프트로 사진 전송(폴백). 음성 불가 시 `sendPhotoFallback`. 전송을 컨트롤러 단일 경로로 일원화해 이중 전송 방지 | `Services/VoiceConversationController.swift` | NEEDS-BUILD |
+| T-128 | ChatView UI — 입력 바 `eyeglasses` 토글(활성 시 초록), 권한 부족 안내 알럿, `onAppear`에서 `onNewPhoto`→`handleCapturedPhoto` 연결, `onDisappear`에서 워처 stop. Info.plist `NSPhotoLibraryUsageDescription` 문구 보강(전체 접근 필요 명시) | `Views/ChatView.swift`, `Resources/Info.plist` | NEEDS-BUILD |
+
+**Phase 16 실기기 검증 체크리스트** (맥 빌드 후 메타 글라스 + Meta AI 앱 사진 동기화 ON):
+1. 사진 권한을 **전체 접근**으로 허용. 제한 접근으로 주면 안내 알럿이 뜨고 모드가 안 켜지는지.
+2. 글라스 모드 ON → 글라스 '촬영' 버튼으로 사진 → 수초~수십초 내 카메라 롤 동기화 →
+   **"사진이 도착했습니다" 음성 알림**이 글라스로 들리는지 → 음성으로 질문 → 사진+질문 동시 전송,
+   Hermes 응답 자동 낭독, 재청취로 복귀해 후속 질문 가능한지.
+3. 무발화 폴백: 알림 후 질문 없이 기다리면(60초) 기본 프롬프트로 사진이 자동 전송돼 설명을 받는지.
+4. 핸즈프리 대화 중 사진 촬영 → 도착 알림 후 루프가 이중 전송으로 멈추지 않고 이어지는지.
+5. 스크린샷·기존 사진이 자동 전송 대상에서 제외되는지. 모드 OFF면 어떤 사진도 안 보내지는지.
+6. 회귀: 기존 PhotosPicker/파일 첨부, 받아쓰기 자동 낭독, Deep think 토론 정상.
+
 ## 빌드 검증 기록 (검증자가 갱신)
 
 | 날짜 | 브랜치/커밋 | 결과 | 비고 |

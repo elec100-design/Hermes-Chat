@@ -15,6 +15,10 @@ struct ChatView: View {
     @State private var forkError: String?
     @ObservedObject private var speech = SpeechService.shared
     @ObservedObject private var voice = VoiceConversationController.shared
+    /// 글라스 사진 자동 전송 감시자 (Phase 16) — 세션 화면 수명 동안만 산다
+    @StateObject private var photoWatcher = PhotoImportWatcher()
+    /// 사진 권한 부족 안내 (제한 접근/거부) — nil이 아니면 알럿 표시
+    @State private var photoAccessAlert: String?
     /// 받아쓰기 시작 시점의 입력창 내용 — 부분 결과가 갱신될 때마다 그 뒤에 이어 붙인다
     @State private var dictationBase = ""
     /// 현재 입력에 받아쓰기가 쓰였는지 — true면 전송 시 응답을 자동 낭독한다 (T-118)
@@ -125,9 +129,25 @@ struct ChatView: View {
             // 자동 낭독 중 입력창을 만지면 조용히 멈춘다 — 끝까지 듣게 강요하지 않는다
             if focused, voice.state != .idle, !voice.handsFree { voice.stop() }
         }
+        .onAppear {
+            // 글라스 사진 도착 → 첨부 + 도착 음성 알림 + 후속 질문 흐름 (Phase 16)
+            photoWatcher.onNewPhoto = { filename, data in
+                viewModel.handleCapturedPhoto(filename: filename, data: data)
+            }
+        }
         .onDisappear {
             if speech.isRecording { speech.stopRecording() }
             if voice.state != .idle { voice.stop() }
+            photoWatcher.stop()
+            viewModel.glassesCaptureActive = false
+        }
+        .alert("사진 접근 권한", isPresented: .init(
+            get: { photoAccessAlert != nil },
+            set: { if !$0 { photoAccessAlert = nil } }
+        )) {
+            Button("확인", role: .cancel) {}
+        } message: {
+            Text(photoAccessAlert ?? "")
         }
         .photosPicker(
             isPresented: $showPhotoPicker,
@@ -166,6 +186,26 @@ struct ChatView: View {
                 forkError = error.localizedDescription
             }
             isForking = false
+        }
+    }
+
+    /// 글라스 사진 자동 전송 모드 토글 — 켤 때 전체 사진 접근을 요청하고, 부족하면 안내한다 (Phase 16)
+    private func toggleGlassesCapture() {
+        if viewModel.glassesCaptureActive {
+            photoWatcher.stop()
+            viewModel.glassesCaptureActive = false
+            return
+        }
+        Task {
+            switch await photoWatcher.start(since: .now) {
+            case .authorized:
+                viewModel.glassesCaptureActive = true
+            case .limited:
+                photoAccessAlert = "글라스 사진 자동 전송은 사진 '전체 접근' 권한이 필요합니다. "
+                    + "설정 > 개인정보 보호 및 보안 > 사진에서 Hermes Chat을 '전체 접근'으로 바꿔주세요."
+            case .denied:
+                photoAccessAlert = "사진 접근 권한이 필요합니다. 설정 > 개인정보 보호 및 보안 > 사진에서 허용해주세요."
+            }
         }
     }
 
@@ -342,6 +382,15 @@ struct ChatView: View {
                         .foregroundStyle(voice.handsFree ? Color.red : Color.accentColor)
                 }
                 .accessibilityLabel(voice.handsFree ? "음성 대화 종료" : "음성 대화 시작")
+
+                Button {
+                    toggleGlassesCapture()
+                } label: {
+                    Image(systemName: "eyeglasses")
+                        .font(.system(size: 20))
+                        .foregroundStyle(viewModel.glassesCaptureActive ? Color.green : Color.accentColor)
+                }
+                .accessibilityLabel(viewModel.glassesCaptureActive ? "글라스 사진 자동 전송 끄기" : "글라스 사진 자동 전송 켜기")
 
                 TextField("메시지를 입력하세요", text: $viewModel.inputText, axis: .vertical)
                     .textFieldStyle(.roundedBorder)

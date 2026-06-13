@@ -24,6 +24,7 @@
 		5EABCD01FCD88EB9EB1AAA01 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EABCD02FCD88EB9EB1AAA02 /* NotificationService.swift */; };
 		6FBCDE01ADE99FCAFC2BBB01 /* SpeechService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FBCDE02ADE99FCAFC2BBB02 /* SpeechService.swift */; };
 		8ACDEF01CEF11ADBFD3CCC01 /* VoiceConversationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8ACDEF02CEF11ADBFD3CCC02 /* VoiceConversationController.swift */; };
+		9BCDEF01AEF22BECFE4DDD01 /* PhotoImportWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BCDEF02AEF22BECFE4DDD02 /* PhotoImportWatcher.swift */; };
 		0D9CC9C9B49F82C246E793D9 /* HermesAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E785976044540D5051D9A8C /* HermesAPIClient.swift */; };
 		1C77813AED34B08CD3E08F90 /* HermesChatApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65FFA2CC47E47044567F7E36 /* HermesChatApp.swift */; };
 		3658CC72F9CAB88AB9CBA142 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8DCB2A4C45DFD8E5CA9F032 /* SettingsView.swift */; };
@@ -59,6 +60,7 @@
 		5EABCD02FCD88EB9EB1AAA02 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		6FBCDE02ADE99FCAFC2BBB02 /* SpeechService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechService.swift; sourceTree = "<group>"; };
 		8ACDEF02CEF11ADBFD3CCC02 /* VoiceConversationController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceConversationController.swift; sourceTree = "<group>"; };
+		9BCDEF02AEF22BECFE4DDD02 /* PhotoImportWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoImportWatcher.swift; sourceTree = "<group>"; };
 		0ABF5AB0727489B06D16F6AB /* ToolModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolModels.swift; sourceTree = "<group>"; };
 		1F3BB2D079331A3B8BEBB359 /* ChatModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatModels.swift; sourceTree = "<group>"; };
 		1FB3343782720464725EB49B /* DashboardModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardModels.swift; sourceTree = "<group>"; };
@@ -122,6 +124,7 @@
 				5EABCD02FCD88EB9EB1AAA02 /* NotificationService.swift */,
 				6FBCDE02ADE99FCAFC2BBB02 /* SpeechService.swift */,
 				8ACDEF02CEF11ADBFD3CCC02 /* VoiceConversationController.swift */,
+				9BCDEF02AEF22BECFE4DDD02 /* PhotoImportWatcher.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -265,6 +268,7 @@
 				5EABCD01FCD88EB9EB1AAA01 /* NotificationService.swift in Sources */,
 				6FBCDE01ADE99FCAFC2BBB01 /* SpeechService.swift in Sources */,
 				8ACDEF01CEF11ADBFD3CCC01 /* VoiceConversationController.swift in Sources */,
+				9BCDEF01AEF22BECFE4DDD01 /* PhotoImportWatcher.swift in Sources */,
 				0D3F8A01E5C16B42DA3FFF01 /* ProfileBoardView.swift in Sources */,
 				C29ABD7D6F0C12DFFACAAC42 /* SessionListView.swift in Sources */,
 				7E4B207B5BCA40A070CBF676 /* SessionModels.swift in Sources */,

@@ -22,9 +22,14 @@ final class ChatViewModel: ObservableObject {
     @Published var isLoadingHistory: Bool = false
     @Published var attachments: [PendingAttachment] = []
     @Published var historyError: String?
+    /// 글라스 사진 자동 전송 모드(Phase 16) 활성 여부 — ChatView 토글이 켜고 끈다
+    @Published var glassesCaptureActive = false
 
     /// Bridge 업로드 한도와 동일 (server/hermes_bridge.py MAX_UPLOAD)
     static let maxAttachmentBytes = 50 * 1024 * 1024
+
+    /// 글라스 사진 도착 후 사용자가 질문하지 않을 때 쓰는 기본 프롬프트 (T-126)
+    static let glassesPhotoPrompt = "방금 찍은 사진이야. 무엇이 보이는지 설명해줘."
 
     /// 음성 자동 낭독/핸즈프리(T-118)가 스트리밍 응답을 구독하는 후킹 —
     /// (지금까지 누적된 본문, 스트림 완료 여부). 음성 기능을 안 쓸 땐 nil
@@ -98,6 +103,17 @@ final class ChatViewModel: ObservableObject {
 
     func removeAttachment(id: UUID) {
         attachments.removeAll { $0.id == id }
+    }
+
+    /// 글라스로 찍은 사진이 보관함에 도착했을 때 (PhotoImportWatcher 콜백, T-126).
+    /// 사진을 대기 첨부로 붙이고, 음성 컨트롤러에 도착 알림+청취 흐름을 위임한다.
+    /// (전송은 컨트롤러 경로로 일원화해 음성 루프와의 이중 전송을 피한다.)
+    func handleCapturedPhoto(filename: String, data: Data) {
+        let before = attachments.count
+        addAttachment(filename: filename, data: data)
+        // 50MB 초과 등으로 첨부가 거부됐으면 알림/전송을 진행하지 않는다
+        guard attachments.count > before else { return }
+        VoiceConversationController.shared.announcePhotoArrival(viewModel: self)
     }
 
     func send() async {
