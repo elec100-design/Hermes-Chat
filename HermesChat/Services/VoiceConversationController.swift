@@ -31,6 +31,11 @@ final class VoiceConversationController: ObservableObject {
 
     private let speech = SpeechService.shared
     private weak var viewModel: ChatViewModel?
+
+    /// 현재 음성 세션이 묶인 채팅의 sessionId (T-131). ChatView.onDisappear가
+    /// "내 세션의 음성만 정리"하도록 — 라우팅 재진입으로 다른 ChatView가
+    /// 이미 음성을 시작한 경우 오래된 뷰가 그 음성을 끄지 않게 한다.
+    var boundSessionId: String? { viewModel?.sessionId }
     private var transcriptCancellable: AnyCancellable?
     private var silenceTask: Task<Void, Never>?
     private var noSpeechTask: Task<Void, Never>?
@@ -42,6 +47,8 @@ final class VoiceConversationController: ObservableObject {
     private var skipRemainingTTS = false
     /// 해제를 위해 보관하는 리모트 커맨드 타깃 (T-119)
     private var commandTargets: [(MPRemoteCommand, Any)] = []
+    /// 마지막 리모트 커맨드 처리 시각 — 싱글/더블탭 겹침 디바운스용 (T-134)
+    private var lastRemoteCommandAt = Date.distantPast
     /// 글라스 사진이 도착해 질문을 기다리는 중 (Phase 16, T-127). true면 무발화 타임아웃 시
     /// 모드를 끄지 않고 기본 프롬프트로 사진을 전송한다.
     private var awaitingPhotoQuestion = false
@@ -357,8 +364,10 @@ final class VoiceConversationController: ObservableObject {
 
     // MARK: - 에어팟 스템 탭 / 글라스 탭 (T-119)
 
-    /// 에어팟 스템 탭·메타 글라스 탭은 같은 AVRCP play/pause로 들어온다.
+    /// 에어팟 스템 탭·메타 글라스 탭은 AVRCP로 들어온다 — 싱글탭≈play/pause, 더블탭≈next track.
     /// 리모트 커맨드는 now-playing 앱에만 전달되므로 진입 멘트/첫 문장 재생이 지위를 확보한다.
+    /// 싱글탭(toggle/play/pause)은 handleRemoteToggle, 더블탭(next/previous)은 handleRemoteAdvance로 라우팅 (T-134).
+    /// (글라스 펌웨어/iOS에 따라 더블탭이 next 또는 previous로 들어올 수 있어 둘 다 등록 — 실기기 검증 필요)
     private func enableRemoteCommands() {
         guard commandTargets.isEmpty else { return }
         let center = MPRemoteCommandCenter.shared()
@@ -366,6 +375,14 @@ final class VoiceConversationController: ObservableObject {
             command.isEnabled = true
             let target = command.addTarget { [weak self] _ in
                 Task { @MainActor [weak self] in self?.handleRemoteToggle() }
+                return .success
+            }
+            commandTargets.append((command, target))
+        }
+        for command in [center.nextTrackCommand, center.previousTrackCommand] {
+            command.isEnabled = true
+            let target = command.addTarget { [weak self] _ in
+                Task { @MainActor [weak self] in self?.handleRemoteAdvance() }
                 return .success
             }
             commandTargets.append((command, target))
@@ -381,8 +398,9 @@ final class VoiceConversationController: ObservableObject {
         commandTargets = []
     }
 
-    /// 탭 한 번의 의미 — 상태별로 "가장 자연스러운 다음 행동"
+    /// 싱글탭(toggle/play/pause)의 의미 — 상태별로 "가장 자연스러운 다음 행동"
     private func handleRemoteToggle() {
+        guard !remoteCommandDebounced() else { return }
         switch state {
         case .idle:
             // 커맨드 해제 직전의 늦은 탭 등 — 연결된 화면이 있으면 모드 재시작
@@ -400,17 +418,57 @@ final class VoiceConversationController: ObservableObject {
                 stop()  // 자동 낭독 — 탭은 "그만 읽기"
                 return
             }
-            // 바지-인: 남은 낭독을 끊고 듣기로 — 취소 정산은 didCancel→sentenceFinished가 처리
-            skipRemainingTTS = true
-            speech.flushSentenceQueue()
-            pendingSentences = 0
-            if streamFinished {
-                beginListening()
-            }
-            // 스트림 진행 중이면 handleStream(finished:)의 advanceIfDone이 재청취로 이어준다
+            bargeIn()
         case .waitingResponse:
             if !handsFree { stop() }  // 자동 낭독 대기 중 취소; 핸즈프리는 응답을 기다린다
         }
+    }
+
+    /// 더블탭(next/previous track)의 의미 — 글라스 더블탭으로 음성 입력을 켜고,
+    /// 답변(TTS) 중 더블탭은 답변을 끊고 다시 청취한다(바지-인) (T-134).
+    private func handleRemoteAdvance() {
+        guard !remoteCommandDebounced() else { return }
+        switch state {
+        case .idle:
+            // 글라스 더블탭으로 음성 입력 켜기 — 연결된 화면이 있으면 핸즈프리 모드 시작
+            if let viewModel {
+                Task { await start(viewModel: viewModel) }
+            }
+        case .listening:
+            if liveTranscript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                stop()
+            } else {
+                finishListening()  // 말하던 중 더블탭 — "끝, 바로 보내"
+            }
+        case .speaking:
+            guard handsFree else {
+                stop()
+                return
+            }
+            bargeIn()  // 답변 중단하고 재청취
+        case .waitingResponse:
+            if !handsFree { stop() }
+        }
+    }
+
+    /// 바지-인: 남은 낭독을 끊고 듣기로 — 취소 정산은 didCancel→sentenceFinished가 처리.
+    /// 스트림 진행 중이면 handleStream(finished:)의 advanceIfDone이 재청취로 이어준다. (T-119/T-134 공용)
+    private func bargeIn() {
+        skipRemainingTTS = true
+        speech.flushSentenceQueue()
+        pendingSentences = 0
+        if streamFinished {
+            beginListening()
+        }
+    }
+
+    /// 싱글탭과 더블탭이 짧은 간격으로 겹쳐 들어와 start+stop이 경합하는 것을 막는 디바운스 (T-134).
+    /// 어떤 리모트 커맨드든 직전 처리 후 0.3초 내 재발화는 무시한다.
+    private func remoteCommandDebounced() -> Bool {
+        let now = Date()
+        if now.timeIntervalSince(lastRemoteCommandAt) < 0.3 { return true }
+        lastRemoteCommandAt = now
+        return false
     }
 
     private func setNowPlaying() {

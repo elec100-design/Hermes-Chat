@@ -15,6 +15,9 @@ struct ChatView: View {
     @State private var forkError: String?
     @ObservedObject private var speech = SpeechService.shared
     @ObservedObject private var voice = VoiceConversationController.shared
+    @ObservedObject private var coordinator = VoiceEntryCoordinator.shared
+    /// 외부 진입(Siri·위젯·URL·글라스)의 arm을 보이는 뷰에서만 소비하기 위한 가시성 추적 (T-131)
+    @State private var isVisible = false
     /// 글라스 사진 자동 전송 감시자 (Phase 16) — 세션 화면 수명 동안만 산다
     @StateObject private var photoWatcher = PhotoImportWatcher()
     /// 사진 권한 부족 안내 (제한 접근/거부) — nil이 아니면 알럿 표시
@@ -135,14 +138,25 @@ struct ChatView: View {
             if focused, voice.state != .idle, !voice.handsFree { voice.stop() }
         }
         .onAppear {
+            isVisible = true
+            // 외부 진입으로 arm된 경우 — 실제 viewModel이 준비된 지금 음성 모드 시작 (T-131)
+            startVoiceIfArmed()
             // 글라스 사진 도착 → 첨부 + 도착 음성 알림 + 후속 질문 흐름 (Phase 16)
             photoWatcher.onNewPhoto = { filename, data in
                 viewModel.handleCapturedPhoto(filename: filename, data: data)
             }
         }
+        // 이미 보이는 채팅에 진입 요청이 들어온 경우(탭 전환 없이) onChange로 반응 (T-131)
+        .onChange(of: coordinator.armChatVoiceStart) { _, _ in
+            guard isVisible else { return }
+            startVoiceIfArmed()
+        }
         .onDisappear {
+            isVisible = false
             if speech.isRecording { speech.stopRecording() }
-            if voice.state != .idle { voice.stop() }
+            // 내 세션에 묶인 음성만 정리 — 라우팅 재진입으로 다른 ChatView가 이미
+            // 시작한 음성은 끄지 않는다 (T-131)
+            if voice.state != .idle, voice.boundSessionId == viewModel.sessionId { voice.stop() }
             photoWatcher.stop()
             viewModel.glassesCaptureActive = false
         }
@@ -179,6 +193,12 @@ struct ChatView: View {
                 }
             }
         }
+    }
+
+    /// 외부 진입(Siri·위젯·URL·글라스)으로 arm된 음성 시작 신호를 1회 소비해 핸즈프리 모드 진입 (T-131)
+    private func startVoiceIfArmed() {
+        guard coordinator.consumeChatVoiceStart() else { return }
+        Task { await voice.start(viewModel: viewModel) }
     }
 
     private func forkSession() {

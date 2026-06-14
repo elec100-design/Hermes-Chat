@@ -212,6 +212,38 @@
 5. 스크린샷·기존 사진이 자동 전송 대상에서 제외되는지. 모드 OFF면 어떤 사진도 안 보내지는지.
 6. 회귀: 기존 PhotosPicker/파일 첨부, 받아쓰기 자동 낭독, Deep think 토론 정상.
 
+## Phase 17 — Siri·위젯·글라스 더블탭 음성 진입 (브랜치 `claude/meta-glasses-double-tap-hermes-dkemd0`, Phase 16 위에 적층)
+
+> 목표: 메타 레이밴 글라스로 손 안 대고 Hermes를 구동하고 음성 입력 대기 모드까지 진입.
+>
+> **핵심 제약(메타 공식 FAQ 검증):** Meta Wearables Device Access Toolkit은 3P 앱에 **템플 탭/더블탭
+> 제스처 이벤트를 제공하지 않는다**(템플 탭은 OS 예약). FAQ 원문: *"while custom gesture controls
+> like taps and swipes aren't offered, you can listen for standard events like pause, resume, and
+> stop."* → **메타 SDK 미도입.** 대신 ①Siri/위젯/URL이 앱 구동+음성 대기 진입, ②앱 실행 중 글라스
+> 템플 탭은 AVRCP 미디어 커맨드(싱글탭≈play/pause, 더블탭≈next track)로 들어와 음성 켜기/바지-인.
+> **한계: 강제 종료된 앱은 글라스 탭으로 cold-launch 불가** — 런처는 Siri/위젯/URL. 음성 모드가
+> 완전히 idle로 끝나면 리모트 커맨드가 해제되어 그 뒤 글라스 탭 재시작 불가(Siri/위젯/URL로 재진입).
+>
+> (이 작업은 처음에 main에서 분기돼 사진 Phase 16(happy-gauss)과 T-125~130 번호가 겹쳤으나,
+> happy-gauss 위로 재베이스하며 T-131~135로 재번호함.)
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-131 | 음성 진입 코디네이터 — `VoiceEntryCoordinator`(신규): `requestVoiceEntry`·`beginRouting`(재진입 가드)·`consumeChatVoiceStart`·`sessionsPath`. `SessionListView` navigationPath를 코디네이터로 승격, `HermesChatApp` 라우팅(onChange+런치 task: .sessions 탭→최근 세션 resume(없으면 createSession)→push; 이미 채팅 중이면 보이는 ChatView가 arm 소비), `ChatView` onAppear/onChange로 `voice.start`, onDisappear는 `voice.boundSessionId==sessionId`일 때만 정리 | `Services/VoiceEntryCoordinator.swift`(신규), `HermesChatApp.swift`, `Views/SessionListView.swift`, `Views/ChatView.swift`, `Services/VoiceConversationController.swift` | NEEDS-BUILD |
+| T-132 | App Intent + Siri — `StartVoiceInputIntent`(openAppWhenRun) + `HermesShortcuts`(한/영 phrases). **한글 호출 수정**: 영어 앱 이름이라 한국어 Siri가 못 맞춰 웹 검색되던 것을, `CFBundleDisplayName="헤르메스"`로 표시 이름을 한글화(→ "시리야 헤르메스 음성 입력 시작"). 모음 종결이라 "으로" 제거, 모든 phrase에 앱 이름 유지(Apple 필수) | `Intents/StartVoiceInputIntent.swift`(신규), `Resources/Info.plist` | NEEDS-BUILD |
+| T-133 | URL 스킴 — Info.plist `CFBundleURLTypes`(scheme `hermes`) + `HermesChatApp.onOpenURL`가 `hermes://voice`(옵션 `?session=`) 파싱 → 코디네이터 | `Resources/Info.plist`, `HermesChatApp.swift` | NEEDS-BUILD |
+| T-134 | 글라스 더블탭 매핑(T-119 확장) — `enableRemoteCommands`에 `next/previousTrackCommand` 추가 → `handleRemoteAdvance`(idle=시작, listening=즉시 전송, speaking+handsFree=바지-인), `bargeIn()` 공통 추출, 0.3초 디바운스로 싱글+더블탭 겹침 방지. **실기기 검증 필요: 더블탭이 next/previous 중 무엇으로 들어오는지** | `Services/VoiceConversationController.swift` | NEEDS-BUILD |
+| T-135 | 위젯 익스텐션 — 홈/잠금화면 위젯+iOS18 제어센터 컨트롤(`Button(intent:)`). 소스는 `HermesWidgets/`. **신규 Widget Extension 타깃은 pbxproj 수기 위험 → Xcode GUI 생성**(`HermesWidgets/SETUP.md`). `StartVoiceInputIntent`·`VoiceEntryCoordinator`를 위젯 타깃에 멤버십 공유 | `HermesWidgets/*`(신규) | NEEDS-BUILD(타깃은 Xcode GUI) |
+
+**Phase 17 실기기 검증 체크리스트** (맥 빌드 후 메타 글라스로):
+1. Siri "헤르메스 음성 입력 시작"(한/영) 강제종료 상태에서 → 앱 뜨고 세션 진입 → 청취("말씀하세요"). 홈 아이콘 라벨이 "헤르메스"로 바뀌었는지.
+2. `hermes://voice`(Safari/메모) cold+warm 동일. `?session=<id>`로 해당 세션 오픈.
+3. 홈 위젯/잠금화면 accessory/iOS18 제어센터 컨트롤 탭 → 앱 포그라운드+음성 시작.
+4. 글라스 싱글 vs 더블탭 상태별: idle(시작), 청취 무발화(중지)/발화중(전송), 낭독 핸즈프리(바지-인 재청취), 응답대기(무시). 음악 앱 안 뜸.
+5. 바지-인: TTS 답변 중 더블탭 → 답변 중단+재청취, 루프 복귀.
+6. 강제 종료: 탭으로 실행 안 됨(정상) — Siri/위젯/URL은 됨.
+7. 통합 회귀: 사진 도착 음성 알림(Phase 16)과 글라스 더블탭(Phase 17)이 같은 음성 세션에서 안 부딪히는지. waveform 수동 시작·받아쓰기 자동 낭독·세션 포크 정상.
+
 ## 빌드 검증 기록 (검증자가 갱신)
 
 | 날짜 | 브랜치/커밋 | 결과 | 비고 |
