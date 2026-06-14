@@ -22,10 +22,6 @@ struct ChatView: View {
     @StateObject private var photoWatcher = PhotoImportWatcher()
     /// 사진 권한 부족 안내 (제한 접근/거부) — nil이 아니면 알럿 표시
     @State private var photoAccessAlert: String?
-    /// 받아쓰기 시작 시점의 입력창 내용 — 부분 결과가 갱신될 때마다 그 뒤에 이어 붙인다
-    @State private var dictationBase = ""
-    /// 현재 입력에 받아쓰기가 쓰였는지 — true면 전송 시 응답을 자동 낭독한다 (T-118)
-    @State private var usedDictation = false
 
     init(sessionId: String, appSettings: AppSettings) {
         self.sessionId = sessionId
@@ -121,26 +117,12 @@ struct ChatView: View {
         } message: {
             Text(speech.errorMessage ?? "")
         }
-        .onChange(of: speech.transcript) { _, transcript in
-            // 핸즈프리 부분 결과는 컨트롤러가 소비 — 입력창에는 받아쓰기만 반영
-            guard voice.state == .idle, !transcript.isEmpty else { return }
-            usedDictation = true
-            viewModel.inputText = dictationBase.isEmpty
-                ? transcript
-                : dictationBase + " " + transcript
-        }
-        .onChange(of: viewModel.inputText) { _, text in
-            // 입력을 비우면(전송 포함) 받아쓰기 흔적도 초기화
-            if text.isEmpty { usedDictation = false }
-        }
-        .onChange(of: isInputFocused) { _, focused in
-            // 자동 낭독 중 입력창을 만지면 조용히 멈춘다 — 끝까지 듣게 강요하지 않는다
-            if focused, voice.state != .idle, !voice.handsFree { voice.stop() }
-        }
         .onAppear {
             isVisible = true
             // 외부 진입으로 arm된 경우 — 실제 viewModel이 준비된 지금 음성 모드 시작 (T-131)
             startVoiceIfArmed()
+            // idle이어도 글라스 더블탭(AVRCP)으로 음성을 바로 켤 수 있도록 리모트 커맨드 무장 (T-134)
+            voice.armRemoteControl(viewModel: viewModel)
             // 글라스 사진 도착 → 첨부 + 도착 음성 알림 + 후속 질문 흐름 (Phase 16)
             photoWatcher.onNewPhoto = { filename, data in
                 viewModel.handleCapturedPhoto(filename: filename, data: data)
@@ -151,12 +133,17 @@ struct ChatView: View {
             guard isVisible else { return }
             startVoiceIfArmed()
         }
+        // 음성 세션이 끝나 idle로 돌아와도 화면이 떠 있으면 다시 무장 — 더블탭 재시작 보장 (T-134)
+        .onChange(of: voice.state) { _, state in
+            if state == .idle, isVisible { voice.armRemoteControl(viewModel: viewModel) }
+        }
         .onDisappear {
             isVisible = false
-            if speech.isRecording { speech.stopRecording() }
             // 내 세션에 묶인 음성만 정리 — 라우팅 재진입으로 다른 ChatView가 이미
             // 시작한 음성은 끄지 않는다 (T-131)
             if voice.state != .idle, voice.boundSessionId == viewModel.sessionId { voice.stop() }
+            // idle 리모트 무장 해제 (내 세션에 묶여 있을 때만) (T-134)
+            voice.disarmRemoteControl(for: viewModel.sessionId)
             photoWatcher.stop()
             viewModel.glassesCaptureActive = false
         }
@@ -401,23 +388,6 @@ struct ChatView: View {
                 .accessibilityLabel("첨부 추가")
 
                 Button {
-                    if speech.isRecording {
-                        speech.stopRecording()
-                    } else {
-                        if voice.state != .idle { voice.stop() }  // 자동 낭독 중이면 멈추고 받아쓰기
-                        dictationBase = viewModel.inputText
-                            .trimmingCharacters(in: .whitespacesAndNewlines)
-                        Task { await speech.startRecording() }
-                    }
-                } label: {
-                    Image(systemName: speech.isRecording ? "mic.fill" : "mic")
-                        .font(.system(size: 20))
-                        .foregroundStyle(speech.isRecording ? Color.red : Color.accentColor)
-                }
-                .disabled(viewModel.isWorking || voice.handsFree)
-                .accessibilityLabel(speech.isRecording ? "받아쓰기 중지" : "음성 입력")
-
-                Button {
                     if voice.handsFree {
                         voice.stop()
                     } else {
@@ -445,12 +415,6 @@ struct ChatView: View {
                     .focused($isInputFocused)
 
                 Button {
-                    if speech.isRecording { speech.stopRecording() }  // 말하다 바로 전송해도 부드럽게
-                    if usedDictation {
-                        // 음성으로 물었으면 응답도 음성으로 — 문장 단위 자동 낭독 (T-118)
-                        voice.autoRead(viewModel: viewModel)
-                        usedDictation = false
-                    }
                     Task { await viewModel.send() }
                     isInputFocused = false
                 } label: {

@@ -234,15 +234,16 @@
 | T-133 | URL 스킴 — Info.plist `CFBundleURLTypes`(scheme `hermes`) + `HermesChatApp.onOpenURL`가 `hermes://voice`(옵션 `?session=`) 파싱 → 코디네이터 | `Resources/Info.plist`, `HermesChatApp.swift` | NEEDS-BUILD |
 | T-134 | 글라스 더블탭 매핑(T-119 확장) — `enableRemoteCommands`에 `next/previousTrackCommand` 추가 → `handleRemoteAdvance`(idle=시작, listening=즉시 전송, speaking+handsFree=바지-인), `bargeIn()` 공통 추출, 0.3초 디바운스로 싱글+더블탭 겹침 방지. **실기기 검증 필요: 더블탭이 next/previous 중 무엇으로 들어오는지** | `Services/VoiceConversationController.swift` | NEEDS-BUILD |
 | T-135 | 위젯 익스텐션 — 홈/잠금화면 위젯+iOS18 제어센터 컨트롤(`Button(intent:)`). 소스는 `HermesWidgets/`. **신규 Widget Extension 타깃은 pbxproj 수기 위험 → Xcode GUI 생성**(`HermesWidgets/SETUP.md`). `StartVoiceInputIntent`·`VoiceEntryCoordinator`를 위젯 타깃에 멤버십 공유 | `HermesWidgets/*`(신규) | NEEDS-BUILD(타깃은 Xcode GUI) |
+| T-136 | **사용자 피드백 3건 (2026-06-14)** — ①Siri "헤르메스챗 실행해" 미작동: 표시 이름을 `헤르메스`→`헤르메스챗`(사용자가 실제로 부르는 이름)으로 바꾸고 `실행해/실행/열어/열어줘` 등 자연스러운 한국어 동사 phrase 추가(T-132 보강). ②글라스 더블탭이 갓 켠 화면(idle)에서 무시되던 것: idle에선 viewModel이 nil이고 리모트 커맨드가 미등록이라 `handleRemoteAdvance(.idle)`가 빈 동작이던 근본 원인 수정 — `armRemoteControl`/`disarmRemoteControl`로 ChatView가 떠 있는 동안 커맨드 등록+현재 채팅 바인딩+now-playing 정보 유지, 세션 종료(idle 복귀) 시 `onChange(voice.state)`로 재무장(T-134 보강). ③세션 창 받아쓰기(마이크) 버튼 제거 — `음성입력`(waveform 핸즈프리)과 중복이라 삭제, 관련 dictationBase/usedDictation/transcript onChange/자동낭독-on-send 정리. **실기기 검증 필요**: 더블탭은 앱이 now-playing 지위를 가질 때만 AVRCP가 전달됨 — 첫 음성 상호작용(TTS) 이후 재진입은 확실, 완전 콜드 idle 첫 탭은 사전 오디오가 없으면 미전달일 수 있음 | `Intents/StartVoiceInputIntent.swift`, `Resources/Info.plist`, `Services/VoiceConversationController.swift`, `Views/ChatView.swift` | NEEDS-BUILD |
 
 **Phase 17 실기기 검증 체크리스트** (맥 빌드 후 메타 글라스로):
-1. Siri "헤르메스 음성 입력 시작"(한/영) 강제종료 상태에서 → 앱 뜨고 세션 진입 → 청취("말씀하세요"). 홈 아이콘 라벨이 "헤르메스"로 바뀌었는지.
+1. Siri "헤르메스챗 실행해"(및 "헤르메스챗 시작"/"음성 입력 시작", 한/영) 강제종료 상태에서 → 앱 뜨고 세션 진입 → 청취("말씀하세요"). 홈 아이콘 라벨이 "헤르메스챗"으로 바뀌었는지.
 2. `hermes://voice`(Safari/메모) cold+warm 동일. `?session=<id>`로 해당 세션 오픈.
 3. 홈 위젯/잠금화면 accessory/iOS18 제어센터 컨트롤 탭 → 앱 포그라운드+음성 시작.
-4. 글라스 싱글 vs 더블탭 상태별: idle(시작), 청취 무발화(중지)/발화중(전송), 낭독 핸즈프리(바지-인 재청취), 응답대기(무시). 음악 앱 안 뜸.
+4. 글라스 싱글 vs 더블탭 상태별: idle(시작 — **갓 켠 채팅 화면에서도 바로 청취 진입**, T-136), 청취 무발화(중지)/발화중(전송), 낭독 핸즈프리(바지-인 재청취), 응답대기(무시). 음악 앱 안 뜸. (콜드 idle 첫 탭이 안 들어오면 한 번 음성 상호작용 후 재시도 — now-playing 지위 필요)
 5. 바지-인: TTS 답변 중 더블탭 → 답변 중단+재청취, 루프 복귀.
 6. 강제 종료: 탭으로 실행 안 됨(정상) — Siri/위젯/URL은 됨.
-7. 통합 회귀: 사진 도착 음성 알림(Phase 16)과 글라스 더블탭(Phase 17)이 같은 음성 세션에서 안 부딪히는지. waveform 수동 시작·받아쓰기 자동 낭독·세션 포크 정상.
+7. 통합 회귀: 사진 도착 음성 알림(Phase 16)과 글라스 더블탭(Phase 17)이 같은 음성 세션에서 안 부딪히는지. waveform 수동 시작·세션 포크 정상. (받아쓰기 마이크 버튼은 T-136에서 제거됨 — 입력 바에 +/waveform/eyeglasses/전송만 남는지)
 
 ## 빌드 검증 기록 (검증자가 갱신)
 

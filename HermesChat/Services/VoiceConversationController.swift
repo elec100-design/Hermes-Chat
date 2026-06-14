@@ -82,6 +82,31 @@ final class VoiceConversationController: ObservableObject {
         state = .waitingResponse
     }
 
+    // MARK: - idle 리모트 제어 무장 (T-134)
+
+    /// 채팅 화면이 떠 있는 동안, 음성 세션이 idle이어도 글라스 더블탭(AVRCP)으로 음성을
+    /// **바로 시작**할 수 있도록 리모트 커맨드를 미리 등록하고 현재 채팅을 바인딩한다.
+    /// 기존엔 음성 세션을 한 번 시작해야만 커맨드가 등록되고 viewModel이 잡혀, 갓 켠
+    /// 화면에서의 더블탭이 무시되던 것을 해소한다 (사용자 보고: "더블탭이 안 됨").
+    /// - 주의: idle일 때만 동작 — 진행 중인 세션의 바인딩·커맨드는 절대 건드리지 않는다.
+    /// - now-playing 지위는 앱이 한 번이라도 오디오를 재생한 뒤 유지되므로, 여기서
+    ///   커맨드 등록 + now-playing 정보를 세워 두면 탭이 앱으로 라우팅된다.
+    func armRemoteControl(viewModel: ChatViewModel) {
+        guard state == .idle else { return }
+        self.viewModel = viewModel
+        enableRemoteCommands()
+        setNowPlaying()
+    }
+
+    /// 채팅 화면이 사라질 때 idle 무장을 해제한다. 진행 중인 세션이거나 다른 세션에
+    /// 바인딩돼 있으면 건드리지 않는다(라우팅 재진입 보호).
+    func disarmRemoteControl(for sessionId: String) {
+        guard state == .idle, boundSessionId == sessionId else { return }
+        disableRemoteCommands()
+        clearNowPlaying()
+        viewModel = nil
+    }
+
     /// 핸즈프리 대화 모드 시작 — 진입 멘트 후 청취 루프로 들어간다
     func start(viewModel: ChatViewModel) async {
         if state != .idle { stop() }
