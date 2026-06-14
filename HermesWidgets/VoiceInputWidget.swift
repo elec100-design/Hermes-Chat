@@ -2,7 +2,7 @@ import AppIntents
 import SwiftUI
 import WidgetKit
 
-/// 홈 화면 + 잠금화면 음성 입력 위젯 (T-129).
+/// 홈 화면 + 잠금화면 음성 입력 위젯 (T-135).
 /// 버튼을 누르면 `StartVoiceInputIntent`가 실행되어(openAppWhenRun) 앱이 포그라운드로 뜨고
 /// 음성 대기 모드로 진입한다. 인터랙티브 위젯 Button(intent:)은 iOS 17+.
 struct VoiceInputWidget: Widget {

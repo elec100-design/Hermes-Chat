@@ -1,4 +1,4 @@
-# HermesWidgets 위젯 익스텐션 설정 (T-129)
+# HermesWidgets 위젯 익스텐션 설정 (T-135)
 
 이 폴더의 Swift 파일들은 **새 Widget Extension 타깃**에 속해야 빌드된다.
 objectVersion 77 pbxproj에 신규 앱 익스텐션 타깃을 손으로 추가하면 프로젝트 파싱이
