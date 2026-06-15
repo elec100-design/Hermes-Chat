@@ -181,12 +181,11 @@ def start_gateway(name, install=False):
     return poll_health(port, timeout_sec=8), port, None
 
 
-def read_model_catalog(name):
-    """<profile>/cache/model_catalog.json을 모델 id 문자열 목록으로 정규화 (없으면 []).
+def _parse_catalog_file(path):
+    """model_catalog.json 한 파일을 모델 id 문자열 목록으로 정규화 (없거나 실패면 []).
 
     실제 포맷: {"providers": {"<provider>": {"models": [{"id": ...}, ...]}}}.
     구버전/다른 포맷(문자열 배열 / data·models·catalog 리스트 / 객체 배열)도 흡수한다."""
-    path = profile_dir(name) / "cache" / "model_catalog.json"
     if not path.is_file():
         return []
     try:
@@ -220,6 +219,17 @@ def read_model_catalog(name):
                 result.append(mid)
     # 중복 제거 + 정렬 (순서 안정)
     return sorted(dict.fromkeys(result))
+
+
+def read_model_catalog(name):
+    """프로필별 cache/model_catalog.json → 비면 default 프로필 카탈로그로 폴백.
+
+    새로 만든 프로필은 자기 cache/model_catalog.json이 아직 없다(게이트웨이 재시작이
+    자동 생성하지 않음). 모든 프로필이 같은 모델 목록을 공유하므로 default 것으로 폴백한다."""
+    result = _parse_catalog_file(profile_dir(name) / "cache" / "model_catalog.json")
+    if not result and name != "default":
+        result = _parse_catalog_file(HERMES_HOME / "cache" / "model_catalog.json")
+    return result
 
 
 def _locate_model(text):
