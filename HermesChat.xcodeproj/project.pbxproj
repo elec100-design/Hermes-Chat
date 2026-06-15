@@ -9,6 +9,9 @@
 /* Begin PBXBuildFile section */
 		AC5E70A11CE700000000B001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AC5E70A11CE700000000F001 /* Assets.xcassets */; };
 		000000000000000000009000 /* ProfileDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000009001 /* ProfileDetailView.swift */; };
+		C0F0000000000000000000A1 /* CronModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0F0000000000000000000A2 /* CronModels.swift */; };
+		C0F0000000000000000000B1 /* CronJobsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0F0000000000000000000B2 /* CronJobsView.swift */; };
+		C0F0000000000000000000C1 /* CronJobEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0F0000000000000000000C2 /* CronJobEditView.swift */; };
 		0B1D6E01C3A94F20B81DDE01 /* BridgeClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B1D6E02C3A94F20B81DDE02 /* BridgeClient.swift */; };
 		0C2E7F01D4B05A31C92EEF01 /* SkillsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C2E7F02D4B05A31C92EEF02 /* SkillsView.swift */; };
 		0D3F8A01E5C16B42DA3FFF01 /* ProfileBoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D3F8A02E5C16B42DA3FFF02 /* ProfileBoardView.swift */; };
@@ -76,6 +79,9 @@
 		776B66DE2FD8387E001190A1 /* ProfileModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileModels.swift; sourceTree = "<group>"; };
 		7E785976044540D5051D9A8C /* HermesAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HermesAPIClient.swift; sourceTree = "<group>"; };
 		000000000000000000009001 /* ProfileDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileDetailView.swift; sourceTree = "<group>"; };
+		C0F0000000000000000000A2 /* CronModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CronModels.swift; sourceTree = "<group>"; };
+		C0F0000000000000000000B2 /* CronJobsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CronJobsView.swift; sourceTree = "<group>"; };
+		C0F0000000000000000000C2 /* CronJobEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CronJobEditView.swift; sourceTree = "<group>"; };
 		8E3D771DF194DC8DF1975A78 /* AppDefaults.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDefaults.swift; sourceTree = "<group>"; };
 		A221A979D2EDD87F33D38D44 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		AC5E70A11CE700000000F001 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -158,6 +164,8 @@
 			isa = PBXGroup;
 			children = (
 				690CD0BEB59B960A94F72420 /* ChatView.swift */,
+				C0F0000000000000000000C2 /* CronJobEditView.swift */,
+				C0F0000000000000000000B2 /* CronJobsView.swift */,
 				1A6CBD02B8F49E75AD6CCC02 /* DashboardWebView.swift */,
 				DD17000600000000000DEE06 /* DiscussionView.swift */,
 				3C8EDF02DAB66C97CF8EEE02 /* FileBrowserView.swift */,
@@ -193,6 +201,7 @@
 			isa = PBXGroup;
 			children = (
 				1F3BB2D079331A3B8BEBB359 /* ChatModels.swift */,
+				C0F0000000000000000000A2 /* CronModels.swift */,
 				1FB3343782720464725EB49B /* DashboardModels.swift */,
 				DD17000200000000000DEE02 /* DiscussionModels.swift */,
 				0E4A9B02F6D27C53EB4AAA02 /* KanbanModels.swift */,
@@ -276,6 +285,9 @@
 				5A89F158C9FB5779ECF4BB54 /* AppDefaults.swift in Sources */,
 				0B1D6E01C3A94F20B81DDE01 /* BridgeClient.swift in Sources */,
 				000000000000000000009000 /* ProfileDetailView.swift in Sources */,
+				C0F0000000000000000000A1 /* CronModels.swift in Sources */,
+				C0F0000000000000000000B1 /* CronJobsView.swift in Sources */,
+				C0F0000000000000000000C1 /* CronJobEditView.swift in Sources */,
 				B681A38C220609922E6F32B6 /* ChatModels.swift in Sources */,
 				776B66DF2FD8387E001190A1 /* ProfileModels.swift in Sources */,
 				CC0372ECAE6E122E1C4FAA13 /* ChatView.swift in Sources */,

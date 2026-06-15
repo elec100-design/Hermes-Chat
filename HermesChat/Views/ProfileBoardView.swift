@@ -15,6 +15,7 @@ struct ProfileBoardView: View {
     @State private var status: [UUID: ProfileStatus] = [:]
     @State private var isProbing = false
     @State private var showDiscussion = false
+    @State private var selectedCronProfile: HermesProfile?
 
     /// iPhone에선 2열, iPad에선 화면 폭에 맞춰 자동 증가
     private let columns = [
@@ -55,6 +56,9 @@ struct ProfileBoardView: View {
             .fullScreenCover(isPresented: $showDiscussion) {
                 DiscussionView(appSettings: appSettings)
             }
+            .sheet(item: $selectedCronProfile) { profile in
+                CronJobsView(appSettings: appSettings, profile: profile)
+            }
             .refreshable { await probeAll() }
             .task { await probeAll() }
         }
@@ -62,37 +66,52 @@ struct ProfileBoardView: View {
 
     private func card(_ profile: HermesProfile) -> some View {
         let profileStatus = status[profile.id]
-        return Button {
-            appSettings.selectProfile(profile)
-            selectedTab = .sessions
-        } label: {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(statusColor(profileStatus?.online))
-                        .frame(width: 10, height: 10)
-                    Text(profile.name)
-                        .font(.headline)
-                        .lineLimit(1)
-                    Spacer()
-                    if profile.id == appSettings.selectedProfileID {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(.tint)
+        // 카드 선택 버튼과 크론잡 버튼은 ZStack 형제로 둔다 (중첩 버튼 충돌 방지).
+        return ZStack(alignment: .bottomTrailing) {
+            Button {
+                appSettings.selectProfile(profile)
+                selectedTab = .sessions
+            } label: {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(statusColor(profileStatus?.online))
+                            .frame(width: 10, height: 10)
+                        Text(profile.name)
+                            .font(.headline)
+                            .lineLimit(1)
+                        Spacer()
+                        if profile.id == appSettings.selectedProfileID {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(.tint)
+                        }
                     }
+                    Text("포트 \(String(profile.port))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(sessionLabel(profileStatus))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
-                Text("포트 \(String(profile.port))")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Text(sessionLabel(profileStatus))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(.secondarySystemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 14))
             }
-            .padding()
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(.secondarySystemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .buttonStyle(.plain)
+
+            Button {
+                selectedCronProfile = profile
+            } label: {
+                Image(systemName: "clock.arrow.circlepath")
+                    .font(.title3)
+                    .padding(10)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.tint)
+            .accessibilityLabel("크론잡 설정 (\(profile.name))")
         }
-        .buttonStyle(.plain)
     }
 
     private func statusColor(_ online: Bool?) -> Color {

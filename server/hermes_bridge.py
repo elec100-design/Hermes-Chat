@@ -115,6 +115,32 @@ def read_env(env_file):
     return values
 
 
+# ── 크론잡 (~/.hermes/profiles/<name>/cron/jobs.json) ───────────
+# 프로필별 cron 디렉터리에 모든 잡이 jobs.json 한 파일로 들어있다 (단일 진실원본).
+# 게이트웨이 스케줄러가 이 파일을 읽어 틱마다 실행한다. 쓰기는 편집된 필드만
+# read-modify-write로 덮어써서 id·mode·실행상태 등 나머지 필드를 보존한다.
+
+def cron_jobs_file(name):
+    return profile_dir(name) / "cron" / "jobs.json"
+
+
+def read_cron_jobs(name):
+    """cron/jobs.json을 읽어 (잡 리스트, 원본 컨테이너)를 반환.
+    컨테이너는 list 또는 {"jobs": [...]} 형태 — PUT에서 같은 형태로 다시 쓰기 위해 보존."""
+    path = cron_jobs_file(name)
+    if not path.is_file():
+        return [], None
+    try:
+        raw = json.loads(path.read_text(errors="replace"))
+    except ValueError:
+        return [], None
+    if isinstance(raw, list):
+        return raw, raw
+    if isinstance(raw, dict) and isinstance(raw.get("jobs"), list):
+        return raw["jobs"], raw
+    return [], raw
+
+
 # ── 내장 칸반 (hermes-agent kanban.db) ──────────────────────────
 # default 보드는 ~/.hermes/kanban.db, 그 외는 ~/.hermes/kanban/boards/<slug>/kanban.db.
 # 상태값: triage|todo|scheduled|ready|running|blocked|done|archived
@@ -377,6 +403,14 @@ class Handler(BaseHTTPRequestHandler):
             content = soul.read_text(errors="replace") if soul.is_file() else ""
             return self.send_json({"profile": name, "content": content})
 
+        # GET /profiles/<name>/cron — cron/jobs.json의 잡 목록 (원본 객체 그대로)
+        if len(parts) == 3 and parts[0] == "profiles" and parts[2] == "cron":
+            name = self.check_profile(parts[1])
+            if not name:
+                return self.fail(404, "unknown profile")
+            jobs, _ = read_cron_jobs(name)
+            return self.send_json({"profile": name, "jobs": jobs})
+
         # GET /kanban — 보드 목록 (slug + 표시명 + 상태별 카운트)
         if parts == ["kanban"]:
             result = []
@@ -602,6 +636,43 @@ class Handler(BaseHTTPRequestHandler):
                 soul.with_suffix(".md.bak").write_text(soul.read_text(errors="replace"))
             soul.write_text(content)
             return self.send_json({"profile": name, "ok": True})
+
+        # PUT /profiles/<name>/cron/<job_id>  {"prompt","schedule","deliver_to","skills","enabled"}
+        # 전달된 필드만 해당 잡에 덮어쓰고 나머지(id·mode·script·실행상태 등)는 보존.
+        if len(parts) == 4 and parts[0] == "profiles" and parts[2] == "cron":
+            name = self.check_profile(parts[1])
+            if not name:
+                return self.fail(404, "unknown profile")
+            job_id = parts[3]
+            if not SAFE_NAME.match(job_id):
+                return self.fail(400, "invalid job id")
+            data = self.read_body(2 * 1024 * 1024)
+            if data is None:
+                return self.fail(400, "empty body")
+            try:
+                updates = json.loads(data)
+                if not isinstance(updates, dict):
+                    raise ValueError
+            except ValueError:
+                return self.fail(400, "expected JSON object")
+            allowed = {"prompt", "schedule", "deliver_to", "skills", "enabled"}
+            updates = {k: v for k, v in updates.items() if k in allowed}
+            path = cron_jobs_file(name)
+            if not path.is_file():
+                return self.fail(404, "cron jobs.json not found")
+            jobs, container = read_cron_jobs(name)
+            target = next(
+                (j for j in jobs if isinstance(j, dict) and str(j.get("id")) == job_id),
+                None,
+            )
+            if target is None:
+                return self.fail(404, "unknown job")
+            target.update(updates)  # 편집된 키만 덮어쓰기, 나머지 보존
+            path.with_suffix(".json.bak").write_text(path.read_text(errors="replace"))
+            tmp = path.with_suffix(".json.tmp")
+            tmp.write_text(json.dumps(container, ensure_ascii=False, indent=2))
+            os.replace(str(tmp), str(path))  # 원자적 교체
+            return self.send_json({"profile": name, "job": job_id, "ok": True})
 
         return self.fail(404, "not found")
 

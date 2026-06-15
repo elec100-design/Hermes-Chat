@@ -79,6 +79,21 @@ final class BridgeClient {
         _ = try await request("PUT", "profiles/\(profile)/soul", body: body)
     }
 
+    // MARK: - Cron (프로필별 크론잡 — cron/jobs.json)
+
+    /// 해당 프로필의 크론잡 목록. 원본 객체를 그대로 받아 방어적으로 디코딩한다.
+    func fetchCronJobs(profile: String) async throws -> [CronJob] {
+        struct Response: Decodable { let jobs: [CronJob] }
+        let data = try await request("GET", "profiles/\(profile)/cron")
+        return try decode(Response.self, from: data).jobs
+    }
+
+    /// 편집된 필드만 보내 해당 잡을 갱신한다 — 나머지 필드는 Bridge가 보존한다.
+    func updateCronJob(profile: String, jobID: String, fields: [String: Any]) async throws {
+        let body = try JSONSerialization.data(withJSONObject: fields)
+        _ = try await request("PUT", "profiles/\(profile)/cron/\(jobID)", body: body, timeout: 30)
+    }
+
     // MARK: - Upload (채팅 첨부)
 
     /// 파일을 해당 프로필의 uploads 폴더로 올리고 맥미니 측 절대경로를 돌려준다.

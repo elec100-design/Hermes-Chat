@@ -246,6 +246,12 @@
 6. 강제 종료: 탭으로 실행 안 됨(정상) — Siri/위젯/URL은 됨.
 7. 통합 회귀: 사진 도착 음성 알림(Phase 16)과 글라스 더블탭(Phase 17)이 같은 음성 세션에서 안 부딪히는지. waveform 수동 시작·세션 포크 정상. (받아쓰기 마이크 버튼은 T-136에서 제거됨 — 입력 바에 +/waveform/eyeglasses/전송만 남는지)
 
+## Phase 18 — 프로필별 크론잡 조회·편집 (계획: `.claude/plans/` cron-jobs)
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-138 | 프로필별 크론잡 조회·편집 — hermes-agent 대시보드(:8000)의 Cron 화면을 네이티브로 재현. 프로필 보드 카드의 시계 버튼 → 잡 목록(시트) → 잡 편집(프롬프트·스케줄·전달대상·스킬·활성화). **Bridge 신규 엔드포인트** `GET /profiles/<name>/cron`(cron/jobs.json 잡 목록), `PUT /profiles/<name>/cron/<job_id>`(편집된 필드만 read-modify-write, id·mode·script·실행상태 등 나머지 필드 보존, .bak 백업 + 원자적 교체). 쓰기 CLI 미확인이라 파일 직접 수정. 신규 3파일 pbxproj 등록. **빌드 검증 필요(맥)**. 후속: 생성/삭제/즉시실행/실행리포트 뷰어 | `server/hermes_bridge.py`, `Models/CronModels.swift`(신규), `Services/BridgeClient.swift`, `Views/CronJobsView.swift`(신규), `Views/CronJobEditView.swift`(신규), `Views/ProfileBoardView.swift`, `HermesChat.xcodeproj/project.pbxproj` | NEEDS-BUILD |
+
 ## 빌드 검증 기록 (검증자가 갱신)
 
 | 날짜 | 브랜치/커밋 | 결과 | 비고 |
