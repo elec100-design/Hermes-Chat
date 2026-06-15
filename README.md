@@ -108,6 +108,17 @@ cp server/com.hermes.bridge.plist ~/Library/LaunchAgents/
 launchctl load ~/Library/LaunchAgents/com.hermes.bridge.plist
 ```
 
+> **⚠️ 브리지 코드(`server/hermes_bridge.py`)를 고쳤다면 맥미니의 기동본을 교체하고
+> LaunchAgent를 재기동해야 반영된다.** 안 하면 앱이 새 엔드포인트를 호출할 때
+> `브리지 HTTP 404`가 난다.
+> ```bash
+> cp ./server/hermes_bridge.py ~/.hermes/bridge/        # 배포 위치
+> launchctl unload ~/Library/LaunchAgents/ai.hermes.bridge.plist
+> launchctl load   ~/Library/LaunchAgents/ai.hermes.bridge.plist
+> curl -s http://127.0.0.1:8765/health                  # {"status":"ok"} 확인
+> ```
+> (LaunchAgent 파일명은 등록 시 쓴 이름. 위 절차 전문은 `docs/HANDOFF.md` §2.5)
+
 ### 2. 프로필별 API 서버 활성화
 ```bash
 bash scripts/setup_profiles_api.sh <API_KEY>

@@ -12,6 +12,7 @@
 		C0F0000000000000000000A1 /* CronModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0F0000000000000000000A2 /* CronModels.swift */; };
 		C0F0000000000000000000B1 /* CronJobsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0F0000000000000000000B2 /* CronJobsView.swift */; };
 		C0F0000000000000000000C1 /* CronJobEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0F0000000000000000000C2 /* CronJobEditView.swift */; };
+		C0F0000000000000000000D1 /* CreateProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0F0000000000000000000D2 /* CreateProfileView.swift */; };
 		0B1D6E01C3A94F20B81DDE01 /* BridgeClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B1D6E02C3A94F20B81DDE02 /* BridgeClient.swift */; };
 		0C2E7F01D4B05A31C92EEF01 /* SkillsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C2E7F02D4B05A31C92EEF02 /* SkillsView.swift */; };
 		0D3F8A01E5C16B42DA3FFF01 /* ProfileBoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D3F8A02E5C16B42DA3FFF02 /* ProfileBoardView.swift */; };
@@ -82,6 +83,7 @@
 		C0F0000000000000000000A2 /* CronModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CronModels.swift; sourceTree = "<group>"; };
 		C0F0000000000000000000B2 /* CronJobsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CronJobsView.swift; sourceTree = "<group>"; };
 		C0F0000000000000000000C2 /* CronJobEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CronJobEditView.swift; sourceTree = "<group>"; };
+		C0F0000000000000000000D2 /* CreateProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateProfileView.swift; sourceTree = "<group>"; };
 		8E3D771DF194DC8DF1975A78 /* AppDefaults.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDefaults.swift; sourceTree = "<group>"; };
 		A221A979D2EDD87F33D38D44 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		AC5E70A11CE700000000F001 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -164,6 +166,7 @@
 			isa = PBXGroup;
 			children = (
 				690CD0BEB59B960A94F72420 /* ChatView.swift */,
+				C0F0000000000000000000D2 /* CreateProfileView.swift */,
 				C0F0000000000000000000C2 /* CronJobEditView.swift */,
 				C0F0000000000000000000B2 /* CronJobsView.swift */,
 				1A6CBD02B8F49E75AD6CCC02 /* DashboardWebView.swift */,
@@ -288,6 +291,7 @@
 				C0F0000000000000000000A1 /* CronModels.swift in Sources */,
 				C0F0000000000000000000B1 /* CronJobsView.swift in Sources */,
 				C0F0000000000000000000C1 /* CronJobEditView.swift in Sources */,
+				C0F0000000000000000000D1 /* CreateProfileView.swift in Sources */,
 				B681A38C220609922E6F32B6 /* ChatModels.swift in Sources */,
 				776B66DF2FD8387E001190A1 /* ProfileModels.swift in Sources */,
 				CC0372ECAE6E122E1C4FAA13 /* ChatView.swift in Sources */,

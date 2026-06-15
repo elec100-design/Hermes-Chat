@@ -16,6 +16,7 @@ struct ProfileBoardView: View {
     @State private var isProbing = false
     @State private var showDiscussion = false
     @State private var selectedCronProfile: HermesProfile?
+    @State private var showCreateProfile = false
 
     /// iPhone에선 2열, iPad에선 화면 폭에 맞춰 자동 증가
     private let columns = [
@@ -29,6 +30,7 @@ struct ProfileBoardView: View {
                     ForEach(appSettings.profiles) { profile in
                         card(profile)
                     }
+                    addCard
                 }
                 .padding()
             }
@@ -58,6 +60,9 @@ struct ProfileBoardView: View {
             }
             .sheet(item: $selectedCronProfile) { profile in
                 CronJobsView(appSettings: appSettings, profile: profile)
+            }
+            .sheet(isPresented: $showCreateProfile) {
+                CreateProfileView(appSettings: appSettings)
             }
             .refreshable { await probeAll() }
             .task { await probeAll() }
@@ -112,6 +117,32 @@ struct ProfileBoardView: View {
             .foregroundStyle(.tint)
             .accessibilityLabel("크론잡 설정 (\(profile.name))")
         }
+    }
+
+    /// 그리드 끝의 '+' 카드 — 새 프로필 생성 진입.
+    private var addCard: some View {
+        Button {
+            showCreateProfile = true
+        } label: {
+            VStack(spacing: 8) {
+                Image(systemName: "plus")
+                    .font(.system(size: 32, weight: .semibold))
+                Text("프로필 추가")
+                    .font(.caption)
+            }
+            .foregroundStyle(.tint)
+            .frame(maxWidth: .infinity, minHeight: 96)
+            .padding()
+            .background(Color(.secondarySystemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [6]))
+                    .foregroundStyle(.tint.opacity(0.5))
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("새 프로필 추가")
     }
 
     private func statusColor(_ online: Bool?) -> Color {

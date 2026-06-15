@@ -141,6 +141,104 @@ def read_cron_jobs(name):
     return [], raw
 
 
+# ── 프로필 생성 / 모델 카탈로그 ─────────────────────────────────
+# 프로필 생성 = 디렉터리 + .env 작성 + 게이트웨이 install/restart (hermes profile create 없음).
+# 모델 카탈로그는 <profile>/cache/model_catalog.json (목록만), 실제 사용 모델은 config.yaml.
+
+def next_free_port():
+    """기존 프로필들의 API_SERVER_PORT 최대값 + 1 (최소 8643)."""
+    ports = [8642]
+    for name in list_profile_names():
+        try:
+            ports.append(int(read_env(profile_dir(name) / ".env").get("API_SERVER_PORT", "") or 0))
+        except ValueError:
+            pass
+    return max(ports) + 1
+
+
+def write_env_file(path, values):
+    path.write_text("".join(f"{k}={v}\n" for k, v in values.items()))
+
+
+def start_gateway(name, install=False):
+    """게이트웨이 install(옵션) + restart 후 헬스 폴링. (healthy, port, err) 반환."""
+    hermes = find_hermes()
+    if not hermes:
+        return False, None, "hermes 실행파일을 찾지 못했습니다 (HERMES_BIN 설정 필요)"
+    port = int(read_env(profile_dir(name) / ".env").get("API_SERVER_PORT", "8642") or 8642)
+    base = [hermes] if name == "default" else [hermes, "--profile", name]
+    try:
+        if install:
+            # 서비스 미등록 환경(SSH 등)에선 실패할 수 있으나 무해 → 무시.
+            subprocess.run(base + ["gateway", "install"],
+                           capture_output=True, text=True, timeout=30)
+        subprocess.Popen(base + ["gateway", "restart"],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                         start_new_session=True)
+    except Exception as e:  # noqa: BLE001
+        return False, port, f"gateway start failed: {e}"
+    time.sleep(2)
+    return poll_health(port, timeout_sec=8), port, None
+
+
+def read_model_catalog(name):
+    """<profile>/cache/model_catalog.json을 모델 id 문자열 목록으로 정규화 (없으면 [])."""
+    path = profile_dir(name) / "cache" / "model_catalog.json"
+    if not path.is_file():
+        return []
+    try:
+        raw = json.loads(path.read_text(errors="replace"))
+    except ValueError:
+        return []
+    items = raw
+    if isinstance(raw, dict):
+        items = raw.get("data") or raw.get("models") or raw.get("catalog") or []
+    if not isinstance(items, list):
+        return []
+    result = []
+    for it in items:
+        if isinstance(it, str):
+            result.append(it)
+        elif isinstance(it, dict):
+            val = it.get("id") or it.get("name") or it.get("model")
+            if val:
+                result.append(str(val))
+    return result
+
+
+# config.yaml의 최상위 `model:` 키만 다룬다 (들여쓰기 없는 라인). 중첩 키는 건드리지 않는다.
+CONFIG_MODEL_RE = re.compile(r"(?m)^(model\s*:\s*).*$")
+
+
+def read_config_model(name):
+    path = profile_dir(name) / "config.yaml"
+    if not path.is_file():
+        return None
+    m = CONFIG_MODEL_RE.search(path.read_text(errors="replace"))
+    if not m:
+        return None
+    # "model: foo  # 주석" → 값만, 따옴표 제거
+    value = m.group(0)[len(m.group(1)):].split("#", 1)[0].strip().strip('"').strip("'")
+    return value or None
+
+
+def write_config_model(name, model):
+    """config.yaml 최상위 model: 라인을 새 값으로 치환 (.bak 백업 + 원자적 교체).
+    model: 라인이 없으면 (False, 에러메시지) — 손상 방지를 위해 쓰기 거부."""
+    path = profile_dir(name) / "config.yaml"
+    if not path.is_file():
+        return False, "config.yaml not found"
+    text = path.read_text(errors="replace")
+    if not CONFIG_MODEL_RE.search(text):
+        return False, "config.yaml에 최상위 model: 키가 없습니다 (구조 확인 필요)"
+    new_text = CONFIG_MODEL_RE.sub(lambda m: m.group(1) + json.dumps(model), text, count=1)
+    path.with_suffix(".yaml.bak").write_text(text)
+    tmp = path.with_suffix(".yaml.tmp")
+    tmp.write_text(new_text)
+    os.replace(str(tmp), str(path))
+    return True, None
+
+
 # ── 내장 칸반 (hermes-agent kanban.db) ──────────────────────────
 # default 보드는 ~/.hermes/kanban.db, 그 외는 ~/.hermes/kanban/boards/<slug>/kanban.db.
 # 상태값: triage|todo|scheduled|ready|running|blocked|done|archived
@@ -411,6 +509,17 @@ class Handler(BaseHTTPRequestHandler):
             jobs, _ = read_cron_jobs(name)
             return self.send_json({"profile": name, "jobs": jobs})
 
+        # GET /profiles/<name>/model — 현재 모델(config.yaml) + 카탈로그(cache/model_catalog.json)
+        if len(parts) == 3 and parts[0] == "profiles" and parts[2] == "model":
+            name = self.check_profile(parts[1])
+            if not name:
+                return self.fail(404, "unknown profile")
+            return self.send_json({
+                "profile": name,
+                "current": read_config_model(name),
+                "catalog": read_model_catalog(name),
+            })
+
         # GET /kanban — 보드 목록 (slug + 표시명 + 상태별 카운트)
         if parts == ["kanban"]:
             result = []
@@ -445,6 +554,49 @@ class Handler(BaseHTTPRequestHandler):
         parts = [p for p in self.path.split("?")[0].split("/") if p]
         if not self.authorized():
             return self.fail(401, "unauthorized")
+
+        # POST /profiles  {"name", "port"?, "api_key"?, "soul"?} — 프로필 완전 생성
+        if parts == ["profiles"]:
+            raw = self.read_body(2 * 1024 * 1024)
+            if raw is None:
+                return self.fail(400, "empty body")
+            try:
+                payload = json.loads(raw)
+                name = str(payload.get("name") or "").strip()
+            except (ValueError, TypeError):
+                return self.fail(400, 'expected JSON {"name": ...}')
+            if not SAFE_NAME.match(name) or name == "default":
+                return self.fail(400, "invalid profile name (영숫자/._- 만, default 예약)")
+            if name in list_profile_names():
+                return self.fail(409, f"profile '{name}' already exists")
+            try:
+                port = int(payload.get("port") or 0)
+            except (ValueError, TypeError):
+                port = 0
+            if port <= 0:
+                port = next_free_port()
+            pdir = PROFILES_DIR / name
+            try:
+                pdir.mkdir(parents=True, exist_ok=False)
+            except FileExistsError:
+                return self.fail(409, "profile dir already exists")
+            except OSError as e:
+                return self.fail(500, f"mkdir failed: {e}")
+            write_env_file(pdir / ".env", {
+                "API_SERVER_ENABLED": "true",
+                "API_SERVER_PORT": str(port),
+                "API_SERVER_HOST": "0.0.0.0",
+                "API_SERVER_KEY": str(payload.get("api_key") or ""),
+                "API_SERVER_MODEL_NAME": name,
+            })
+            soul = str(payload.get("soul") or "")
+            if soul:
+                (pdir / "SOUL.md").write_text(soul)
+            healthy, _, err = start_gateway(name, install=True)
+            return self.send_json({
+                "name": name, "port": port, "ok": True,
+                "healthy": healthy, "error": err,
+            }, 201)
 
         # POST /profiles/<name>/restart
         if len(parts) == 3 and parts[0] == "profiles" and parts[2] == "restart":
@@ -673,6 +825,33 @@ class Handler(BaseHTTPRequestHandler):
             tmp.write_text(json.dumps(container, ensure_ascii=False, indent=2))
             os.replace(str(tmp), str(path))  # 원자적 교체
             return self.send_json({"profile": name, "job": job_id, "ok": True})
+
+        # PUT /profiles/<name>/model  {"model", "restart"?} — config.yaml 모델 반영
+        if len(parts) == 3 and parts[0] == "profiles" and parts[2] == "model":
+            name = self.check_profile(parts[1])
+            if not name:
+                return self.fail(404, "unknown profile")
+            data = self.read_body(64 * 1024)
+            if data is None:
+                return self.fail(400, "empty body")
+            try:
+                payload = json.loads(data)
+                model = str(payload["model"]).strip()
+            except (ValueError, KeyError, TypeError):
+                return self.fail(400, 'expected JSON {"model": ...}')
+            if not model:
+                return self.fail(400, "model is empty")
+            ok, err = write_config_model(name, model)
+            if not ok:
+                return self.fail(400, err)
+            result = {"profile": name, "model": model, "ok": True}
+            if payload.get("restart"):
+                healthy, port, rerr = start_gateway(name)
+                result["healthy"] = healthy
+                result["port"] = port
+                if rerr:
+                    result["error"] = rerr
+            return self.send_json(result)
 
         return self.fail(404, "not found")
 

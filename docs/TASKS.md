@@ -252,6 +252,13 @@
 |----|------|------|------|
 | T-138 | 프로필별 크론잡 조회·편집 — hermes-agent 대시보드(:8000)의 Cron 화면을 네이티브로 재현. 프로필 보드 카드의 시계 버튼 → 잡 목록(시트) → 잡 편집(프롬프트·스케줄·전달대상·스킬·활성화). **Bridge 신규 엔드포인트** `GET /profiles/<name>/cron`(cron/jobs.json 잡 목록), `PUT /profiles/<name>/cron/<job_id>`(편집된 필드만 read-modify-write, id·mode·script·실행상태 등 나머지 필드 보존, .bak 백업 + 원자적 교체). 쓰기 CLI 미확인이라 파일 직접 수정. 신규 3파일 pbxproj 등록. **빌드 검증 필요(맥)**. 후속: 생성/삭제/즉시실행/실행리포트 뷰어 | `server/hermes_bridge.py`, `Models/CronModels.swift`(신규), `Services/BridgeClient.swift`, `Views/CronJobsView.swift`(신규), `Views/CronJobEditView.swift`(신규), `Views/ProfileBoardView.swift`, `HermesChat.xcodeproj/project.pbxproj` | NEEDS-BUILD |
 
+## Phase 19 — 프로필 추가('+' 카드) + 모델 카탈로그 선택
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-139 | 프로필 보드 '+' 카드 → 새 프로필 **백엔드 완전 생성**(Bridge `POST /profiles`: 디렉터리+.env+SOUL.md + `hermes --profile <name> gateway install/restart` + 헬스폴링, 포트 자동할당=최대+1). 모델 선택을 **카탈로그 기반**으로 교체 — Bridge `GET /profiles/<name>/model`(현재값=config.yaml 최상위 `model:` + 카탈로그=`<profile>/cache/model_catalog.json` 방어적 파싱), `PUT /profiles/<name>/model`(config.yaml `model:` 타깃 치환, .bak+원자적 교체, restart 옵션). ProfileDetailView 모델 섹션을 `/v1/models`(무의미·1개) 대신 카탈로그 Picker+저장(재시작)로 교체. 신규 `CreateProfileView` + pbxproj 등록. **빌드 검증 필요(맥)** + **브리지 재배포 필요**. 열린항목: config.yaml `model:` 키 위치 실측 확정 | `server/hermes_bridge.py`, `Services/BridgeClient.swift`, `Views/CreateProfileView.swift`(신규), `Views/ProfileBoardView.swift`, `Views/ProfileDetailView.swift`, `HermesChat.xcodeproj/project.pbxproj` | NEEDS-BUILD |
+| T-138b | 문서: 브리지 수정 시 맥미니 기동본 교체+LaunchAgent 재기동 절차 강조(안 하면 앱 "브리지 HTTP 404"). HANDOFF §2.5 경고 보강 + README 브리지 섹션에 갱신 절차 추가 | `docs/HANDOFF.md`, `README.md` | DONE |
+
 ## 빌드 검증 기록 (검증자가 갱신)
 
 | 날짜 | 브랜치/커밋 | 결과 | 비고 |
