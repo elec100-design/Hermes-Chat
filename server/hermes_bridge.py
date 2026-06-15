@@ -156,8 +156,23 @@ def next_free_port():
     return max(ports) + 1
 
 
-def write_env_file(path, values):
-    path.write_text("".join(f"{k}={v}\n" for k, v in values.items()))
+def set_env_values(path, updates):
+    """기존 .env의 해당 키만 갱신/추가하고 나머지 라인(주석·기타 키)은 보존."""
+    lines = path.read_text(errors="replace").splitlines() if path.is_file() else []
+    remaining = dict(updates)
+    out = []
+    for line in lines:
+        s = line.strip()
+        if s and not s.startswith("#") and "=" in s:
+            key = s.split("=", 1)[0].strip()
+            if key in remaining:
+                out.append(f"{key}={remaining.pop(key)}")
+                continue
+        out.append(line)
+    for key, val in remaining.items():
+        out.append(f"{key}={val}")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(out) + "\n")
 
 
 def start_gateway(name, install=False):
@@ -631,7 +646,9 @@ class Handler(BaseHTTPRequestHandler):
         if not self.authorized():
             return self.fail(401, "unauthorized")
 
-        # POST /profiles  {"name", "port"?, "api_key"?, "soul"?} — 프로필 완전 생성
+        # POST /profiles  {"name", "port"?, "api_key"?, "soul"?, "model"?} — 프로필 완전 생성
+        # `hermes profile create <name> --clone-from default`로 default를 복제(config.yaml/.env/
+        # SOUL.md/skills) 후 API 서버 키(포트·이름 등)만 덮어쓰고 게이트웨이를 기동한다.
         if parts == ["profiles"]:
             raw = self.read_body(2 * 1024 * 1024)
             if raw is None:
@@ -645,35 +662,45 @@ class Handler(BaseHTTPRequestHandler):
                 return self.fail(400, "invalid profile name (영숫자/._- 만, default 예약)")
             if name in list_profile_names():
                 return self.fail(409, f"profile '{name}' already exists")
+            hermes = find_hermes()
+            if not hermes:
+                return self.fail(500, "hermes 실행파일을 찾지 못했습니다 (HERMES_BIN 설정 필요)")
             try:
                 port = int(payload.get("port") or 0)
             except (ValueError, TypeError):
                 port = 0
             if port <= 0:
                 port = next_free_port()
-            pdir = PROFILES_DIR / name
+            # 1) default 복제 — config.yaml/.env/SOUL.md/skills를 hermes가 만들어 준다
             try:
-                pdir.mkdir(parents=True, exist_ok=False)
-            except FileExistsError:
-                return self.fail(409, "profile dir already exists")
-            except OSError as e:
-                return self.fail(500, f"mkdir failed: {e}")
-            write_env_file(pdir / ".env", {
+                proc = subprocess.run(
+                    [hermes, "profile", "create", name, "--clone-from", "default"],
+                    capture_output=True, text=True, timeout=120,
+                )
+            except subprocess.TimeoutExpired:
+                return self.fail(500, "profile create timeout")
+            if proc.returncode != 0:
+                detail = (proc.stderr or proc.stdout or "").strip()[-500:]
+                return self.fail(500, f"profile create 실패: {detail}")
+            # 2) 클론된 .env의 API 서버 키만 덮어쓴다 (포트 충돌·이름 보정). 나머지 키 보존.
+            env_updates = {
                 "API_SERVER_ENABLED": "true",
                 "API_SERVER_PORT": str(port),
                 "API_SERVER_HOST": "0.0.0.0",
-                "API_SERVER_KEY": str(payload.get("api_key") or ""),
                 "API_SERVER_MODEL_NAME": name,
-            })
+            }
+            api_key = str(payload.get("api_key") or "")
+            if api_key:  # 빈 값으로 클론된 키를 지우지 않도록
+                env_updates["API_SERVER_KEY"] = api_key
+            set_env_values(profile_dir(name) / ".env", env_updates)
+            # 3) soul / model 덮어쓰기 (선택)
             soul = str(payload.get("soul") or "")
             if soul:
-                (pdir / "SOUL.md").write_text(soul)
-            # config.yaml은 default 프로필 것을 템플릿으로 복사 (없으면 모델 설정·툴셋이 비어
-            # 모델 변경이 불가능해짐). model이 지정됐으면 복사본의 model.default를 교체.
-            ensure_profile_config(name)
+                (profile_dir(name) / "SOUL.md").write_text(soul)
             model = str(payload.get("model") or "").strip()
             if model:
                 write_config_model(name, model)
+            # 4) 게이트웨이 기동
             healthy, _, err = start_gateway(name, install=True)
             return self.send_json({
                 "name": name, "port": port, "ok": True,
