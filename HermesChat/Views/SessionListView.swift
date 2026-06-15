@@ -2,12 +2,13 @@ import SwiftUI
 
 struct SessionListView: View {
     @ObservedObject var appSettings: AppSettings
-    @State private var navigationPath = NavigationPath()
+    /// 음성 진입 시 앱 레벨에서 세션을 push할 수 있도록 경로를 코디네이터로 승격 (T-131)
+    @ObservedObject private var coordinator = VoiceEntryCoordinator.shared
     @State private var isCreatingSession = false
     @State private var searchText = ""
 
     var body: some View {
-        NavigationStack(path: $navigationPath) {
+        NavigationStack(path: $coordinator.sessionsPath) {
             List {
                 // Error banner
                 if let error = appSettings.sessionLoadError {
@@ -31,7 +32,7 @@ struct SessionListView: View {
                     Task {
                         do {
                             let session = try await appSettings.createSession()
-                            navigationPath.append(session)
+                            coordinator.sessionsPath.append(session)
                         } catch {
                             appSettings.sessionLoadError = error.localizedDescription
                         }
@@ -86,7 +87,7 @@ struct SessionListView: View {
                             Task {
                                 do {
                                     let forked = try await appSettings.forkSession(id: session.id)
-                                    navigationPath.append(forked)
+                                    coordinator.sessionsPath.append(forked)
                                 } catch {
                                     appSettings.sessionLoadError = error.localizedDescription
                                 }

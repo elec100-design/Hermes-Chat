@@ -22,9 +22,18 @@ final class ChatViewModel: ObservableObject {
     @Published var isLoadingHistory: Bool = false
     @Published var attachments: [PendingAttachment] = []
     @Published var historyError: String?
+    /// 글라스 사진 자동 전송 모드(Phase 16) 활성 여부 — ChatView 토글이 켜고 끈다
+    @Published var glassesCaptureActive = false
+    /// 이번 모드에서 감지한 글라스 사진 수 (T-129, 서버 응답과 무관한 감지 가시성)
+    @Published private(set) var glassesPhotosDetected = 0
+    /// 가장 최근 감지한 글라스 사진 파일명 (T-129)
+    @Published private(set) var lastGlassesPhotoName: String?
 
     /// Bridge 업로드 한도와 동일 (server/hermes_bridge.py MAX_UPLOAD)
     static let maxAttachmentBytes = 50 * 1024 * 1024
+
+    /// 글라스 사진 도착 후 사용자가 질문하지 않을 때 쓰는 기본 프롬프트 (T-126)
+    static let glassesPhotoPrompt = "방금 찍은 사진이야. 무엇이 보이는지 설명해줘."
 
     /// 음성 자동 낭독/핸즈프리(T-118)가 스트리밍 응답을 구독하는 후킹 —
     /// (지금까지 누적된 본문, 스트림 완료 여부). 음성 기능을 안 쓸 땐 nil
@@ -89,6 +98,9 @@ final class ChatViewModel: ObservableObject {
             ))
             return
         }
+        // HEIC/HEIF는 LLM 비전 API가 거부하므로 업로드 전 JPEG로 정규화한다 (T-130).
+        // 세 진입점(사진선택·파일·글라스 워처)이 모두 여기를 거치므로 한 곳에서 해결된다.
+        let (data, filename) = Self.normalizedImageForUpload(data: data, filename: filename)
         // 이미지만 디코딩 (비이미지 파일의 불필요한 UIImage 시도 회피)
         let thumbnail = ChatImageSource.isImagePath(filename)
             ? UIImage(data: data)?.preparingThumbnail(of: CGSize(width: 72, height: 72))
@@ -96,8 +108,42 @@ final class ChatViewModel: ObservableObject {
         attachments.append(PendingAttachment(filename: filename, data: data, thumbnail: thumbnail))
     }
 
+    /// HEIC/HEIF 이미지를 JPEG로 변환하고 확장자를 `.jpg`로 바꾼다 (T-130).
+    /// HEIC가 아니거나 변환 실패면 원본을 그대로 돌려준다(방어). PNG/JPEG/WebP/GIF·비이미지는 무변환.
+    /// UIImage가 EXIF 방향을 반영해 디코드하고 jpegData가 정방향으로 기록하므로 회전 문제는 없다.
+    private static func normalizedImageForUpload(data: Data, filename: String) -> (Data, String) {
+        let ext = (filename as NSString).pathExtension.lowercased()
+        guard ext == "heic" || ext == "heif" else { return (data, filename) }
+        guard let jpeg = UIImage(data: data)?.jpegData(compressionQuality: 0.85) else {
+            return (data, filename)
+        }
+        let base = (filename as NSString).deletingPathExtension
+        return (jpeg, base + ".jpg")
+    }
+
     func removeAttachment(id: UUID) {
         attachments.removeAll { $0.id == id }
+    }
+
+    /// 글라스로 찍은 사진이 보관함에 도착했을 때 (PhotoImportWatcher 콜백, T-126).
+    /// 사진을 대기 첨부로 붙이고, 음성 컨트롤러에 도착 알림+청취 흐름을 위임한다.
+    /// (전송은 컨트롤러 경로로 일원화해 음성 루프와의 이중 전송을 피한다.)
+    func handleCapturedPhoto(filename: String, data: Data) {
+        let before = attachments.count
+        addAttachment(filename: filename, data: data)
+        // 50MB 초과 등으로 첨부가 거부됐으면 알림/전송을 진행하지 않는다
+        guard attachments.count > before else { return }
+        // 감지 가시성: 카운트·파일명 기록 + 햅틱 (서버 응답과 무관하게 "도착"을 알 수 있게, T-129)
+        glassesPhotosDetected += 1
+        lastGlassesPhotoName = filename
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        VoiceConversationController.shared.announcePhotoArrival(viewModel: self)
+    }
+
+    /// 글라스 모드를 끌 때 감지 표시를 초기화한다 (T-129)
+    func resetGlassesStatus() {
+        glassesPhotosDetected = 0
+        lastGlassesPhotoName = nil
     }
 
     func send() async {

@@ -15,10 +15,13 @@ struct ChatView: View {
     @State private var forkError: String?
     @ObservedObject private var speech = SpeechService.shared
     @ObservedObject private var voice = VoiceConversationController.shared
-    /// 받아쓰기 시작 시점의 입력창 내용 — 부분 결과가 갱신될 때마다 그 뒤에 이어 붙인다
-    @State private var dictationBase = ""
-    /// 현재 입력에 받아쓰기가 쓰였는지 — true면 전송 시 응답을 자동 낭독한다 (T-118)
-    @State private var usedDictation = false
+    @ObservedObject private var coordinator = VoiceEntryCoordinator.shared
+    /// 외부 진입(Siri·위젯·URL·글라스)의 arm을 보이는 뷰에서만 소비하기 위한 가시성 추적 (T-131)
+    @State private var isVisible = false
+    /// 글라스 사진 자동 전송 감시자 (Phase 16) — 세션 화면 수명 동안만 산다
+    @StateObject private var photoWatcher = PhotoImportWatcher()
+    /// 사진 권한 부족 안내 (제한 접근/거부) — nil이 아니면 알럿 표시
+    @State private var photoAccessAlert: String?
 
     init(sessionId: String, appSettings: AppSettings) {
         self.sessionId = sessionId
@@ -58,6 +61,11 @@ struct ChatView: View {
             if voice.state != .idle {
                 Divider()
                 voiceStatusBanner
+            }
+
+            if viewModel.glassesCaptureActive {
+                Divider()
+                glassesStatusBanner
             }
 
             Divider()
@@ -109,25 +117,43 @@ struct ChatView: View {
         } message: {
             Text(speech.errorMessage ?? "")
         }
-        .onChange(of: speech.transcript) { _, transcript in
-            // 핸즈프리 부분 결과는 컨트롤러가 소비 — 입력창에는 받아쓰기만 반영
-            guard voice.state == .idle, !transcript.isEmpty else { return }
-            usedDictation = true
-            viewModel.inputText = dictationBase.isEmpty
-                ? transcript
-                : dictationBase + " " + transcript
+        .onAppear {
+            isVisible = true
+            // 외부 진입으로 arm된 경우 — 실제 viewModel이 준비된 지금 음성 모드 시작 (T-131)
+            startVoiceIfArmed()
+            // idle이어도 글라스 더블탭(AVRCP)으로 음성을 바로 켤 수 있도록 리모트 커맨드 무장 (T-134)
+            voice.armRemoteControl(viewModel: viewModel)
+            // 글라스 사진 도착 → 첨부 + 도착 음성 알림 + 후속 질문 흐름 (Phase 16)
+            photoWatcher.onNewPhoto = { filename, data in
+                viewModel.handleCapturedPhoto(filename: filename, data: data)
+            }
         }
-        .onChange(of: viewModel.inputText) { _, text in
-            // 입력을 비우면(전송 포함) 받아쓰기 흔적도 초기화
-            if text.isEmpty { usedDictation = false }
+        // 이미 보이는 채팅에 진입 요청이 들어온 경우(탭 전환 없이) onChange로 반응 (T-131)
+        .onChange(of: coordinator.armChatVoiceStart) { _, _ in
+            guard isVisible else { return }
+            startVoiceIfArmed()
         }
-        .onChange(of: isInputFocused) { _, focused in
-            // 자동 낭독 중 입력창을 만지면 조용히 멈춘다 — 끝까지 듣게 강요하지 않는다
-            if focused, voice.state != .idle, !voice.handsFree { voice.stop() }
+        // 음성 세션이 끝나 idle로 돌아와도 화면이 떠 있으면 다시 무장 — 더블탭 재시작 보장 (T-134)
+        .onChange(of: voice.state) { _, state in
+            if state == .idle, isVisible { voice.armRemoteControl(viewModel: viewModel) }
         }
         .onDisappear {
-            if speech.isRecording { speech.stopRecording() }
-            if voice.state != .idle { voice.stop() }
+            isVisible = false
+            // 내 세션에 묶인 음성만 정리 — 라우팅 재진입으로 다른 ChatView가 이미
+            // 시작한 음성은 끄지 않는다 (T-131)
+            if voice.state != .idle, voice.boundSessionId == viewModel.sessionId { voice.stop() }
+            // idle 리모트 무장 해제 (내 세션에 묶여 있을 때만) (T-134)
+            voice.disarmRemoteControl(for: viewModel.sessionId)
+            photoWatcher.stop()
+            viewModel.glassesCaptureActive = false
+        }
+        .alert("사진 접근 권한", isPresented: .init(
+            get: { photoAccessAlert != nil },
+            set: { if !$0 { photoAccessAlert = nil } }
+        )) {
+            Button("확인", role: .cancel) {}
+        } message: {
+            Text(photoAccessAlert ?? "")
         }
         .photosPicker(
             isPresented: $showPhotoPicker,
@@ -156,6 +182,12 @@ struct ChatView: View {
         }
     }
 
+    /// 외부 진입(Siri·위젯·URL·글라스)으로 arm된 음성 시작 신호를 1회 소비해 핸즈프리 모드 진입 (T-131)
+    private func startVoiceIfArmed() {
+        guard coordinator.consumeChatVoiceStart() else { return }
+        Task { await voice.start(viewModel: viewModel) }
+    }
+
     private func forkSession() {
         guard !isForking else { return }
         isForking = true
@@ -166,6 +198,27 @@ struct ChatView: View {
                 forkError = error.localizedDescription
             }
             isForking = false
+        }
+    }
+
+    /// 글라스 사진 자동 전송 모드 토글 — 켤 때 전체 사진 접근을 요청하고, 부족하면 안내한다 (Phase 16)
+    private func toggleGlassesCapture() {
+        if viewModel.glassesCaptureActive {
+            photoWatcher.stop()
+            viewModel.glassesCaptureActive = false
+            viewModel.resetGlassesStatus()
+            return
+        }
+        Task {
+            switch await photoWatcher.start(since: .now) {
+            case .authorized:
+                viewModel.glassesCaptureActive = true
+            case .limited:
+                photoAccessAlert = "글라스 사진 자동 전송은 사진 '전체 접근' 권한이 필요합니다. "
+                    + "설정 > 개인정보 보호 및 보안 > 사진에서 Hermes Chat을 '전체 접근'으로 바꿔주세요."
+            case .denied:
+                photoAccessAlert = "사진 접근 권한이 필요합니다. 설정 > 개인정보 보호 및 보안 > 사진에서 허용해주세요."
+            }
         }
     }
 
@@ -233,6 +286,28 @@ struct ChatView: View {
         case .speaking: return "말하는 중…"
         case .idle: return ""
         }
+    }
+
+    /// 글라스 사진 모드 상태 배너 (T-129) — 서버 응답과 무관하게 감시/감지 상태를 보여준다
+    private var glassesStatusBanner: some View {
+        HStack(spacing: 8) {
+            Image(systemName: viewModel.lastGlassesPhotoName == nil ? "eyeglasses" : "camera.fill")
+                .foregroundStyle(Color.green)
+            if let name = viewModel.lastGlassesPhotoName {
+                Text("사진 감지됨 (\(viewModel.glassesPhotosDetected)장) · 최근: \(name)")
+                    .font(.subheadline)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            } else {
+                Text("글라스 사진 감시 중 — 찍으면 자동 첨부됩니다")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+        .background(.thinMaterial)
     }
 
     private var messageList: some View {
@@ -313,23 +388,6 @@ struct ChatView: View {
                 .accessibilityLabel("첨부 추가")
 
                 Button {
-                    if speech.isRecording {
-                        speech.stopRecording()
-                    } else {
-                        if voice.state != .idle { voice.stop() }  // 자동 낭독 중이면 멈추고 받아쓰기
-                        dictationBase = viewModel.inputText
-                            .trimmingCharacters(in: .whitespacesAndNewlines)
-                        Task { await speech.startRecording() }
-                    }
-                } label: {
-                    Image(systemName: speech.isRecording ? "mic.fill" : "mic")
-                        .font(.system(size: 20))
-                        .foregroundStyle(speech.isRecording ? Color.red : Color.accentColor)
-                }
-                .disabled(viewModel.isWorking || voice.handsFree)
-                .accessibilityLabel(speech.isRecording ? "받아쓰기 중지" : "음성 입력")
-
-                Button {
                     if voice.handsFree {
                         voice.stop()
                     } else {
@@ -343,17 +401,20 @@ struct ChatView: View {
                 }
                 .accessibilityLabel(voice.handsFree ? "음성 대화 종료" : "음성 대화 시작")
 
+                Button {
+                    toggleGlassesCapture()
+                } label: {
+                    Image(systemName: "eyeglasses")
+                        .font(.system(size: 20))
+                        .foregroundStyle(viewModel.glassesCaptureActive ? Color.green : Color.accentColor)
+                }
+                .accessibilityLabel(viewModel.glassesCaptureActive ? "글라스 사진 자동 전송 끄기" : "글라스 사진 자동 전송 켜기")
+
                 TextField("메시지를 입력하세요", text: $viewModel.inputText, axis: .vertical)
                     .textFieldStyle(.roundedBorder)
                     .focused($isInputFocused)
 
                 Button {
-                    if speech.isRecording { speech.stopRecording() }  // 말하다 바로 전송해도 부드럽게
-                    if usedDictation {
-                        // 음성으로 물었으면 응답도 음성으로 — 문장 단위 자동 낭독 (T-118)
-                        voice.autoRead(viewModel: viewModel)
-                        usedDictation = false
-                    }
                     Task { await viewModel.send() }
                     isInputFocused = false
                 } label: {
