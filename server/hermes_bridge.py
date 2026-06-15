@@ -182,7 +182,10 @@ def start_gateway(name, install=False):
 
 
 def read_model_catalog(name):
-    """<profile>/cache/model_catalog.json을 모델 id 문자열 목록으로 정규화 (없으면 [])."""
+    """<profile>/cache/model_catalog.json을 모델 id 문자열 목록으로 정규화 (없으면 []).
+
+    실제 포맷: {"providers": {"<provider>": {"models": [{"id": ...}, ...]}}}.
+    구버전/다른 포맷(문자열 배열 / data·models·catalog 리스트 / 객체 배열)도 흡수한다."""
     path = profile_dir(name) / "cache" / "model_catalog.json"
     if not path.is_file():
         return []
@@ -190,48 +193,82 @@ def read_model_catalog(name):
         raw = json.loads(path.read_text(errors="replace"))
     except ValueError:
         return []
-    items = raw
-    if isinstance(raw, dict):
-        items = raw.get("data") or raw.get("models") or raw.get("catalog") or []
-    if not isinstance(items, list):
-        return []
+
+    def model_id(item):
+        if isinstance(item, str):
+            return item
+        if isinstance(item, dict):
+            val = item.get("id") or item.get("name") or item.get("model")
+            return str(val) if val else None
+        return None
+
     result = []
-    for it in items:
-        if isinstance(it, str):
-            result.append(it)
-        elif isinstance(it, dict):
-            val = it.get("id") or it.get("name") or it.get("model")
-            if val:
-                result.append(str(val))
-    return result
+    if isinstance(raw, dict) and isinstance(raw.get("providers"), dict):
+        for prov in raw["providers"].values():
+            models = prov.get("models") if isinstance(prov, dict) else None
+            for item in models or []:
+                mid = model_id(item)
+                if mid:
+                    result.append(mid)
+    else:
+        items = raw
+        if isinstance(raw, dict):
+            items = raw.get("data") or raw.get("models") or raw.get("catalog") or []
+        for item in items if isinstance(items, list) else []:
+            mid = model_id(item)
+            if mid:
+                result.append(mid)
+    # 중복 제거 + 정렬 (순서 안정)
+    return sorted(dict.fromkeys(result))
 
 
-# config.yaml의 최상위 `model:` 키만 다룬다 (들여쓰기 없는 라인). 중첩 키는 건드리지 않는다.
-CONFIG_MODEL_RE = re.compile(r"(?m)^(model\s*:\s*).*$")
+def _locate_model(text):
+    """config.yaml에서 모델 값 라인을 찾는다 → (lines, idx, prefix).
+    ① `model: <scalar>` 인라인이면 그 라인. ② `model:` 블록이면 하위 들여쓴 `default:` 라인.
+    못 찾으면 (lines, None, None). prefix는 값 앞부분(키+공백)으로, 값만 교체할 때 쓴다."""
+    lines = text.splitlines()
+    for i, line in enumerate(lines):
+        m = re.match(r"^(model:[ \t]*)(.*)$", line)
+        if not m:
+            continue
+        if m.group(2).split("#", 1)[0].strip():  # 인라인 스칼라
+            return lines, i, m.group(1)
+        for j in range(i + 1, len(lines)):       # 블록 → 하위 default:
+            if not lines[j].strip():
+                continue
+            if not lines[j][:1].isspace():        # 들여쓰기 0 = 블록 종료
+                break
+            d = re.match(r"^([ \t]*default:[ \t]*)(.*)$", lines[j])
+            if d:
+                return lines, j, d.group(1)
+        return lines, None, None
+    return lines, None, None
 
 
 def read_config_model(name):
     path = profile_dir(name) / "config.yaml"
     if not path.is_file():
         return None
-    m = CONFIG_MODEL_RE.search(path.read_text(errors="replace"))
-    if not m:
+    lines, idx, prefix = _locate_model(path.read_text(errors="replace"))
+    if idx is None:
         return None
-    # "model: foo  # 주석" → 값만, 따옴표 제거
-    value = m.group(0)[len(m.group(1)):].split("#", 1)[0].strip().strip('"').strip("'")
+    value = lines[idx][len(prefix):].split("#", 1)[0].strip().strip('"').strip("'")
     return value or None
 
 
 def write_config_model(name, model):
-    """config.yaml 최상위 model: 라인을 새 값으로 치환 (.bak 백업 + 원자적 교체).
-    model: 라인이 없으면 (False, 에러메시지) — 손상 방지를 위해 쓰기 거부."""
+    """config.yaml의 모델 값(model.default 또는 인라인 model:)만 교체.
+    들여쓰기·주변 블록(provider·base_url·fallback_providers 등) 보존. .bak 백업 + 원자적 교체.
+    모델 키를 못 찾으면 (False, 에러) — 손상 방지를 위해 쓰기 거부."""
     path = profile_dir(name) / "config.yaml"
     if not path.is_file():
         return False, "config.yaml not found"
     text = path.read_text(errors="replace")
-    if not CONFIG_MODEL_RE.search(text):
-        return False, "config.yaml에 최상위 model: 키가 없습니다 (구조 확인 필요)"
-    new_text = CONFIG_MODEL_RE.sub(lambda m: m.group(1) + json.dumps(model), text, count=1)
+    lines, idx, prefix = _locate_model(text)
+    if idx is None:
+        return False, "config.yaml에서 model(.default) 키를 찾지 못했습니다 (구조 확인 필요)"
+    lines[idx] = prefix + json.dumps(model)  # 값만 따옴표로 감싸 교체 (콜론 포함 id 안전)
+    new_text = "\n".join(lines) + ("\n" if text.endswith("\n") else "")
     path.with_suffix(".yaml.bak").write_text(text)
     tmp = path.with_suffix(".yaml.tmp")
     tmp.write_text(new_text)

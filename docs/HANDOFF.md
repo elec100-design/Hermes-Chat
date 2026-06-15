@@ -182,6 +182,12 @@ git push -u origin claude/<topic>   # 작업 중인 피처 브랜치로 동작 �
 | 대시보드 | `http://100.83.59.60:8000` |
 | API Key / 토큰 | 앱 설정 화면에서 입력 (저장소에 쓰지 않는다) |
 
+**Bridge 엔드포인트(:8765) 요약** — 전체 정의는 `server/hermes_bridge.py`/`server/README.md` 참고:
+프로필 목록·재시작·로그·SOUL.md, 파일 읽기, 칸반(읽기 sqlite·쓰기 CLI),
+**크론잡** `GET/PUT /profiles/<n>/cron[/<id>]`(T-138),
+**프로필 생성** `POST /profiles`(T-139), **모델** `GET/PUT /profiles/<n>/model`(T-139~140).
+⚠️ 이 파일을 고치면 맥미니 기동본 교체+재기동 필수(§2.5) — 안 하면 앱에서 "브리지 HTTP 404".
+
 ## 부록 B. Hermes 칸반 스킬 (2026-06-11 v2 — 내장 칸반으로 전환)
 
 > **중요**: 초기 초안의 `~/.hermes/kanban/<보드>.json` 평면 파일 방식은 폐기됐다.

@@ -241,7 +241,7 @@ struct ProfileDetailView: View {
         } header: {
             Text("모델")
         } footer: {
-            Text("프로필 config.yaml의 모델을 변경하고 게이트웨이를 재시작합니다.")
+            Text("config.yaml의 model.default를 바꾸고 게이트웨이를 재시작합니다. (provider·base_url은 유지)")
         }
     }
 

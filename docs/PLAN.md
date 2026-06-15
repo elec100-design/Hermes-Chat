@@ -45,6 +45,10 @@
 - SOUL.md 읽기/쓰기 ❌
 - 파일 업로드(첨부) ❌
 - 칸반 보드 ❌
+- 크론잡 조회/편집 ❌ (`<profile>/cron/jobs.json`) — Bridge `GET/PUT /profiles/<n>/cron[/<id>]` (Phase 18)
+- 프로필 생성 ❌ (디렉터리+.env+게이트웨이 기동) — Bridge `POST /profiles` (Phase 19)
+- 모델 카탈로그/현재 모델 ❌ (`<profile>/cache/model_catalog.json`, `config.yaml`의 `model.default`)
+  — Bridge `GET/PUT /profiles/<n>/model` (Phase 19~20). `/v1/models`는 설정된 1개만 줌(카탈로그 아님).
 
 ---
 
@@ -269,6 +273,23 @@ system_prompt가 SOUL.md 페르소나와 병합되어 발언에 성향이 유지
 
 **수용 기준**: 전체 사진 접근 허용 + 글라스 모드 ON에서 글라스로 촬영 → 도착 음성 알림 → 음성 질문 →
 사진+질문 전송·응답 낭독·재청취. 제한 접근이면 안내 후 비활성. 스크린샷/기존 사진은 제외.
+
+### Phase 18 — 프로필별 크론잡 조회·편집 (2026-06-15, TASKS T-138)
+대시보드(:8000)의 Cron 화면을 네이티브로 재현. 프로필 보드 카드의 시계 버튼 → 잡 목록(시트) →
+잡 편집(프롬프트·스케줄·전달대상·스킬·활성화). 데이터는 `<profile>/cron/jobs.json`(단일 JSON).
+Bridge `GET /profiles/<n>/cron`, `PUT /profiles/<n>/cron/<id>`(편집 필드만 read-modify-write,
+나머지 보존, .bak+원자적). 후속: 생성/삭제/즉시실행/실행리포트 뷰어.
+
+### Phase 19 — 프로필 추가('+' 카드) + 모델 카탈로그 선택 (2026-06-15, TASKS T-139~140)
+프로필 보드 '+' 카드 → 새 프로필 **백엔드 완전 생성**(Bridge `POST /profiles`: 디렉터리+.env+SOUL.md +
+`hermes --profile <n> gateway install/restart` + 헬스폴링, 포트 자동할당). 모델 선택은 **카탈로그 기반**:
+Bridge `GET /profiles/<n>/model`(현재값=`config.yaml`의 `model.default` + 카탈로그=
+`<profile>/cache/model_catalog.json`의 `providers.<p>.models[].id`), `PUT /profiles/<n>/model`
+(`model.default` 값만 교체, 주변 블록 보존, restart 옵션). ProfileDetailView 모델 섹션을 카탈로그
+드롭다운+저장(재시작)로 교체. 한계: provider/base_url은 미변경(모델 id만) — provider 라우팅 변경은 후속.
+
+> **운영 주의**: `server/hermes_bridge.py`를 고치면 맥미니 기동본(`~/.hermes/bridge/`) 교체 +
+> LaunchAgent 재기동까지 해야 앱에 반영된다(안 하면 신규 엔드포인트가 "브리지 HTTP 404"). HANDOFF §2.5.
 
 ---
 
