@@ -266,20 +266,49 @@ def read_config_model(name):
     return value or None
 
 
-def write_config_model(name, model):
-    """config.yaml의 모델 값(model.default 또는 인라인 model:)만 교체.
-    들여쓰기·주변 블록(provider·base_url·fallback_providers 등) 보존. .bak 백업 + 원자적 교체.
-    모델 키를 못 찾으면 (False, 에러) — 손상 방지를 위해 쓰기 거부."""
-    path = profile_dir(name) / "config.yaml"
-    if not path.is_file():
-        return False, "config.yaml not found"
-    text = path.read_text(errors="replace")
+def _ensure_model_default(text, model):
+    """config.yaml 텍스트에 모델 값을 반영한 새 텍스트 반환.
+    ① 기존 값(model.default/인라인 model:)이 있으면 그 값만 교체(주변 보존).
+    ② model: 블록 헤더만 있고 default가 없으면 default: 추가.
+    ③ model 키 자체가 없으면 최상위에 model 블록 신규 추가."""
     lines, idx, prefix = _locate_model(text)
-    if idx is None:
-        return False, "config.yaml에서 model(.default) 키를 찾지 못했습니다 (구조 확인 필요)"
-    lines[idx] = prefix + json.dumps(model)  # 값만 따옴표로 감싸 교체 (콜론 포함 id 안전)
-    new_text = "\n".join(lines) + ("\n" if text.endswith("\n") else "")
-    path.with_suffix(".yaml.bak").write_text(text)
+    quoted = json.dumps(model)
+    if idx is not None:
+        lines[idx] = prefix + quoted
+        return "\n".join(lines) + ("\n" if text.endswith("\n") else "")
+    for i, line in enumerate(lines):
+        if re.match(r"^model:[ \t]*$", line):  # 블록 헤더만 있고 default 없음
+            lines.insert(i + 1, f"  default: {quoted}")
+            return "\n".join(lines) + ("\n" if text.endswith("\n") else "")
+    block = f"model:\n  default: {quoted}\n"
+    return block + text if text else block
+
+
+def ensure_profile_config(name):
+    """프로필 config.yaml이 없으면 default 프로필 config.yaml을 템플릿으로 복사.
+    (config.yaml엔 API 서버 설정이 없어 — env 전용 — 복사해도 안전. 모델/툴셋/agent만 물려받음.)
+    복사했으면 True."""
+    path = profile_dir(name) / "config.yaml"
+    if path.is_file():
+        return False
+    template = HERMES_HOME / "config.yaml"
+    if template.is_file() and template != path:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(str(template), str(path))
+        return True
+    return False
+
+
+def write_config_model(name, model):
+    """config.yaml의 모델 값을 설정. config.yaml이 없으면 default에서 복사,
+    model 키가 없으면 블록을 만들어 추가한다. .bak 백업 + 원자적 교체. (ok, err) 반환."""
+    path = profile_dir(name) / "config.yaml"
+    ensure_profile_config(name)  # 없으면 default 템플릿 복사 (기존 Worker도 사후 복구)
+    text = path.read_text(errors="replace") if path.is_file() else ""
+    new_text = _ensure_model_default(text, model)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.is_file():
+        path.with_suffix(".yaml.bak").write_text(text)
     tmp = path.with_suffix(".yaml.tmp")
     tmp.write_text(new_text)
     os.replace(str(tmp), str(path))
@@ -639,6 +668,12 @@ class Handler(BaseHTTPRequestHandler):
             soul = str(payload.get("soul") or "")
             if soul:
                 (pdir / "SOUL.md").write_text(soul)
+            # config.yaml은 default 프로필 것을 템플릿으로 복사 (없으면 모델 설정·툴셋이 비어
+            # 모델 변경이 불가능해짐). model이 지정됐으면 복사본의 model.default를 교체.
+            ensure_profile_config(name)
+            model = str(payload.get("model") or "").strip()
+            if model:
+                write_config_model(name, model)
             healthy, _, err = start_gateway(name, install=True)
             return self.send_json({
                 "name": name, "port": port, "ok": True,
