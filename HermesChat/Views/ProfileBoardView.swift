@@ -16,7 +16,6 @@ struct ProfileBoardView: View {
     @State private var isProbing = false
     @State private var showDiscussion = false
     @State private var showCronManager = false
-    @State private var selectedCronProfile: HermesProfile?
     @State private var showCreateProfile = false
 
     /// iPhone에선 2열, iPad에선 화면 폭에 맞춰 자동 증가
@@ -68,9 +67,6 @@ struct ProfileBoardView: View {
             .sheet(isPresented: $showCronManager) {
                 CronManagerView(appSettings: appSettings)
             }
-            .sheet(item: $selectedCronProfile) { profile in
-                CronManagerView(appSettings: appSettings, initialProfileName: profile.name)
-            }
             .sheet(isPresented: $showCreateProfile) {
                 CreateProfileView(appSettings: appSettings)
             }
@@ -81,52 +77,37 @@ struct ProfileBoardView: View {
 
     private func card(_ profile: HermesProfile) -> some View {
         let profileStatus = status[profile.id]
-        // 카드 선택 버튼과 크론잡 버튼은 ZStack 형제로 둔다 (중첩 버튼 충돌 방지).
-        return ZStack(alignment: .bottomTrailing) {
-            Button {
-                appSettings.selectProfile(profile)
-                selectedTab = .sessions
-            } label: {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 6) {
-                        Circle()
-                            .fill(statusColor(profileStatus?.online))
-                            .frame(width: 10, height: 10)
-                        Text(profile.name)
-                            .font(.headline)
-                            .lineLimit(1)
-                        Spacer()
-                        if profile.id == appSettings.selectedProfileID {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(.tint)
-                        }
+        return Button {
+            appSettings.selectProfile(profile)
+            selectedTab = .sessions
+        } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(statusColor(profileStatus?.online))
+                        .frame(width: 10, height: 10)
+                    Text(profile.name)
+                        .font(.headline)
+                        .lineLimit(1)
+                    Spacer()
+                    if profile.id == appSettings.selectedProfileID {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.tint)
                     }
-                    Text("포트 \(String(profile.port))")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(sessionLabel(profileStatus))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
                 }
-                .padding()
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color(.secondarySystemBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 14))
+                Text("포트 \(String(profile.port))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(sessionLabel(profileStatus))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
-            .buttonStyle(.plain)
-
-            Button {
-                selectedCronProfile = profile
-            } label: {
-                Image(systemName: "clock.arrow.circlepath")
-                    .font(.title3)
-                    .padding(10)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(.tint)
-            .accessibilityLabel("크론잡 설정 (\(profile.name))")
+            .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(.secondarySystemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 14))
         }
+        .buttonStyle(.plain)
     }
 
     /// 그리드 끝의 '+' 카드 — 새 프로필 생성 진입.
