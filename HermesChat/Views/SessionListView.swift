@@ -84,7 +84,8 @@ struct SessionListView: View {
                             }
                         }
                     }
-                    .swipeActions(edge: .trailing) {
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        // 풀 스와이프 자동 삭제 방지(allowsFullSwipe: false) — 버튼을 눌러야만 동작.
                         // 선언 순서상 첫 버튼이 가장 오른쪽 → 삭제를 맨 끝, 그 왼쪽에 이름변경·Pin
                         Button(role: .destructive) {
                             appSettings.deleteSession(id: session.id)
