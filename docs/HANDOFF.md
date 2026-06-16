@@ -164,7 +164,7 @@ git push -u origin claude/<topic>   # 작업 중인 피처 브랜치로 동작 �
 ## 7. 막혔을 때 / 충돌 시
 
 - 같은 태스크에 두 에이전트가 붙는 것을 막기 위해 `DOING` 표시가 있으면 그 태스크는 건드리지 않는다 (7일 이상 방치된 `DOING`은 회수 가능).
-- push 충돌 시: `git pull --rebase origin claude/busy-meitner-lhc5os` 후 재푸시. TASKS.md 충돌은 양쪽 상태 변경을 모두 보존하는 방향으로 병합.
+- push 충돌 시: `git pull --rebase origin claude/<topic>`(작업 중인 피처 브랜치) 후 재푸시. TASKS.md 충돌은 양쪽 상태 변경을 모두 보존하는 방향으로 병합.
 - **머지/리베이스 충돌이 나면 Hermes(codex)는 해소를 시도하지 않는다**: 즉시
   `git merge --abort`(또는 `git rebase --abort`)로 되돌리고 충돌 파일 목록을 보고 후 종료.
   충돌 해소는 Claude Code만 한다.
