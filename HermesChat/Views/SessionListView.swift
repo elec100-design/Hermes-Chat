@@ -6,6 +6,8 @@ struct SessionListView: View {
     @ObservedObject private var coordinator = VoiceEntryCoordinator.shared
     @State private var isCreatingSession = false
     @State private var searchText = ""
+    @State private var renamingSession: Session?
+    @State private var renameText: String = ""
 
     var body: some View {
         NavigationStack(path: $coordinator.sessionsPath) {
@@ -56,9 +58,16 @@ struct SessionListView: View {
                 ForEach(displayedSessions) { session in
                     NavigationLink(value: session) {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(session.displayTitle)
-                                .font(.headline)
-                                .lineLimit(1)
+                            HStack(spacing: 4) {
+                                if appSettings.isPinned(id: session.id) {
+                                    Image(systemName: "pin.fill")
+                                        .font(.caption2)
+                                        .foregroundStyle(.orange)
+                                }
+                                Text(session.displayTitle)
+                                    .font(.headline)
+                                    .lineLimit(1)
+                            }
                             HStack(spacing: 6) {
                                 if let source = session.source {
                                     Text(sourceDisplayName(source))
@@ -76,11 +85,29 @@ struct SessionListView: View {
                         }
                     }
                     .swipeActions(edge: .trailing) {
+                        // 선언 순서상 첫 버튼이 가장 오른쪽 → 삭제를 맨 끝, 그 왼쪽에 이름변경·Pin
                         Button(role: .destructive) {
                             appSettings.deleteSession(id: session.id)
                         } label: {
                             Label("삭제", systemImage: "trash")
                         }
+                        Button {
+                            renamingSession = session
+                            renameText = session.title ?? ""
+                        } label: {
+                            Label("이름변경", systemImage: "pencil")
+                        }
+                        .tint(.blue)
+                        Button {
+                            appSettings.togglePin(id: session.id)
+                        } label: {
+                            if appSettings.isPinned(id: session.id) {
+                                Label("고정해제", systemImage: "pin.slash")
+                            } else {
+                                Label("고정", systemImage: "pin")
+                            }
+                        }
+                        .tint(.orange)
                     }
                     .swipeActions(edge: .leading) {
                         Button {
@@ -118,6 +145,23 @@ struct SessionListView: View {
             .listStyle(.insetGrouped)
             .navigationTitle(appSettings.selectedProfile.name)
             .searchable(text: $searchText, prompt: "세션 검색")
+            .alert("세션 이름 변경", isPresented: Binding(
+                get: { renamingSession != nil },
+                set: { if !$0 { renamingSession = nil } }
+            ), presenting: renamingSession) { session in
+                TextField("세션 이름", text: $renameText)
+                Button("취소", role: .cancel) { }
+                Button("저장") {
+                    var updated = session
+                    let trimmed = renameText.trimmingCharacters(in: .whitespaces)
+                    updated.title = trimmed
+                    appSettings.updateSession(updated)
+                    let client = appSettings.hermesClient
+                    Task { try? await client.updateSessionTitle(id: session.id, title: trimmed) }
+                }
+            } message: { _ in
+                Text("세션 이름을 변경하세요.")
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     sourceFilterMenu
