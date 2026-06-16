@@ -758,6 +758,69 @@ class Handler(BaseHTTPRequestHandler):
             )
             return self.send_json({"profile": name, "ok": True, "output": output})
 
+        # POST /profiles/<name>/cron  {"name","prompt","schedule","deliver_to","skills","enabled"}
+        # 새 크론잡을 jobs.json에 추가 (대시보드 "CREATE"). 기존 잡 하나를 구조 템플릿으로 삼아
+        # hermes-agent 버전별 잡 스키마에 최대한 맞추고, 편집 필드만 덮어쓴다. id는 이름에서 슬러그.
+        if len(parts) == 3 and parts[0] == "profiles" and parts[2] == "cron":
+            name = self.check_profile(parts[1])
+            if not name:
+                return self.fail(404, "unknown profile")
+            data = self.read_body(2 * 1024 * 1024)
+            if data is None:
+                return self.fail(400, "empty body")
+            try:
+                payload = json.loads(data)
+                if not isinstance(payload, dict):
+                    raise ValueError
+            except ValueError:
+                return self.fail(400, "expected JSON object")
+            job_name = str(payload.get("name") or "").strip()
+            schedule = str(payload.get("schedule") or "").strip()
+            if not job_name:
+                return self.fail(400, "name is required")
+            if not schedule:
+                return self.fail(400, "schedule is required")
+            jobs, container = read_cron_jobs(name)
+            existing_ids = {str(j.get("id")) for j in jobs if isinstance(j, dict)}
+            base_id = re.sub(r"[^A-Za-z0-9._-]+", "-", job_name).strip("-").lower()[:60] or "job"
+            job_id, suffix = base_id, 2
+            while job_id in existing_ids:
+                job_id = f"{base_id}-{suffix}"
+                suffix += 1
+            # 기존 잡을 구조 템플릿으로 (없으면 빈 dict). 실행상태/스크립트 키는 제거.
+            template = next((dict(j) for j in jobs if isinstance(j, dict)), {})
+            for key in ("last_run", "next_run", "last_status", "last_error",
+                        "last_result", "running", "script"):
+                template.pop(key, None)
+            skills = payload.get("skills")
+            if not isinstance(skills, list):
+                skills = []
+            template.update({
+                "id": job_id,
+                "name": job_name,
+                "mode": "agent",
+                "prompt": str(payload.get("prompt") or ""),
+                "schedule": schedule,
+                "deliver_to": str(payload.get("deliver_to") or "origin"),
+                "skills": [str(s) for s in skills],
+                "enabled": bool(payload.get("enabled", True)),
+            })
+            new_jobs = list(jobs) + [template]
+            path = cron_jobs_file(name)
+            if isinstance(container, dict):
+                container["jobs"] = new_jobs
+            elif isinstance(container, list):
+                container = new_jobs
+            else:  # 파일 없음/형식 미상 → 새 {"jobs": [...]}
+                container = {"jobs": new_jobs}
+            path.parent.mkdir(parents=True, exist_ok=True)
+            if path.is_file():
+                path.with_suffix(".json.bak").write_text(path.read_text(errors="replace"))
+            tmp = path.with_suffix(".json.tmp")
+            tmp.write_text(json.dumps(container, ensure_ascii=False, indent=2))
+            os.replace(str(tmp), str(path))  # 원자적 교체
+            return self.send_json({"profile": name, "job": job_id, "ok": True}, 201)
+
         # POST /profiles/<name>/cron/<job_id>/run — 크론잡 즉시 실행 (대시보드 "Trigger now").
         # 게이트웨이 스케줄러를 기다리지 않고 `hermes [--profile <name>] cron run <id>`로 바로 돌린다.
         # (CLI 형태는 hermes-agent 버전에 따라 다를 수 있으니, 실패 시 출력을 그대로 노출한다.)
@@ -962,7 +1025,7 @@ class Handler(BaseHTTPRequestHandler):
                     raise ValueError
             except ValueError:
                 return self.fail(400, "expected JSON object")
-            allowed = {"prompt", "schedule", "deliver_to", "skills", "enabled"}
+            allowed = {"name", "prompt", "schedule", "deliver_to", "skills", "enabled"}
             updates = {k: v for k, v in updates.items() if k in allowed}
             path = cron_jobs_file(name)
             if not path.is_file():

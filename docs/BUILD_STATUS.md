@@ -7,9 +7,10 @@
 브랜치 `claude/youthful-archimedes-aqigr4` — 크론 중앙 관리 화면 (T-146, Phase 18 후속):
 
 - **T-146** 프로필마다 흩어져있던 크론 시트를 **한 화면(CronManagerView)**으로 통합. 상단 드롭다운으로
-  프로필 필터링, 각 잡에 **재개/일시정지 · 지금 실행 · 편집 · 삭제** 버튼. 기존 파일만 수정 — `CronJobsView.swift`
-  내용을 `CronManagerView`로 재작성(파일/struct 1:1이라 **pbxproj 무수정**), `CronJobEditView`는 편집 시트로 재사용.
-  - 서버(브리지): `POST /profiles/<n>/cron/<id>/run`(즉시 실행 — `hermes cron run <id>`), `DELETE /profiles/<n>/cron/<id>`(jobs.json에서 제거).
+  프로필 필터링, 각 잡에 **재개/일시정지 · 지금 실행 · 편집 · 삭제** 버튼 + 상태 배지·사람이 읽는 스케줄·최근/다음
+  실행 시각. 우상단 **CREATE(+)** 로 새 잡 생성. 기존 파일만 수정 — `CronJobsView.swift` 내용을 `CronManagerView`로
+  재작성(**pbxproj 무수정**), `CronJobEditView`를 생성·편집 양용으로 일반화.
+  - 서버(브리지): `POST /profiles/<n>/cron`(새 잡 추가), `POST /profiles/<n>/cron/<id>/run`(즉시 실행 — `hermes cron run <id>`), `DELETE /profiles/<n>/cron/<id>`(제거), PUT 화이트리스트 `name` 추가.
   - 진입점: 프로필 보드 툴바 "크론 관리"(전체) + 카드 시계 버튼(해당 프로필로 필터된 같은 화면).
 
 > ⚠️ **"지금 실행"의 CLI 형태(`hermes cron run <id>`)는 hermes-agent 버전에 따라 다를 수 있음** — 실패 시

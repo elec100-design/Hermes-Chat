@@ -14,6 +14,7 @@ struct CronJob: Identifiable, Equatable, Hashable {
     var deliverTo: String?
     var skills: [String]
     var enabled: Bool?
+    var status: String?        // "scheduled" | "paused" | "running" 등 (서버 제공 시)
     var lastRun: String?
     var nextRun: String?
 
@@ -26,11 +27,62 @@ struct CronJob: Identifiable, Equatable, Hashable {
         }
         return id
     }
+
+    /// 일시정지 여부 — enabled=false가 최우선, 아니면 status 문자열로 판정.
+    var isPaused: Bool {
+        if enabled == false { return true }
+        return status?.lowercased() == "paused"
+    }
+
+    /// 상태 배지 라벨 (대시보드의 scheduled/paused/running 배지 재현).
+    var statusLabel: String {
+        if isPaused { return "paused" }
+        if let status, !status.isEmpty { return status }
+        return "scheduled"
+    }
+
+    /// cron식을 사람이 읽는 문구로 ("Daily at 07:30"). 해석 불가하면 원본 cron식을 그대로.
+    var scheduleDescription: String? {
+        guard let schedule, !schedule.isEmpty else { return nil }
+        return Self.humanizeSchedule(schedule) ?? schedule
+    }
+
+    var lastRunDisplay: String? { Self.formatTimestamp(lastRun) }
+    var nextRunDisplay: String? { Self.formatTimestamp(nextRun) }
+
+    /// 흔한 daily/weekly cron 패턴만 사람 문구로 바꾼다 (그 외는 nil → 호출부가 원본 표시).
+    static func humanizeSchedule(_ expr: String) -> String? {
+        let parts = expr.split(separator: " ").map(String.init)
+        guard parts.count == 5 else { return nil }
+        let (minute, hour, dom, mon, dow) = (parts[0], parts[1], parts[2], parts[3], parts[4])
+        guard let m = Int(minute), let h = Int(hour), dom == "*", mon == "*" else { return nil }
+        let time = String(format: "%02d:%02d", h, m)
+        if dow == "*" { return "매일 \(time)" }
+        if let d = Int(dow), (0...7).contains(d) {
+            let names = ["일", "월", "화", "수", "목", "금", "토", "일"]
+            return "매주 \(names[d])요일 \(time)"
+        }
+        return nil
+    }
+
+    /// ISO8601(또는 epoch에서 변환된 ISO) 문자열을 한국어 로컬 시각으로. 파싱 실패 시 원본 반환.
+    static func formatTimestamp(_ value: String?) -> String? {
+        guard let value, !value.isEmpty else { return nil }
+        let withFraction = ISO8601DateFormatter()
+        withFraction.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let date = withFraction.date(from: value) ?? ISO8601DateFormatter().date(from: value)
+        guard let date else { return value }
+        let df = DateFormatter()
+        df.locale = Locale(identifier: "ko_KR")
+        df.dateStyle = .medium
+        df.timeStyle = .short
+        return df.string(from: date)
+    }
 }
 
 extension CronJob: Decodable {
     enum CodingKeys: String, CodingKey {
-        case id, name, mode, prompt, schedule, skills, enabled
+        case id, name, mode, prompt, schedule, skills, enabled, status
         case deliverTo = "deliver_to"
         case lastRun = "last_run"
         case nextRun = "next_run"
@@ -53,6 +105,7 @@ extension CronJob: Decodable {
         deliverTo = try? c.decodeIfPresent(String.self, forKey: .deliverTo)
         skills = (try? c.decodeIfPresent([String].self, forKey: .skills)) ?? []
         enabled = try? c.decodeIfPresent(Bool.self, forKey: .enabled)
+        status = try? c.decodeIfPresent(String.self, forKey: .status)
         lastRun = Self.flexibleString(c, .lastRun)
         nextRun = Self.flexibleString(c, .nextRun)
     }

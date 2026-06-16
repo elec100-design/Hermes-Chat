@@ -88,6 +88,12 @@ final class BridgeClient {
         return try decode(Response.self, from: data).jobs
     }
 
+    /// 새 크론잡을 jobs.json에 추가한다 (대시보드 "CREATE"). name·schedule은 필수.
+    func createCronJob(profile: String, fields: [String: Any]) async throws {
+        let body = try JSONSerialization.data(withJSONObject: fields)
+        _ = try await request("POST", "profiles/\(profile)/cron", body: body, timeout: 30)
+    }
+
     /// 편집된 필드만 보내 해당 잡을 갱신한다 — 나머지 필드는 Bridge가 보존한다.
     func updateCronJob(profile: String, jobID: String, fields: [String: Any]) async throws {
         let body = try JSONSerialization.data(withJSONObject: fields)

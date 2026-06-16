@@ -20,6 +20,7 @@ struct CronManagerView: View {
     @State private var busyEntryID: String?
     @State private var editTarget: EditTarget?
     @State private var pendingDelete: EditTarget?
+    @State private var showCreate = false
     @State private var banner: Banner?
 
     init(appSettings: AppSettings, initialProfileName: String? = nil) {
@@ -51,6 +52,19 @@ struct CronManagerView: View {
         visibleProfiles.reduce(0) { $0 + (jobsByProfile[$1.name]?.count ?? 0) }
     }
 
+    /// 새 크론잡의 기본 프로필 — 필터된 프로필 > 현재 선택 프로필 > 첫 프로필.
+    private var createTargetProfile: HermesProfile {
+        if let name = filterProfileName,
+           let match = appSettings.profiles.first(where: { $0.name == name }) {
+            return match
+        }
+        if let selectedID = appSettings.selectedProfileID,
+           let match = appSettings.profiles.first(where: { $0.id == selectedID }) {
+            return match
+        }
+        return appSettings.profiles.first ?? .default
+    }
+
     var body: some View {
         NavigationStack {
             Group {
@@ -66,7 +80,7 @@ struct CronManagerView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("닫기") { dismiss() }
                 }
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItemGroup(placement: .topBarTrailing) {
                     if bridgeConfigured {
                         Button {
                             Task { await loadAll() }
@@ -74,6 +88,27 @@ struct CronManagerView: View {
                             Image(systemName: "arrow.clockwise")
                         }
                         .disabled(isLoading)
+                        Button {
+                            showCreate = true
+                        } label: {
+                            Label("새 크론잡", systemImage: "plus")
+                        }
+                        .disabled(appSettings.profiles.isEmpty)
+                    }
+                }
+            }
+            .sheet(isPresented: $showCreate) {
+                NavigationStack {
+                    CronJobEditView(
+                        appSettings: appSettings,
+                        creatingForProfile: createTargetProfile
+                    ) {
+                        await loadAll()
+                    }
+                    .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button("취소") { showCreate = false }
+                        }
                     }
                 }
             }
@@ -210,25 +245,14 @@ struct CronManagerView: View {
         let enabled = job.enabled ?? true
         let isBusy = busyEntryID == target.id
         return VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Circle()
-                    .fill(enabled ? Color.green : Color.secondary)
-                    .frame(width: 8, height: 8)
+            HStack(spacing: 6) {
                 Text(job.displayTitle)
                     .font(.headline)
                     .lineLimit(1)
-                Spacer()
-                if !enabled {
-                    Text("일시정지")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
+                statusBadge(job)
+                Spacer(minLength: 4)
             }
-            if let schedule = job.schedule, !schedule.isEmpty {
-                Label(schedule, systemImage: "clock")
-                    .font(.system(.caption, design: .monospaced))
-                    .foregroundStyle(.secondary)
-            }
+            // 메타 배지 (전달대상 + 스킬 수)
             if hasMeta(job) {
                 HStack(spacing: 6) {
                     if let mode = job.mode, !mode.isEmpty { badge(mode) }
@@ -236,9 +260,55 @@ struct CronManagerView: View {
                     if !job.skills.isEmpty { badge("\(job.skills.count) skills") }
                 }
             }
+            // 프롬프트/스크립트 미리보기 한 줄
+            if let preview = previewText(job) {
+                Text(preview)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            // 사람이 읽는 스케줄
+            if let desc = job.scheduleDescription {
+                Label(desc, systemImage: "clock")
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundStyle(.secondary)
+            }
+            // 마지막/다음 실행 시각
+            if job.lastRunDisplay != nil || job.nextRunDisplay != nil {
+                HStack(spacing: 12) {
+                    if let last = job.lastRunDisplay {
+                        Text("최근 \(last)")
+                    }
+                    if let next = job.nextRunDisplay {
+                        Text("다음 \(next)")
+                    }
+                }
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+            }
             actionRow(target: target, enabled: enabled, isBusy: isBusy)
         }
         .padding(.vertical, 4)
+    }
+
+    private func statusBadge(_ job: CronJob) -> some View {
+        let paused = job.isPaused
+        let color: Color = paused ? .orange : .green
+        return Text(job.statusLabel)
+            .font(.caption2.weight(.medium))
+            .padding(.horizontal, 7)
+            .padding(.vertical, 2)
+            .background(color.opacity(0.18))
+            .foregroundStyle(color)
+            .clipShape(Capsule())
+    }
+
+    /// 프롬프트(에이전트형) 또는 mode 문구를 한 줄 미리보기로.
+    private func previewText(_ job: CronJob) -> String? {
+        if let prompt = job.prompt?.trimmingCharacters(in: .whitespacesAndNewlines), !prompt.isEmpty {
+            return prompt
+        }
+        return nil
     }
 
     private func actionRow(target: EditTarget, enabled: Bool, isBusy: Bool) -> some View {
