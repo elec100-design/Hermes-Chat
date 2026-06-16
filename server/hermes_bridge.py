@@ -175,6 +175,14 @@ def set_env_values(path, updates):
     path.write_text("\n".join(out) + "\n")
 
 
+def hermes_env():
+    """hermes subprocess용 환경 — launchd는 사용자 셸 env(HOME/HERMES_HOME 등)를 안 물려주므로 보정."""
+    env = dict(os.environ)
+    env.setdefault("HOME", str(Path.home()))
+    env["HERMES_HOME"] = str(HERMES_HOME)
+    return env
+
+
 def start_gateway(name, install=False):
     """게이트웨이 install(옵션) + restart 후 헬스 폴링. (healthy, port, err) 반환."""
     hermes = find_hermes()
@@ -186,10 +194,10 @@ def start_gateway(name, install=False):
         if install:
             # 서비스 미등록 환경(SSH 등)에선 실패할 수 있으나 무해 → 무시.
             subprocess.run(base + ["gateway", "install"],
-                           capture_output=True, text=True, timeout=30)
+                           capture_output=True, text=True, timeout=30, env=hermes_env())
         subprocess.Popen(base + ["gateway", "restart"],
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                         start_new_session=True)
+                         start_new_session=True, env=hermes_env())
     except Exception as e:  # noqa: BLE001
         return False, port, f"gateway start failed: {e}"
     time.sleep(2)
@@ -671,17 +679,26 @@ class Handler(BaseHTTPRequestHandler):
                 port = 0
             if port <= 0:
                 port = next_free_port()
-            # 1) default 복제 — config.yaml/.env/SOUL.md/skills를 hermes가 만들어 준다
+            # 1) default 복제 — config.yaml/.env/SOUL.md/skills를 hermes가 만들어 준다.
+            #    launchd env 보정(hermes_env)으로 default 프로필을 찾게 한다.
             try:
                 proc = subprocess.run(
                     [hermes, "profile", "create", name, "--clone-from", "default"],
-                    capture_output=True, text=True, timeout=120,
+                    capture_output=True, text=True, timeout=120, env=hermes_env(),
                 )
             except subprocess.TimeoutExpired:
                 return self.fail(500, "profile create timeout")
+            out = (proc.stdout or "") + (("\n" + proc.stderr) if proc.stderr else "")
+            out = out.strip()
             if proc.returncode != 0:
-                detail = (proc.stderr or proc.stdout or "").strip()[-500:]
-                return self.fail(500, f"profile create 실패: {detail}")
+                return self.fail(500, f"profile create 실패: {out[-500:]}")
+            # 클론이 조용히 실패하면 config.yaml이 안 생긴다 → 명시적으로 검증하고 출력 노출
+            if not (profile_dir(name) / "config.yaml").is_file():
+                return self.fail(
+                    500,
+                    "profile create는 됐지만 config.yaml이 생성되지 않았습니다 "
+                    f"(클론 실패 의심). hermes 출력: {out[-400:]}",
+                )
             # 2) 클론된 .env의 API 서버 키만 덮어쓴다 (포트 충돌·이름 보정). 나머지 키 보존.
             env_updates = {
                 "API_SERVER_ENABLED": "true",
@@ -704,7 +721,7 @@ class Handler(BaseHTTPRequestHandler):
             healthy, _, err = start_gateway(name, install=True)
             return self.send_json({
                 "name": name, "port": port, "ok": True,
-                "healthy": healthy, "error": err,
+                "healthy": healthy, "error": err, "detail": out[-400:],
             }, 201)
 
         # POST /profiles/<name>/restart
@@ -961,6 +978,35 @@ class Handler(BaseHTTPRequestHandler):
                 if rerr:
                     result["error"] = rerr
             return self.send_json(result)
+
+        return self.fail(404, "not found")
+
+    def do_DELETE(self):
+        parts = [p for p in self.path.split("?")[0].split("/") if p]
+        if not self.authorized():
+            return self.fail(401, "unauthorized")
+
+        # DELETE /profiles/<name> — hermes profile delete <name> -y
+        if len(parts) == 2 and parts[0] == "profiles":
+            name = self.check_profile(parts[1])
+            if not name:
+                return self.fail(404, "unknown profile")
+            if name == "default":
+                return self.fail(400, "default 프로필은 삭제할 수 없습니다")
+            hermes = find_hermes()
+            if not hermes:
+                return self.fail(500, "hermes 실행파일을 찾지 못했습니다 (HERMES_BIN 설정 필요)")
+            try:
+                proc = subprocess.run(
+                    [hermes, "profile", "delete", name, "-y"],
+                    capture_output=True, text=True, timeout=60, env=hermes_env(),
+                )
+            except subprocess.TimeoutExpired:
+                return self.fail(500, "profile delete timeout")
+            if proc.returncode != 0:
+                detail = (proc.stderr or proc.stdout or "").strip()[-500:]
+                return self.fail(500, f"profile delete 실패: {detail}")
+            return self.send_json({"profile": name, "ok": True})
 
         return self.fail(404, "not found")
 

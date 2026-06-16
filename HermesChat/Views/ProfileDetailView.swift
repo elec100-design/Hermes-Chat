@@ -29,6 +29,10 @@ struct ProfileDetailView: View {
     @State private var statusIsError = false
     @State private var showLogs = false
     @State private var logsText: String?
+    @State private var isDeleting = false
+    @State private var showDeleteConfirm = false
+
+    @Environment(\.dismiss) private var dismiss
 
     private var profile: HermesProfile {
         appSettings.profiles.first { $0.id == profileID } ?? .default
@@ -73,6 +77,26 @@ struct ProfileDetailView: View {
                 } footer: {
                     Text("SOUL.md 변경은 게이트웨이를 재시작해야 반영됩니다.")
                 }
+
+                if profile.name != "default" {
+                    Section {
+                        Button(role: .destructive) {
+                            showDeleteConfirm = true
+                        } label: {
+                            if isDeleting {
+                                HStack(spacing: 8) {
+                                    ProgressView()
+                                    Text("삭제 중...")
+                                }
+                            } else {
+                                Label("프로필 삭제", systemImage: "trash")
+                            }
+                        }
+                        .disabled(isDeleting)
+                    } footer: {
+                        Text("이 프로필을 백엔드에서 완전히 삭제합니다 (hermes profile delete).")
+                    }
+                }
             }
 
             if let statusMessage {
@@ -92,6 +116,16 @@ struct ProfileDetailView: View {
         ) {
             Button("재시작", role: .destructive) {
                 Task { await restartGateway() }
+            }
+            Button("취소", role: .cancel) {}
+        }
+        .confirmationDialog(
+            "\(profile.name) 프로필을 삭제할까요?\n백엔드에서 완전히 제거되며 되돌릴 수 없습니다.",
+            isPresented: $showDeleteConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("삭제", role: .destructive) {
+                Task { await deleteProfile() }
             }
             Button("취소", role: .cancel) {}
         }
@@ -305,6 +339,23 @@ struct ProfileDetailView: View {
             setStatus("재시작 실패: \(error.localizedDescription)", isError: true)
         }
         isRestarting = false
+    }
+
+    private func deleteProfile() async {
+        guard let bridge = appSettings.bridgeClient else { return }
+        let target = profile
+        isDeleting = true
+        do {
+            try await bridge.deleteProfile(name: target.name)
+            // 백엔드 삭제 성공 → 앱 로컬 목록에서도 제거하고 상세 화면을 닫는다.
+            if let idx = appSettings.profiles.firstIndex(where: { $0.id == target.id }) {
+                appSettings.removeProfiles(at: IndexSet(integer: idx))
+            }
+            dismiss()
+        } catch {
+            setStatus("삭제 실패: \(error.localizedDescription)", isError: true)
+            isDeleting = false
+        }
     }
 
     private func setStatus(_ message: String, isError: Bool) {

@@ -122,6 +122,11 @@ final class BridgeClient {
         _ = try await request("PUT", "profiles/\(profile)/model", body: body, timeout: 60)
     }
 
+    /// 프로필을 백엔드에서 삭제한다 (`hermes profile delete <name> -y`). default는 불가.
+    func deleteProfile(name: String) async throws {
+        _ = try await request("DELETE", "profiles/\(name)", timeout: 60)
+    }
+
     // MARK: - Upload (채팅 첨부)
 
     /// 파일을 해당 프로필의 uploads 폴더로 올리고 맥미니 측 절대경로를 돌려준다.
