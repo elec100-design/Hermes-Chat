@@ -97,6 +97,8 @@
 - `baseURL(for:)`: serverHost의 스킴/호스트 + 프로필 포트 결합.
 - **프로필 자동 검색**: 호스트의 8642–8651 포트를 동시 프로브 → `/v1/models`의 모델 id(= 프로필 이름)로 자동 등록. 수동 추가(이름+포트)도 지원.
 - `SessionListView` 좌측 상단: 프로필 드롭다운(+ 소스 필터 통합), `.searchable` 세션 검색(돋보기).
+  행 스와이프: trailing = 삭제·이름변경·고정(Pin), leading = 분기. 풀 스와이프 자동 삭제는 끔
+  (`allowsFullSwipe: false`). Pin은 서버 미지원이라 로컬(UserDefaults) 보관. (Phase 20)
 - 첫 메시지 후 `PATCH /api/sessions/{id}` 자동 제목 (Phase 2 잔여분).
 
 **맥미니 1회 설정 (필수!)** — 이게 없으면 앱을 아무리 고쳐도 전환 안 됨:
@@ -305,6 +307,15 @@ ProfileDetailView에 파괴적 "프로필 삭제" 버튼(확인 다이얼로그)
 
 > **운영 주의**: `server/hermes_bridge.py`를 고치면 맥미니 기동본(`~/.hermes/bridge/`) 교체 +
 > LaunchAgent 재기동까지 해야 앱에 반영된다(안 하면 신규 엔드포인트가 "브리지 HTTP 404"). HANDOFF §2.5.
+
+### Phase 20 — 세션 핀·이름변경 (2026-06-16, TASKS T-147)
+세션 목록 trailing 스와이프를 강화. 삭제 버튼 왼편에 **이름변경**(pencil)·**고정/고정해제**(pin)
+아이콘 버튼 추가. **이름변경**은 기존 `updateSessionTitle` API + `updateSession` 로컬 갱신을
+alert(TextField)로 연결(SettingsView 프로필 rename 패턴 재사용). **고정(Pin)**은 서버에 핀 저장이
+없어 `pinnedSessionIDs`(UserDefaults)에 로컬 보관 — `filteredSessions`가 고정 세션을 맨 위로 안정
+정렬하고 행에 `pin.fill` 표시, 앱 재실행 후에도 유지. 그리고 trailing 스와이프의 **풀 스와이프
+자동 삭제를 끔**(`allowsFullSwipe: false`) — 버튼을 확인하려 길게 민 것만으로 세션이 삭제되던
+사고를 막고, 삭제 버튼을 눌러야만 삭제되게 한다. 기존 파일만 수정(pbxproj 무수정).
 
 ---
 

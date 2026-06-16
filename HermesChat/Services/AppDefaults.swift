@@ -29,10 +29,14 @@ final class AppSettings: ObservableObject {
     @Published var hasMoreSessions: Bool = false
     @Published var isLoadingMoreSessions: Bool = false
 
+    /// 로컬에서 고정(Pin)한 세션 ID 집합. 서버 미지원이라 UserDefaults에만 보관.
+    @Published var pinnedSessionIDs: Set<String> = []
+
     private let sessionPageSize = 50
 
     private static let profilesKey = "hermesProfiles"
     private static let selectedProfileNameKey = "selectedProfileName"
+    private static let pinnedSessionsKey = "pinnedSessionIDs"
 
     /// 프로필 전환 직후 도착하는 이전 프로필의 응답을 버리기 위한 세대 카운터
     private var loadGeneration = 0
@@ -44,6 +48,9 @@ final class AppSettings: ObservableObject {
         selectedProfileID = (profiles.first { $0.name == storedName } ?? profiles.first)?.id
         apiKey = Self.loadSecret("apiKey")
         bridgeToken = Self.loadSecret("bridgeToken")
+        if let ids = UserDefaults.standard.array(forKey: Self.pinnedSessionsKey) as? [String] {
+            pinnedSessionIDs = Set(ids)
+        }
         // 구버전 평문 apiKey가 있었으면 재직렬화로 UserDefaults에서 제거 (T-099)
         if migrated { persistProfiles() }
     }
@@ -280,8 +287,28 @@ final class AppSettings: ObservableObject {
     }
 
     var filteredSessions: [Session] {
-        guard let source = selectedSource else { return sessions }
-        return sessions.filter { $0.source == source }
+        let base = selectedSource.map { src in sessions.filter { $0.source == src } } ?? sessions
+        // 고정한 세션을 앞으로 (기존 상대 순서 유지하는 안정 정렬)
+        return base.enumerated().sorted { lhs, rhs in
+            let lp = isPinned(id: lhs.element.id), rp = isPinned(id: rhs.element.id)
+            if lp != rp { return lp }
+            return lhs.offset < rhs.offset
+        }.map(\.element)
+    }
+
+    // MARK: - Pin
+
+    func isPinned(id: String) -> Bool {
+        pinnedSessionIDs.contains(id)
+    }
+
+    func togglePin(id: String) {
+        if pinnedSessionIDs.contains(id) {
+            pinnedSessionIDs.remove(id)
+        } else {
+            pinnedSessionIDs.insert(id)
+        }
+        UserDefaults.standard.set(Array(pinnedSessionIDs), forKey: Self.pinnedSessionsKey)
     }
 
     func loadSessions() {

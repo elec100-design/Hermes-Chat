@@ -4,6 +4,22 @@
 
 ## 현재 대기 (2026-06-16)
 
+브랜치 `claude/busy-ritchie-cx2ohx` (PR #5) — 세션 핀·이름변경 (T-147, Phase 20):
+
+- **T-147** 세션 목록 trailing 스와이프에 **이름변경**(pencil·파랑)·**고정/고정해제**(pin/pin.slash·주황)
+  버튼 추가(삭제 왼편) + **풀 스와이프 자동 삭제 비활성화**(`allowsFullSwipe: false`). Pin은 서버
+  미지원이라 `pinnedSessionIDs`(UserDefaults)에 로컬 보관 — 고정 세션 맨 위 정렬·행 `pin.fill` 표시.
+  이름변경은 기존 `updateSessionTitle` API + `updateSession` 로컬 갱신을 alert로 연결.
+  **기존 파일만 수정 → pbxproj 무수정, 브리지 무관.**
+
+검증 순서:
+1. **Xcode 빌드** — 기존 파일만 변경(`SessionListView.swift`·`AppDefaults.swift`)이라 그대로 빌드.
+2. **실기기** — ①세션 행을 끝까지 밀어도 **자동 삭제 안 됨**(삭제 버튼 눌러야 삭제), ②이름변경
+   alert로 제목 변경 → 즉시 반영·새로고침 후 유지(서버 반영), ③Pin 시 맨 위 이동+핀 아이콘,
+   앱 재실행 후에도 핀 유지.
+
+---
+
 브랜치 `claude/youthful-archimedes-aqigr4` — 크론 중앙 관리 화면 (T-146, Phase 18 후속):
 
 - **T-146** 프로필마다 흩어져있던 크론 시트를 **한 화면(CronManagerView)**으로 통합. 상단 드롭다운으로

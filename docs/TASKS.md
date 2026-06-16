@@ -14,6 +14,12 @@
 >   실기기에서 답을 안 흘리는 버그(T-114와 동종). 일반 채팅에 폴링 폴백 이식 + 스트리밍 버블
 >   라이브 표시. `NEEDS-BUILD`(실기기 확인: 재진입 없이 답 도착하는지).
 >
+> **2026-06-16 현황**:
+> - **T-147** 세션 목록 trailing 스와이프에 **이름변경**·**고정(Pin)** 버튼 추가(삭제 왼편) +
+>   **풀 스와이프 자동 삭제 비활성화**(`allowsFullSwipe: false` — 삭제 버튼을 눌러야만 삭제).
+>   Pin은 서버 미지원이라 로컬(UserDefaults) 보관·목록 맨 위 정렬·행 핀 아이콘. 브랜치
+>   `claude/busy-ritchie-cx2ohx`, `NEEDS-BUILD`(맥 빌드 미검증). 상세는 Phase 20 절.
+>
 > **다음 세션 예정 작업** (사용자 지정):
 > 1. T-116 실기기 확인 — 전송 즉시 말풍선 "생각 중" 표시 → 본문 라이브 스트리밍(재진입 불필요)
 > 2. **Phase 15 빌드 + 실기기 검증** — T-117~120 핸즈프리 음성 대화 (체크리스트는 Phase 15 절 참조, 브랜치 `claude/clever-wozniak-oairxi`)
@@ -264,6 +270,12 @@
 | T-143 | 프로필 생성을 `hermes profile create`로 전환 (T-142 보강). 근본 원인: `POST /profiles`가 수동 mkdir+.env만 작성 → hermes의 프로필 구조(config.yaml 등)가 안 생김. **`hermes profile create <name> --clone-from default`**(config.yaml/.env/SOUL.md/skills 복제)로 교체하고, 클론된 .env의 API 서버 키만 `set_env_values` 머지로 덮어씀(PORT=새포트·HOST·ENABLED·MODEL_NAME, KEY는 제공 시에만 — 클론 KEY 보존). 포트는 create 전 `next_free_port`로 산정. `write_env_file` 제거. 이름은 hermes가 소문자 영숫자 요구 → 거부 시 stderr 반환. 기존 "Worker"(대문자·config 없음)는 재생성 권장(또는 모델 저장 안전망). 앱 변경 없음(서버만). **브리지 재배포 필요** | `server/hermes_bridge.py` | NEEDS-BUILD |
 | T-144 | 생성 시 config.yaml 누락 진단/보정 (T-143 후에도 앱 생성분에 config.yaml 미생성). ①create subprocess에 **명시적 env**(`hermes_env`: HOME/HERMES_HOME 보정 — launchd는 셸 env 미상속) 전달, start_gateway도 동일. ②create 후 **config.yaml 존재 검증** — 없으면 500 + hermes stdout/stderr를 `detail`로 반환(조용한 클론 실패를 가시화). 성공 응답에도 detail 포함. 앱 변경 없음(서버만). **브리지 재배포 필요** | `server/hermes_bridge.py` | NEEDS-BUILD |
 | T-145 | 프로필 삭제 기능. Bridge `DELETE /profiles/<name>` → `hermes profile delete <name> -y`(env 보정), default/미존재 거부. `BridgeClient.deleteProfile`. ProfileDetailView에 파괴적 "프로필 삭제" 버튼(confirmationDialog) → 성공 시 `removeProfiles`로 앱 목록 제거 + 화면 pop. default 프로필엔 버튼 숨김. **빌드 검증 필요(맥)** + **브리지 재배포 필요** | `server/hermes_bridge.py`, `Services/BridgeClient.swift`, `Views/ProfileDetailView.swift` | NEEDS-BUILD |
+
+## Phase 20 — 세션 관리(핀·이름변경) (브랜치 `claude/busy-ritchie-cx2ohx`)
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-147 | 세션 목록 trailing 스와이프 강화 — 삭제 버튼 왼편에 **이름변경**(pencil·파랑)·**고정/고정해제**(pin/pin.slash·주황) 아이콘 버튼 추가. **고정(Pin)**: 서버 미지원이라 `pinnedSessionIDs`(UserDefaults 키 `pinnedSessionIDs`)에 로컬 보관 — `isPinned`/`togglePin` + `filteredSessions`가 고정 세션을 맨 위로 안정 정렬(검색 경로도 적용), 행 제목 옆 `pin.fill` 표시, 앱 재실행 후 유지. **이름변경**: 기존 `updateSessionTitle` API(HermesAPIClient) + `updateSession` 로컬 갱신을 alert(TextField)로 연결(SettingsView 프로필 rename 패턴 재사용). **풀 스와이프 자동 삭제 비활성화**(`allowsFullSwipe: false`) — 버튼 확인하려 길게 밀어도 자동 삭제 안 되고 삭제 버튼을 눌러야만 삭제(사용자 보고 사고 대응). leading(분기) 스와이프는 그대로. 기존 파일만 수정 → pbxproj 무수정 | `Views/SessionListView.swift`, `Services/AppDefaults.swift` | NEEDS-BUILD |
 
 ## 빌드 검증 기록 (검증자가 갱신)
 
