@@ -185,7 +185,11 @@ git push -u origin claude/<topic>   # 작업 중인 피처 브랜치로 동작 �
 **Bridge 엔드포인트(:8765) 요약** — 전체 정의는 `server/hermes_bridge.py`/`server/README.md` 참고:
 프로필 목록·재시작·로그·SOUL.md, 파일 읽기, 칸반(읽기 sqlite·쓰기 CLI),
 **크론잡** `GET/PUT /profiles/<n>/cron[/<id>]`(T-138),
-**프로필 생성** `POST /profiles`(T-139), **모델** `GET/PUT /profiles/<n>/model`(T-139~140).
+**프로필 생성** `POST /profiles`(`hermes profile create … --clone-from default`, T-139·143~144),
+**프로필 삭제** `DELETE /profiles/<n>`(`hermes profile delete <n> -y`, default 거부, T-145),
+**모델** `GET/PUT /profiles/<n>/model`(T-139~140).
+> 프로필 create/delete 서브프로세스는 `hermes_env()`로 HOME·HERMES_HOME을 명시 주입한다
+> (launchd는 셸 env를 안 물려줘 `--clone-from default`가 default를 못 찾는 문제 방지, T-144).
 ⚠️ 이 파일을 고치면 맥미니 기동본 교체+재기동 필수(§2.5) — 안 하면 앱에서 "브리지 HTTP 404".
 
 ## 부록 B. Hermes 칸반 스킬 (2026-06-11 v2 — 내장 칸반으로 전환)
