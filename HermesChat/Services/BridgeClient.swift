@@ -79,6 +79,54 @@ final class BridgeClient {
         _ = try await request("PUT", "profiles/\(profile)/soul", body: body)
     }
 
+    // MARK: - Cron (프로필별 크론잡 — cron/jobs.json)
+
+    /// 해당 프로필의 크론잡 목록. 원본 객체를 그대로 받아 방어적으로 디코딩한다.
+    func fetchCronJobs(profile: String) async throws -> [CronJob] {
+        struct Response: Decodable { let jobs: [CronJob] }
+        let data = try await request("GET", "profiles/\(profile)/cron")
+        return try decode(Response.self, from: data).jobs
+    }
+
+    /// 편집된 필드만 보내 해당 잡을 갱신한다 — 나머지 필드는 Bridge가 보존한다.
+    func updateCronJob(profile: String, jobID: String, fields: [String: Any]) async throws {
+        let body = try JSONSerialization.data(withJSONObject: fields)
+        _ = try await request("PUT", "profiles/\(profile)/cron/\(jobID)", body: body, timeout: 30)
+    }
+
+    // MARK: - Profile 생성 / 모델
+
+    /// 새 프로필을 백엔드까지 완전 생성한다 (디렉터리+.env+SOUL.md+게이트웨이 install/restart).
+    /// 반환값은 실제 할당된 포트 (port를 nil로 주면 Bridge가 자동 할당).
+    func createProfile(name: String, port: Int?, apiKey: String, soul: String?) async throws -> Int {
+        struct Response: Decodable { let port: Int }
+        var payload: [String: Any] = ["name": name, "api_key": apiKey]
+        if let port { payload["port"] = port }
+        if let soul, !soul.isEmpty { payload["soul"] = soul }
+        let body = try JSONSerialization.data(withJSONObject: payload)
+        let data = try await request("POST", "profiles", body: body, timeout: 60)
+        return try decode(Response.self, from: data).port
+    }
+
+    /// 프로필의 현재 모델(config.yaml) + 선택 가능한 카탈로그(cache/model_catalog.json).
+    func fetchModelInfo(profile: String) async throws -> (current: String?, catalog: [String]) {
+        struct Response: Decodable { let current: String?; let catalog: [String] }
+        let data = try await request("GET", "profiles/\(profile)/model")
+        let r = try decode(Response.self, from: data)
+        return (r.current, r.catalog)
+    }
+
+    /// config.yaml의 모델을 바꾸고, restart=true면 게이트웨이를 재시작한다.
+    func setModel(profile: String, model: String, restart: Bool) async throws {
+        let body = try JSONSerialization.data(withJSONObject: ["model": model, "restart": restart])
+        _ = try await request("PUT", "profiles/\(profile)/model", body: body, timeout: 60)
+    }
+
+    /// 프로필을 백엔드에서 삭제한다 (`hermes profile delete <name> -y`). default는 불가.
+    func deleteProfile(name: String) async throws {
+        _ = try await request("DELETE", "profiles/\(name)", timeout: 60)
+    }
+
     // MARK: - Upload (채팅 첨부)
 
     /// 파일을 해당 프로필의 uploads 폴더로 올리고 맥미니 측 절대경로를 돌려준다.

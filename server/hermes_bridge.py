@@ -115,6 +115,229 @@ def read_env(env_file):
     return values
 
 
+# ── 크론잡 (~/.hermes/profiles/<name>/cron/jobs.json) ───────────
+# 프로필별 cron 디렉터리에 모든 잡이 jobs.json 한 파일로 들어있다 (단일 진실원본).
+# 게이트웨이 스케줄러가 이 파일을 읽어 틱마다 실행한다. 쓰기는 편집된 필드만
+# read-modify-write로 덮어써서 id·mode·실행상태 등 나머지 필드를 보존한다.
+
+def cron_jobs_file(name):
+    return profile_dir(name) / "cron" / "jobs.json"
+
+
+def read_cron_jobs(name):
+    """cron/jobs.json을 읽어 (잡 리스트, 원본 컨테이너)를 반환.
+    컨테이너는 list 또는 {"jobs": [...]} 형태 — PUT에서 같은 형태로 다시 쓰기 위해 보존."""
+    path = cron_jobs_file(name)
+    if not path.is_file():
+        return [], None
+    try:
+        raw = json.loads(path.read_text(errors="replace"))
+    except ValueError:
+        return [], None
+    if isinstance(raw, list):
+        return raw, raw
+    if isinstance(raw, dict) and isinstance(raw.get("jobs"), list):
+        return raw["jobs"], raw
+    return [], raw
+
+
+# ── 프로필 생성 / 모델 카탈로그 ─────────────────────────────────
+# 프로필 생성 = 디렉터리 + .env 작성 + 게이트웨이 install/restart (hermes profile create 없음).
+# 모델 카탈로그는 <profile>/cache/model_catalog.json (목록만), 실제 사용 모델은 config.yaml.
+
+def next_free_port():
+    """기존 프로필들의 API_SERVER_PORT 최대값 + 1 (최소 8643)."""
+    ports = [8642]
+    for name in list_profile_names():
+        try:
+            ports.append(int(read_env(profile_dir(name) / ".env").get("API_SERVER_PORT", "") or 0))
+        except ValueError:
+            pass
+    return max(ports) + 1
+
+
+def set_env_values(path, updates):
+    """기존 .env의 해당 키만 갱신/추가하고 나머지 라인(주석·기타 키)은 보존."""
+    lines = path.read_text(errors="replace").splitlines() if path.is_file() else []
+    remaining = dict(updates)
+    out = []
+    for line in lines:
+        s = line.strip()
+        if s and not s.startswith("#") and "=" in s:
+            key = s.split("=", 1)[0].strip()
+            if key in remaining:
+                out.append(f"{key}={remaining.pop(key)}")
+                continue
+        out.append(line)
+    for key, val in remaining.items():
+        out.append(f"{key}={val}")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(out) + "\n")
+
+
+def hermes_env():
+    """hermes subprocess용 환경 — launchd는 사용자 셸 env(HOME/HERMES_HOME 등)를 안 물려주므로 보정."""
+    env = dict(os.environ)
+    env.setdefault("HOME", str(Path.home()))
+    env["HERMES_HOME"] = str(HERMES_HOME)
+    return env
+
+
+def start_gateway(name, install=False):
+    """게이트웨이 install(옵션) + restart 후 헬스 폴링. (healthy, port, err) 반환."""
+    hermes = find_hermes()
+    if not hermes:
+        return False, None, "hermes 실행파일을 찾지 못했습니다 (HERMES_BIN 설정 필요)"
+    port = int(read_env(profile_dir(name) / ".env").get("API_SERVER_PORT", "8642") or 8642)
+    base = [hermes] if name == "default" else [hermes, "--profile", name]
+    try:
+        if install:
+            # 서비스 미등록 환경(SSH 등)에선 실패할 수 있으나 무해 → 무시.
+            subprocess.run(base + ["gateway", "install"],
+                           capture_output=True, text=True, timeout=30, env=hermes_env())
+        subprocess.Popen(base + ["gateway", "restart"],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                         start_new_session=True, env=hermes_env())
+    except Exception as e:  # noqa: BLE001
+        return False, port, f"gateway start failed: {e}"
+    time.sleep(2)
+    return poll_health(port, timeout_sec=8), port, None
+
+
+def _parse_catalog_file(path):
+    """model_catalog.json 한 파일을 모델 id 문자열 목록으로 정규화 (없거나 실패면 []).
+
+    실제 포맷: {"providers": {"<provider>": {"models": [{"id": ...}, ...]}}}.
+    구버전/다른 포맷(문자열 배열 / data·models·catalog 리스트 / 객체 배열)도 흡수한다."""
+    if not path.is_file():
+        return []
+    try:
+        raw = json.loads(path.read_text(errors="replace"))
+    except ValueError:
+        return []
+
+    def model_id(item):
+        if isinstance(item, str):
+            return item
+        if isinstance(item, dict):
+            val = item.get("id") or item.get("name") or item.get("model")
+            return str(val) if val else None
+        return None
+
+    result = []
+    if isinstance(raw, dict) and isinstance(raw.get("providers"), dict):
+        for prov in raw["providers"].values():
+            models = prov.get("models") if isinstance(prov, dict) else None
+            for item in models or []:
+                mid = model_id(item)
+                if mid:
+                    result.append(mid)
+    else:
+        items = raw
+        if isinstance(raw, dict):
+            items = raw.get("data") or raw.get("models") or raw.get("catalog") or []
+        for item in items if isinstance(items, list) else []:
+            mid = model_id(item)
+            if mid:
+                result.append(mid)
+    # 중복 제거 + 정렬 (순서 안정)
+    return sorted(dict.fromkeys(result))
+
+
+def read_model_catalog(name):
+    """프로필별 cache/model_catalog.json → 비면 default 프로필 카탈로그로 폴백.
+
+    새로 만든 프로필은 자기 cache/model_catalog.json이 아직 없다(게이트웨이 재시작이
+    자동 생성하지 않음). 모든 프로필이 같은 모델 목록을 공유하므로 default 것으로 폴백한다."""
+    result = _parse_catalog_file(profile_dir(name) / "cache" / "model_catalog.json")
+    if not result and name != "default":
+        result = _parse_catalog_file(HERMES_HOME / "cache" / "model_catalog.json")
+    return result
+
+
+def _locate_model(text):
+    """config.yaml에서 모델 값 라인을 찾는다 → (lines, idx, prefix).
+    ① `model: <scalar>` 인라인이면 그 라인. ② `model:` 블록이면 하위 들여쓴 `default:` 라인.
+    못 찾으면 (lines, None, None). prefix는 값 앞부분(키+공백)으로, 값만 교체할 때 쓴다."""
+    lines = text.splitlines()
+    for i, line in enumerate(lines):
+        m = re.match(r"^(model:[ \t]*)(.*)$", line)
+        if not m:
+            continue
+        if m.group(2).split("#", 1)[0].strip():  # 인라인 스칼라
+            return lines, i, m.group(1)
+        for j in range(i + 1, len(lines)):       # 블록 → 하위 default:
+            if not lines[j].strip():
+                continue
+            if not lines[j][:1].isspace():        # 들여쓰기 0 = 블록 종료
+                break
+            d = re.match(r"^([ \t]*default:[ \t]*)(.*)$", lines[j])
+            if d:
+                return lines, j, d.group(1)
+        return lines, None, None
+    return lines, None, None
+
+
+def read_config_model(name):
+    path = profile_dir(name) / "config.yaml"
+    if not path.is_file():
+        return None
+    lines, idx, prefix = _locate_model(path.read_text(errors="replace"))
+    if idx is None:
+        return None
+    value = lines[idx][len(prefix):].split("#", 1)[0].strip().strip('"').strip("'")
+    return value or None
+
+
+def _ensure_model_default(text, model):
+    """config.yaml 텍스트에 모델 값을 반영한 새 텍스트 반환.
+    ① 기존 값(model.default/인라인 model:)이 있으면 그 값만 교체(주변 보존).
+    ② model: 블록 헤더만 있고 default가 없으면 default: 추가.
+    ③ model 키 자체가 없으면 최상위에 model 블록 신규 추가."""
+    lines, idx, prefix = _locate_model(text)
+    quoted = json.dumps(model)
+    if idx is not None:
+        lines[idx] = prefix + quoted
+        return "\n".join(lines) + ("\n" if text.endswith("\n") else "")
+    for i, line in enumerate(lines):
+        if re.match(r"^model:[ \t]*$", line):  # 블록 헤더만 있고 default 없음
+            lines.insert(i + 1, f"  default: {quoted}")
+            return "\n".join(lines) + ("\n" if text.endswith("\n") else "")
+    block = f"model:\n  default: {quoted}\n"
+    return block + text if text else block
+
+
+def ensure_profile_config(name):
+    """프로필 config.yaml이 없으면 default 프로필 config.yaml을 템플릿으로 복사.
+    (config.yaml엔 API 서버 설정이 없어 — env 전용 — 복사해도 안전. 모델/툴셋/agent만 물려받음.)
+    복사했으면 True."""
+    path = profile_dir(name) / "config.yaml"
+    if path.is_file():
+        return False
+    template = HERMES_HOME / "config.yaml"
+    if template.is_file() and template != path:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(str(template), str(path))
+        return True
+    return False
+
+
+def write_config_model(name, model):
+    """config.yaml의 모델 값을 설정. config.yaml이 없으면 default에서 복사,
+    model 키가 없으면 블록을 만들어 추가한다. .bak 백업 + 원자적 교체. (ok, err) 반환."""
+    path = profile_dir(name) / "config.yaml"
+    ensure_profile_config(name)  # 없으면 default 템플릿 복사 (기존 Worker도 사후 복구)
+    text = path.read_text(errors="replace") if path.is_file() else ""
+    new_text = _ensure_model_default(text, model)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.is_file():
+        path.with_suffix(".yaml.bak").write_text(text)
+    tmp = path.with_suffix(".yaml.tmp")
+    tmp.write_text(new_text)
+    os.replace(str(tmp), str(path))
+    return True, None
+
+
 # ── 내장 칸반 (hermes-agent kanban.db) ──────────────────────────
 # default 보드는 ~/.hermes/kanban.db, 그 외는 ~/.hermes/kanban/boards/<slug>/kanban.db.
 # 상태값: triage|todo|scheduled|ready|running|blocked|done|archived
@@ -377,6 +600,25 @@ class Handler(BaseHTTPRequestHandler):
             content = soul.read_text(errors="replace") if soul.is_file() else ""
             return self.send_json({"profile": name, "content": content})
 
+        # GET /profiles/<name>/cron — cron/jobs.json의 잡 목록 (원본 객체 그대로)
+        if len(parts) == 3 and parts[0] == "profiles" and parts[2] == "cron":
+            name = self.check_profile(parts[1])
+            if not name:
+                return self.fail(404, "unknown profile")
+            jobs, _ = read_cron_jobs(name)
+            return self.send_json({"profile": name, "jobs": jobs})
+
+        # GET /profiles/<name>/model — 현재 모델(config.yaml) + 카탈로그(cache/model_catalog.json)
+        if len(parts) == 3 and parts[0] == "profiles" and parts[2] == "model":
+            name = self.check_profile(parts[1])
+            if not name:
+                return self.fail(404, "unknown profile")
+            return self.send_json({
+                "profile": name,
+                "current": read_config_model(name),
+                "catalog": read_model_catalog(name),
+            })
+
         # GET /kanban — 보드 목록 (slug + 표시명 + 상태별 카운트)
         if parts == ["kanban"]:
             result = []
@@ -411,6 +653,76 @@ class Handler(BaseHTTPRequestHandler):
         parts = [p for p in self.path.split("?")[0].split("/") if p]
         if not self.authorized():
             return self.fail(401, "unauthorized")
+
+        # POST /profiles  {"name", "port"?, "api_key"?, "soul"?, "model"?} — 프로필 완전 생성
+        # `hermes profile create <name> --clone-from default`로 default를 복제(config.yaml/.env/
+        # SOUL.md/skills) 후 API 서버 키(포트·이름 등)만 덮어쓰고 게이트웨이를 기동한다.
+        if parts == ["profiles"]:
+            raw = self.read_body(2 * 1024 * 1024)
+            if raw is None:
+                return self.fail(400, "empty body")
+            try:
+                payload = json.loads(raw)
+                name = str(payload.get("name") or "").strip()
+            except (ValueError, TypeError):
+                return self.fail(400, 'expected JSON {"name": ...}')
+            if not SAFE_NAME.match(name) or name == "default":
+                return self.fail(400, "invalid profile name (영숫자/._- 만, default 예약)")
+            if name in list_profile_names():
+                return self.fail(409, f"profile '{name}' already exists")
+            hermes = find_hermes()
+            if not hermes:
+                return self.fail(500, "hermes 실행파일을 찾지 못했습니다 (HERMES_BIN 설정 필요)")
+            try:
+                port = int(payload.get("port") or 0)
+            except (ValueError, TypeError):
+                port = 0
+            if port <= 0:
+                port = next_free_port()
+            # 1) default 복제 — config.yaml/.env/SOUL.md/skills를 hermes가 만들어 준다.
+            #    launchd env 보정(hermes_env)으로 default 프로필을 찾게 한다.
+            try:
+                proc = subprocess.run(
+                    [hermes, "profile", "create", name, "--clone-from", "default"],
+                    capture_output=True, text=True, timeout=120, env=hermes_env(),
+                )
+            except subprocess.TimeoutExpired:
+                return self.fail(500, "profile create timeout")
+            out = (proc.stdout or "") + (("\n" + proc.stderr) if proc.stderr else "")
+            out = out.strip()
+            if proc.returncode != 0:
+                return self.fail(500, f"profile create 실패: {out[-500:]}")
+            # 클론이 조용히 실패하면 config.yaml이 안 생긴다 → 명시적으로 검증하고 출력 노출
+            if not (profile_dir(name) / "config.yaml").is_file():
+                return self.fail(
+                    500,
+                    "profile create는 됐지만 config.yaml이 생성되지 않았습니다 "
+                    f"(클론 실패 의심). hermes 출력: {out[-400:]}",
+                )
+            # 2) 클론된 .env의 API 서버 키만 덮어쓴다 (포트 충돌·이름 보정). 나머지 키 보존.
+            env_updates = {
+                "API_SERVER_ENABLED": "true",
+                "API_SERVER_PORT": str(port),
+                "API_SERVER_HOST": "0.0.0.0",
+                "API_SERVER_MODEL_NAME": name,
+            }
+            api_key = str(payload.get("api_key") or "")
+            if api_key:  # 빈 값으로 클론된 키를 지우지 않도록
+                env_updates["API_SERVER_KEY"] = api_key
+            set_env_values(profile_dir(name) / ".env", env_updates)
+            # 3) soul / model 덮어쓰기 (선택)
+            soul = str(payload.get("soul") or "")
+            if soul:
+                (profile_dir(name) / "SOUL.md").write_text(soul)
+            model = str(payload.get("model") or "").strip()
+            if model:
+                write_config_model(name, model)
+            # 4) 게이트웨이 기동
+            healthy, _, err = start_gateway(name, install=True)
+            return self.send_json({
+                "name": name, "port": port, "ok": True,
+                "healthy": healthy, "error": err, "detail": out[-400:],
+            }, 201)
 
         # POST /profiles/<name>/restart
         if len(parts) == 3 and parts[0] == "profiles" and parts[2] == "restart":
@@ -601,6 +913,99 @@ class Handler(BaseHTTPRequestHandler):
             if soul.is_file():
                 soul.with_suffix(".md.bak").write_text(soul.read_text(errors="replace"))
             soul.write_text(content)
+            return self.send_json({"profile": name, "ok": True})
+
+        # PUT /profiles/<name>/cron/<job_id>  {"prompt","schedule","deliver_to","skills","enabled"}
+        # 전달된 필드만 해당 잡에 덮어쓰고 나머지(id·mode·script·실행상태 등)는 보존.
+        if len(parts) == 4 and parts[0] == "profiles" and parts[2] == "cron":
+            name = self.check_profile(parts[1])
+            if not name:
+                return self.fail(404, "unknown profile")
+            job_id = parts[3]
+            if not SAFE_NAME.match(job_id):
+                return self.fail(400, "invalid job id")
+            data = self.read_body(2 * 1024 * 1024)
+            if data is None:
+                return self.fail(400, "empty body")
+            try:
+                updates = json.loads(data)
+                if not isinstance(updates, dict):
+                    raise ValueError
+            except ValueError:
+                return self.fail(400, "expected JSON object")
+            allowed = {"prompt", "schedule", "deliver_to", "skills", "enabled"}
+            updates = {k: v for k, v in updates.items() if k in allowed}
+            path = cron_jobs_file(name)
+            if not path.is_file():
+                return self.fail(404, "cron jobs.json not found")
+            jobs, container = read_cron_jobs(name)
+            target = next(
+                (j for j in jobs if isinstance(j, dict) and str(j.get("id")) == job_id),
+                None,
+            )
+            if target is None:
+                return self.fail(404, "unknown job")
+            target.update(updates)  # 편집된 키만 덮어쓰기, 나머지 보존
+            path.with_suffix(".json.bak").write_text(path.read_text(errors="replace"))
+            tmp = path.with_suffix(".json.tmp")
+            tmp.write_text(json.dumps(container, ensure_ascii=False, indent=2))
+            os.replace(str(tmp), str(path))  # 원자적 교체
+            return self.send_json({"profile": name, "job": job_id, "ok": True})
+
+        # PUT /profiles/<name>/model  {"model", "restart"?} — config.yaml 모델 반영
+        if len(parts) == 3 and parts[0] == "profiles" and parts[2] == "model":
+            name = self.check_profile(parts[1])
+            if not name:
+                return self.fail(404, "unknown profile")
+            data = self.read_body(64 * 1024)
+            if data is None:
+                return self.fail(400, "empty body")
+            try:
+                payload = json.loads(data)
+                model = str(payload["model"]).strip()
+            except (ValueError, KeyError, TypeError):
+                return self.fail(400, 'expected JSON {"model": ...}')
+            if not model:
+                return self.fail(400, "model is empty")
+            ok, err = write_config_model(name, model)
+            if not ok:
+                return self.fail(400, err)
+            result = {"profile": name, "model": model, "ok": True}
+            if payload.get("restart"):
+                healthy, port, rerr = start_gateway(name)
+                result["healthy"] = healthy
+                result["port"] = port
+                if rerr:
+                    result["error"] = rerr
+            return self.send_json(result)
+
+        return self.fail(404, "not found")
+
+    def do_DELETE(self):
+        parts = [p for p in self.path.split("?")[0].split("/") if p]
+        if not self.authorized():
+            return self.fail(401, "unauthorized")
+
+        # DELETE /profiles/<name> — hermes profile delete <name> -y
+        if len(parts) == 2 and parts[0] == "profiles":
+            name = self.check_profile(parts[1])
+            if not name:
+                return self.fail(404, "unknown profile")
+            if name == "default":
+                return self.fail(400, "default 프로필은 삭제할 수 없습니다")
+            hermes = find_hermes()
+            if not hermes:
+                return self.fail(500, "hermes 실행파일을 찾지 못했습니다 (HERMES_BIN 설정 필요)")
+            try:
+                proc = subprocess.run(
+                    [hermes, "profile", "delete", name, "-y"],
+                    capture_output=True, text=True, timeout=60, env=hermes_env(),
+                )
+            except subprocess.TimeoutExpired:
+                return self.fail(500, "profile delete timeout")
+            if proc.returncode != 0:
+                detail = (proc.stderr or proc.stdout or "").strip()[-500:]
+                return self.fail(500, f"profile delete 실패: {detail}")
             return self.send_json({"profile": name, "ok": True})
 
         return self.fail(404, "not found")

@@ -15,7 +15,11 @@ struct ProfileDetailView: View {
         case failed(String)
     }
 
-    @State private var availableModels: [String] = []
+    @State private var modelState: SoulState = .loading
+    @State private var modelCatalog: [String] = []
+    @State private var currentModel: String?
+    @State private var pickedModel = ""
+    @State private var isSavingModel = false
     @State private var soulState: SoulState = .loading
     @State private var soulText = ""
     @State private var isSavingSoul = false
@@ -25,24 +29,16 @@ struct ProfileDetailView: View {
     @State private var statusIsError = false
     @State private var showLogs = false
     @State private var logsText: String?
+    @State private var isDeleting = false
+    @State private var showDeleteConfirm = false
+
+    @Environment(\.dismiss) private var dismiss
 
     private var profile: HermesProfile {
         appSettings.profiles.first { $0.id == profileID } ?? .default
     }
 
     private var bridgeConfigured: Bool { appSettings.bridgeClient != nil }
-
-    /// 빈 문자열 = "전역 기본 모델 사용" (profile.model == nil)
-    private var modelBinding: Binding<String> {
-        Binding(
-            get: { profile.model ?? "" },
-            set: { newValue in
-                var updated = profile
-                updated.model = newValue.isEmpty ? nil : newValue
-                appSettings.updateProfile(updated)
-            }
-        )
-    }
 
     var body: some View {
         Form {
@@ -51,22 +47,7 @@ struct ProfileDetailView: View {
                 LabeledContent("포트", value: String(profile.port))
             }
 
-            Section {
-                Picker("모델", selection: modelBinding) {
-                    Text("기본값 (\(appSettings.selectedModel))").tag("")
-                    ForEach(availableModels, id: \.self) { model in
-                        Text(model).tag(model)
-                    }
-                    if let current = profile.model, !current.isEmpty,
-                       !availableModels.contains(current) {
-                        Text(current).tag(current)
-                    }
-                }
-            } header: {
-                Text("모델")
-            } footer: {
-                Text("이 프로필에서 새 세션을 만들 때 사용할 모델입니다.")
-            }
+            modelSection
 
             soulSection
 
@@ -96,6 +77,26 @@ struct ProfileDetailView: View {
                 } footer: {
                     Text("SOUL.md 변경은 게이트웨이를 재시작해야 반영됩니다.")
                 }
+
+                if profile.name != "default" {
+                    Section {
+                        Button(role: .destructive) {
+                            showDeleteConfirm = true
+                        } label: {
+                            if isDeleting {
+                                HStack(spacing: 8) {
+                                    ProgressView()
+                                    Text("삭제 중...")
+                                }
+                            } else {
+                                Label("프로필 삭제", systemImage: "trash")
+                            }
+                        }
+                        .disabled(isDeleting)
+                    } footer: {
+                        Text("이 프로필을 백엔드에서 완전히 삭제합니다 (hermes profile delete).")
+                    }
+                }
             }
 
             if let statusMessage {
@@ -118,8 +119,18 @@ struct ProfileDetailView: View {
             }
             Button("취소", role: .cancel) {}
         }
+        .confirmationDialog(
+            "\(profile.name) 프로필을 삭제할까요?\n백엔드에서 완전히 제거되며 되돌릴 수 없습니다.",
+            isPresented: $showDeleteConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("삭제", role: .destructive) {
+                Task { await deleteProfile() }
+            }
+            Button("취소", role: .cancel) {}
+        }
         .task {
-            await loadModels()
+            await loadModel()
             await loadSoul()
         }
         .sheet(isPresented: $showLogs) {
@@ -210,12 +221,89 @@ struct ProfileDetailView: View {
         }
     }
 
-    private func loadModels() async {
-        let client = HermesAPIClient(
-            baseURL: appSettings.baseURL(for: profile),
-            apiKey: profile.apiKey.isEmpty ? appSettings.apiKey : profile.apiKey
-        )
-        availableModels = (try? await client.fetchModelIDs()) ?? []
+    @ViewBuilder
+    private var modelSection: some View {
+        Section {
+            if !bridgeConfigured {
+                Text("모델 선택은 Hermes Bridge가 필요합니다. 설정 화면에서 URL과 토큰을 입력하세요.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            } else {
+                switch modelState {
+                case .loading:
+                    HStack(spacing: 8) {
+                        ProgressView()
+                        Text("불러오는 중...")
+                    }
+                case .failed(let message):
+                    Text("불러오기 실패: \(message)")
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                    Button("다시 시도") { Task { await loadModel() } }
+                case .loaded:
+                    if modelCatalog.isEmpty {
+                        Text("모델 카탈로그가 비어 있습니다. 게이트웨이를 1회 기동하면 cache/model_catalog.json이 생성됩니다.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                        if let currentModel {
+                            LabeledContent("현재 모델", value: currentModel)
+                        }
+                    } else {
+                        Picker("모델", selection: $pickedModel) {
+                            ForEach(modelCatalog, id: \.self) { Text($0).tag($0) }
+                            // 카탈로그에 없는 현재값도 노출 (외부에서 바뀐 경우)
+                            if !pickedModel.isEmpty, !modelCatalog.contains(pickedModel) {
+                                Text(pickedModel).tag(pickedModel)
+                            }
+                        }
+                        Button {
+                            Task { await saveModel() }
+                        } label: {
+                            if isSavingModel {
+                                HStack(spacing: 8) {
+                                    ProgressView()
+                                    Text("저장·재시작 중...")
+                                }
+                            } else {
+                                Label("모델 저장 (게이트웨이 재시작)", systemImage: "square.and.arrow.down")
+                            }
+                        }
+                        .disabled(isSavingModel || pickedModel.isEmpty || pickedModel == currentModel)
+                    }
+                }
+            }
+        } header: {
+            Text("모델")
+        } footer: {
+            Text("config.yaml의 model.default를 바꾸고 게이트웨이를 재시작합니다. (provider·base_url은 유지)")
+        }
+    }
+
+    private func loadModel() async {
+        guard let bridge = appSettings.bridgeClient else { return }
+        modelState = .loading
+        do {
+            let info = try await bridge.fetchModelInfo(profile: profile.name)
+            modelCatalog = info.catalog
+            currentModel = info.current
+            pickedModel = info.current ?? info.catalog.first ?? ""
+            modelState = .loaded
+        } catch {
+            modelState = .failed(error.localizedDescription)
+        }
+    }
+
+    private func saveModel() async {
+        guard let bridge = appSettings.bridgeClient else { return }
+        isSavingModel = true
+        do {
+            try await bridge.setModel(profile: profile.name, model: pickedModel, restart: true)
+            currentModel = pickedModel
+            setStatus("모델 저장 완료 — 게이트웨이 재시작됨", isError: false)
+        } catch {
+            setStatus("모델 저장 실패: \(error.localizedDescription)", isError: true)
+        }
+        isSavingModel = false
     }
 
     private func loadSoul() async {
@@ -251,6 +339,23 @@ struct ProfileDetailView: View {
             setStatus("재시작 실패: \(error.localizedDescription)", isError: true)
         }
         isRestarting = false
+    }
+
+    private func deleteProfile() async {
+        guard let bridge = appSettings.bridgeClient else { return }
+        let target = profile
+        isDeleting = true
+        do {
+            try await bridge.deleteProfile(name: target.name)
+            // 백엔드 삭제 성공 → 앱 로컬 목록에서도 제거하고 상세 화면을 닫는다.
+            if let idx = appSettings.profiles.firstIndex(where: { $0.id == target.id }) {
+                appSettings.removeProfiles(at: IndexSet(integer: idx))
+            }
+            dismiss()
+        } catch {
+            setStatus("삭제 실패: \(error.localizedDescription)", isError: true)
+            isDeleting = false
+        }
     }
 
     private func setStatus(_ message: String, isError: Bool) {

@@ -246,6 +246,24 @@
 6. 강제 종료: 탭으로 실행 안 됨(정상) — Siri/위젯/URL은 됨.
 7. 통합 회귀: 사진 도착 음성 알림(Phase 16)과 글라스 더블탭(Phase 17)이 같은 음성 세션에서 안 부딪히는지. waveform 수동 시작·세션 포크 정상. (받아쓰기 마이크 버튼은 T-136에서 제거됨 — 입력 바에 +/waveform/eyeglasses/전송만 남는지)
 
+## Phase 18 — 프로필별 크론잡 조회·편집 (계획: `.claude/plans/` cron-jobs)
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-138 | 프로필별 크론잡 조회·편집 — hermes-agent 대시보드(:8000)의 Cron 화면을 네이티브로 재현. 프로필 보드 카드의 시계 버튼 → 잡 목록(시트) → 잡 편집(프롬프트·스케줄·전달대상·스킬·활성화). **Bridge 신규 엔드포인트** `GET /profiles/<name>/cron`(cron/jobs.json 잡 목록), `PUT /profiles/<name>/cron/<job_id>`(편집된 필드만 read-modify-write, id·mode·script·실행상태 등 나머지 필드 보존, .bak 백업 + 원자적 교체). 쓰기 CLI 미확인이라 파일 직접 수정. 신규 3파일 pbxproj 등록. **빌드 검증 필요(맥)**. 후속: 생성/삭제/즉시실행/실행리포트 뷰어 | `server/hermes_bridge.py`, `Models/CronModels.swift`(신규), `Services/BridgeClient.swift`, `Views/CronJobsView.swift`(신규), `Views/CronJobEditView.swift`(신규), `Views/ProfileBoardView.swift`, `HermesChat.xcodeproj/project.pbxproj` | NEEDS-BUILD |
+
+## Phase 19 — 프로필 추가('+' 카드) + 모델 카탈로그 선택
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-139 | 프로필 보드 '+' 카드 → 새 프로필 **백엔드 완전 생성**(Bridge `POST /profiles`: 디렉터리+.env+SOUL.md + `hermes --profile <name> gateway install/restart` + 헬스폴링, 포트 자동할당=최대+1). 모델 선택을 **카탈로그 기반**으로 교체 — Bridge `GET/PUT /profiles/<name>/model`(현재값=config.yaml, 카탈로그=`<profile>/cache/model_catalog.json`). ProfileDetailView 모델 섹션을 `/v1/models`(무의미·1개) 대신 카탈로그 Picker+저장(재시작)로 교체. 신규 `CreateProfileView` + pbxproj 등록. **추가**: 브리지 수정 시 맥미니 기동본 교체+재기동 절차 강조(HANDOFF §2.5 경고 + README) — 안 하면 앱 "브리지 HTTP 404". **빌드 검증 필요(맥)** + **브리지 재배포 필요** | `server/hermes_bridge.py`, `Services/BridgeClient.swift`, `Views/CreateProfileView.swift`(신규), `Views/ProfileBoardView.swift`, `Views/ProfileDetailView.swift`, `docs/HANDOFF.md`, `README.md`, `HermesChat.xcodeproj/project.pbxproj` | NEEDS-BUILD |
+| T-140 | 모델 선택 버그 수정 + 적용 경로 확정. ①`model_catalog.json`이 평면 리스트가 아니라 `{providers:{<p>:{models:[{id}]}}}` 중첩이라 카탈로그가 빈 목록이던 것 수정 — `read_model_catalog`를 providers 순회로 고쳐 모든 provider의 모델 id 수집(중복제거·정렬, 구포맷 fallback 유지). ②config.yaml의 `model:`은 블록이고 실제 값은 `model.default` — `_locate_model`로 `model.default`(또는 인라인 `model:`) **값만** 교체, provider·base_url·fallback 등 주변 보존(.bak+원자적). ③footer에 provider/base_url 미변경 한계 명시. **빌드 검증 필요(맥)** + **브리지 재배포 필요** | `server/hermes_bridge.py`, `Views/ProfileDetailView.swift` | NEEDS-BUILD |
+| T-141 | 새 프로필 모델 카탈로그 폴백 — 새로 만든 프로필(예 Worker:8649)은 자기 `cache/model_catalog.json`이 없어(재시작해도 자동 생성 안 됨) 드롭다운이 안 떴음. `read_model_catalog`를 `_parse_catalog_file(path)` 헬퍼로 분리하고, 프로필별 결과가 비면 **default 프로필 카탈로그(`~/.hermes/cache/model_catalog.json`)로 폴백**(모든 프로필 동일 목록 공유). 앱 변경 없음(서버만). **브리지 재배포 필요** | `server/hermes_bridge.py` | NEEDS-BUILD |
+| T-142 | 프로필 생성 시 config.yaml 누락 → 모델 저장 400. 원인: `POST /profiles`가 config.yaml을 안 만들어 새 프로필이 default 설정을 런타임 상속, 모델 변경 대상 파일이 없었음. ①`ensure_profile_config(name)`: 프로필 config.yaml 없으면 **default 프로필 config.yaml을 템플릿으로 복사**(config.yaml엔 API 설정 없음 — env 전용이라 안전). ②`POST /profiles`에서 생성 시 복사 + model 지정 시 `model.default` 교체. ③`write_config_model`도 없으면 default 복사 + `_ensure_model_default`로 값 교체/블록 추가 → **이미 만든 Worker도 재생성 없이 모델 저장 한 번으로 복구**. 앱 변경 없음(서버만). **브리지 재배포 필요** | `server/hermes_bridge.py` | NEEDS-BUILD |
+| T-143 | 프로필 생성을 `hermes profile create`로 전환 (T-142 보강). 근본 원인: `POST /profiles`가 수동 mkdir+.env만 작성 → hermes의 프로필 구조(config.yaml 등)가 안 생김. **`hermes profile create <name> --clone-from default`**(config.yaml/.env/SOUL.md/skills 복제)로 교체하고, 클론된 .env의 API 서버 키만 `set_env_values` 머지로 덮어씀(PORT=새포트·HOST·ENABLED·MODEL_NAME, KEY는 제공 시에만 — 클론 KEY 보존). 포트는 create 전 `next_free_port`로 산정. `write_env_file` 제거. 이름은 hermes가 소문자 영숫자 요구 → 거부 시 stderr 반환. 기존 "Worker"(대문자·config 없음)는 재생성 권장(또는 모델 저장 안전망). 앱 변경 없음(서버만). **브리지 재배포 필요** | `server/hermes_bridge.py` | NEEDS-BUILD |
+| T-144 | 생성 시 config.yaml 누락 진단/보정 (T-143 후에도 앱 생성분에 config.yaml 미생성). ①create subprocess에 **명시적 env**(`hermes_env`: HOME/HERMES_HOME 보정 — launchd는 셸 env 미상속) 전달, start_gateway도 동일. ②create 후 **config.yaml 존재 검증** — 없으면 500 + hermes stdout/stderr를 `detail`로 반환(조용한 클론 실패를 가시화). 성공 응답에도 detail 포함. 앱 변경 없음(서버만). **브리지 재배포 필요** | `server/hermes_bridge.py` | NEEDS-BUILD |
+| T-145 | 프로필 삭제 기능. Bridge `DELETE /profiles/<name>` → `hermes profile delete <name> -y`(env 보정), default/미존재 거부. `BridgeClient.deleteProfile`. ProfileDetailView에 파괴적 "프로필 삭제" 버튼(confirmationDialog) → 성공 시 `removeProfiles`로 앱 목록 제거 + 화면 pop. default 프로필엔 버튼 숨김. **빌드 검증 필요(맥)** + **브리지 재배포 필요** | `server/hermes_bridge.py`, `Services/BridgeClient.swift`, `Views/ProfileDetailView.swift` | NEEDS-BUILD |
+
 ## 빌드 검증 기록 (검증자가 갱신)
 
 | 날짜 | 브랜치/커밋 | 결과 | 비고 |

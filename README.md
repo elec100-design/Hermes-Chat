@@ -31,9 +31,15 @@
 ### 멀티 프로필 관리
 - **프로필 보드** — 2×3 그리드로 등록된 hermes-agent 프로필을 한눈에 표시. 온라인 상태 실시간 프로브
 - **프로필 자동 검색** — 8642~8651 포트를 병렬 스캔해 활성 게이트웨이를 자동 등록 (Bridge가 있으면 Bridge 목록 우선)
+- **프로필 생성** — 보드의 `+` 카드 → 이름·SOUL 입력 → Bridge가 **백엔드에 완전 생성**(`hermes profile create <name> --clone-from default`로 default의 config.yaml/.env/SOUL.md/skills 복제, 포트 자동 할당, 게이트웨이 기동·헬스 폴링)
+- **프로필 삭제** — 상세 화면의 "프로필 삭제"(확인 다이얼로그) → Bridge `hermes profile delete <name> -y`로 백엔드에서 제거하고 앱 목록에서도 정리 (default는 삭제 불가)
 - **프로필 전환** — 탭 한 번으로 전환. 이전 프로필 응답이 늦게 도착해도 세대 카운터로 안전하게 폐기
-- **프로필 상세 편집** — 모델 선택, SOUL.md 편집기, 게이트웨이 재시작 버튼 (확인 다이얼로그 포함)
+- **프로필 상세 편집** — **모델 카탈로그 드롭다운**(`cache/model_catalog.json`, 없으면 default 카탈로그 폴백)에서 선택·저장(재시작), SOUL.md 편집기, 게이트웨이 재시작 버튼 (확인 다이얼로그 포함)
 - **프로필 이름 편집** — 설정 화면에서 롱프레스로 프로필 이름 변경. Keychain 키도 자동 이전
+
+### 크론잡 (스케줄 자동화)
+- 보드 카드의 시계 버튼 → 프로필별 크론잡 목록·편집 (hermes-agent 대시보드 Cron 화면을 네이티브로 재현)
+- 프롬프트 · 스케줄 · 전달 대상 · 스킬 · 활성화 토글 편집 — Bridge가 `<profile>/cron/jobs.json`을 read-modify-write(편집 필드만 갱신, 나머지 보존, `.bak` 백업 + 원자적 교체)
 
 ### 채팅
 - **SSE 실시간 스트리밍** — `URLSession.bytes` 기반 라인 단위 파싱. 스트리밍 중 말풍선이 실시간으로 채워짐
@@ -107,6 +113,17 @@
 cp server/com.hermes.bridge.plist ~/Library/LaunchAgents/
 launchctl load ~/Library/LaunchAgents/com.hermes.bridge.plist
 ```
+
+> **⚠️ 브리지 코드(`server/hermes_bridge.py`)를 고쳤다면 맥미니의 기동본을 교체하고
+> LaunchAgent를 재기동해야 반영된다.** 안 하면 앱이 새 엔드포인트를 호출할 때
+> `브리지 HTTP 404`가 난다.
+> ```bash
+> cp ./server/hermes_bridge.py ~/.hermes/bridge/        # 배포 위치
+> launchctl unload ~/Library/LaunchAgents/ai.hermes.bridge.plist
+> launchctl load   ~/Library/LaunchAgents/ai.hermes.bridge.plist
+> curl -s http://127.0.0.1:8765/health                  # {"status":"ok"} 확인
+> ```
+> (LaunchAgent 파일명은 등록 시 쓴 이름. 위 절차 전문은 `docs/HANDOFF.md` §2.5)
 
 ### 2. 프로필별 API 서버 활성화
 ```bash

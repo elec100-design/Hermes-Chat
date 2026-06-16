@@ -49,14 +49,18 @@ Claude Code (Xcode 내장/웹) ↔ Hermes+Step-3.7-flash (맥미니 상주) ↔ 
 2. 커밋 메시지 형식: `T-0NN: <한 줄 설명> [DONE|NEEDS-BUILD]`
 3. `git push -u origin claude/<topic>` — 작업 중인 피처 브랜치로 푸시 (실패 시 2s/4s/8s/16s 백오프 재시도). 완료되면 main으로 PR을 연다.
 4. **작업 도중 중단되더라도** 컴파일 가능한 단위로 자주 커밋·푸시할 것. 중단된 작업은 TASKS.md에 `DOING` + 마지막 상황 한 줄을 남기면 다음 에이전트가 이어받는다.
-5. **`server/hermes_bridge.py`를 수정했다면 배포까지 한다** (맥에서 작업하는 에이전트만 가능):
+5. **`server/hermes_bridge.py`를 수정했다면 반드시 배포까지 한다** (맥에서 작업하는 에이전트/사용자만 가능).
+   ⚠️ **이걸 안 하면 맥미니는 옛 브리지를 계속 돌려서, 앱이 새 엔드포인트를 호출할 때
+   "서버 오류: 브리지 HTTP 404"가 난다.** (cron·모델·프로필 생성 등 신규 기능이 전부 이 증상)
    ```bash
-   cp "$REPO/server/hermes_bridge.py" ~/.hermes/bridge/
+   cd "$REPO"   # REPO 미설정이면 리포 폴더에서 ./ 로
+   cp ./server/hermes_bridge.py ~/.hermes/bridge/
    launchctl unload ~/Library/LaunchAgents/ai.hermes.bridge.plist
    launchctl load ~/Library/LaunchAgents/ai.hermes.bridge.plist
    curl -s http://127.0.0.1:8765/health   # {"status": "ok"} 확인
    ```
-   맥이 아닌 에이전트(Grok 등)가 수정한 경우 TASKS.md에 `NEEDS-BUILD(브리지 재배포 필요)`로 남긴다.
+   맥이 아닌 에이전트(웹/Grok 등)가 수정한 경우 TASKS.md에 `NEEDS-BUILD(브리지 재배포 필요)`로
+   남기고, 사용자에게 위 3줄(복사+unload+load)을 맥미니에서 실행하라고 안내한다.
 
 ## 3. 빌드 검증 (맥에서만 가능)
 
@@ -177,6 +181,16 @@ git push -u origin claude/<topic>   # 작업 중인 피처 브랜치로 동작 �
 | Hermes Bridge | `http://100.83.59.60:8765` (T-010에서 배포) |
 | 대시보드 | `http://100.83.59.60:8000` |
 | API Key / 토큰 | 앱 설정 화면에서 입력 (저장소에 쓰지 않는다) |
+
+**Bridge 엔드포인트(:8765) 요약** — 전체 정의는 `server/hermes_bridge.py`/`server/README.md` 참고:
+프로필 목록·재시작·로그·SOUL.md, 파일 읽기, 칸반(읽기 sqlite·쓰기 CLI),
+**크론잡** `GET/PUT /profiles/<n>/cron[/<id>]`(T-138),
+**프로필 생성** `POST /profiles`(`hermes profile create … --clone-from default`, T-139·143~144),
+**프로필 삭제** `DELETE /profiles/<n>`(`hermes profile delete <n> -y`, default 거부, T-145),
+**모델** `GET/PUT /profiles/<n>/model`(T-139~140).
+> 프로필 create/delete 서브프로세스는 `hermes_env()`로 HOME·HERMES_HOME을 명시 주입한다
+> (launchd는 셸 env를 안 물려줘 `--clone-from default`가 default를 못 찾는 문제 방지, T-144).
+⚠️ 이 파일을 고치면 맥미니 기동본 교체+재기동 필수(§2.5) — 안 하면 앱에서 "브리지 HTTP 404".
 
 ## 부록 B. Hermes 칸반 스킬 (2026-06-11 v2 — 내장 칸반으로 전환)
 
