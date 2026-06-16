@@ -1,17 +1,21 @@
 import SwiftUI
 
-/// 크론잡 한 건의 편집 화면 — hermes-agent 대시보드(:8000)의 Cron 편집 폼을 네이티브로 재현.
-/// 프롬프트·스케줄(cron식)·전달대상·스킬·활성화를 수정해 저장한다.
-/// 저장은 편집된 필드만 Bridge로 보내고, 나머지 필드(id·mode·script 등)는 Bridge가 보존한다.
+/// 크론잡 생성 / 편집 화면 — hermes-agent 대시보드(:8000)의 Cron 폼을 네이티브로 재현.
+/// 편집 시: 전달된 필드만 Bridge로 보내고 나머지(id·mode·script·실행상태)는 Bridge가 보존한다.
+/// 생성 시: 프로필을 고르고 새 잡을 jobs.json에 추가한다(Bridge가 기존 잡 구조를 템플릿으로 사용).
 struct CronJobEditView: View {
     @ObservedObject var appSettings: AppSettings
-    let profile: HermesProfile
-    let job: CronJob
     /// 저장 성공 후 부모(목록)가 새로고침하도록 알린다.
     var onSaved: () async -> Void
 
     @Environment(\.dismiss) private var dismiss
 
+    private let isCreating: Bool
+    private let editingProfile: HermesProfile?   // 편집 모드의 고정 프로필
+    private let editingJob: CronJob?             // 편집 모드의 원본 잡
+
+    @State private var selectedProfile: HermesProfile   // 생성 모드의 프로필 선택
+    @State private var name: String
     @State private var prompt: String
     @State private var schedule: String
     @State private var deliverTo: String
@@ -22,6 +26,7 @@ struct CronJobEditView: View {
     @State private var statusMessage: String?
     @State private var statusIsError = false
 
+    /// 편집 모드.
     init(
         appSettings: AppSettings,
         profile: HermesProfile,
@@ -29,9 +34,12 @@ struct CronJobEditView: View {
         onSaved: @escaping () async -> Void
     ) {
         self.appSettings = appSettings
-        self.profile = profile
-        self.job = job
         self.onSaved = onSaved
+        self.isCreating = false
+        self.editingProfile = profile
+        self.editingJob = job
+        _selectedProfile = State(initialValue: profile)
+        _name = State(initialValue: job.name ?? "")
         _prompt = State(initialValue: job.prompt ?? "")
         _schedule = State(initialValue: job.schedule ?? "")
         _deliverTo = State(initialValue: job.deliverTo ?? "origin")
@@ -39,12 +47,54 @@ struct CronJobEditView: View {
         _enabled = State(initialValue: job.enabled ?? true)
     }
 
+    /// 생성 모드 — initialProfile을 기본 선택으로.
+    init(
+        appSettings: AppSettings,
+        creatingForProfile initialProfile: HermesProfile,
+        onSaved: @escaping () async -> Void
+    ) {
+        self.appSettings = appSettings
+        self.onSaved = onSaved
+        self.isCreating = true
+        self.editingProfile = nil
+        self.editingJob = nil
+        _selectedProfile = State(initialValue: initialProfile)
+        _name = State(initialValue: "")
+        _prompt = State(initialValue: "")
+        _schedule = State(initialValue: "0 8 * * *")
+        _deliverTo = State(initialValue: "origin")
+        _selectedSkills = State(initialValue: [])
+        _enabled = State(initialValue: true)
+    }
+
+    /// 현재 작업 대상 프로필 (편집=고정, 생성=선택).
+    private var activeProfile: HermesProfile { editingProfile ?? selectedProfile }
+
+    private var canSave: Bool {
+        !name.trimmingCharacters(in: .whitespaces).isEmpty
+            && !schedule.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
     var body: some View {
         Form {
+            if isCreating {
+                Section("PROFILE") {
+                    Picker("프로필", selection: $selectedProfile) {
+                        ForEach(appSettings.profiles) { profile in
+                            Text(profile.name).tag(profile)
+                        }
+                    }
+                }
+            }
+
             Section {
+                TextField("이름", text: $name)
+                    .autocorrectionDisabled()
                 Toggle("이 크론잡 사용", isOn: $enabled)
+            } header: {
+                Text("NAME")
             } footer: {
-                if let mode = job.mode, !mode.isEmpty {
+                if let mode = editingJob?.mode, !mode.isEmpty {
                     Text("모드: \(mode)")
                 }
             }
@@ -68,7 +118,11 @@ struct CronJobEditView: View {
             } header: {
                 Text("SCHEDULE (CRON EXPRESSION)")
             } footer: {
-                Text("분 시 일 월 요일. 예: `0 8 * * *` = 매일 오전 8시.")
+                if let human = CronJob.humanizeSchedule(schedule) {
+                    Text("\(human) · 분 시 일 월 요일")
+                } else {
+                    Text("분 시 일 월 요일. 예: `0 8 * * *` = 매일 08:00.")
+                }
             }
 
             Section("DELIVER TO") {
@@ -86,13 +140,14 @@ struct CronJobEditView: View {
                     if isSaving {
                         HStack(spacing: 8) {
                             ProgressView()
-                            Text("저장 중...")
+                            Text(isCreating ? "생성 중..." : "저장 중...")
                         }
                     } else {
-                        Label("변경 저장", systemImage: "square.and.arrow.down")
+                        Label(isCreating ? "크론잡 생성" : "변경 저장",
+                              systemImage: isCreating ? "plus.circle" : "square.and.arrow.down")
                     }
                 }
-                .disabled(isSaving)
+                .disabled(isSaving || !canSave)
             }
 
             if let statusMessage {
@@ -103,9 +158,9 @@ struct CronJobEditView: View {
                 }
             }
         }
-        .navigationTitle(job.displayTitle)
+        .navigationTitle(isCreating ? "새 크론잡" : (editingJob?.displayTitle ?? "크론잡"))
         .navigationBarTitleDisplayMode(.inline)
-        .task { await loadSkills() }
+        .task(id: activeProfile.id) { await loadSkills() }
     }
 
     @ViewBuilder
@@ -141,6 +196,7 @@ struct CronJobEditView: View {
     }
 
     private func loadSkills() async {
+        let profile = activeProfile
         let client = HermesAPIClient(
             baseURL: appSettings.baseURL(for: profile),
             apiKey: profile.apiKey.isEmpty ? appSettings.apiKey : profile.apiKey
@@ -156,21 +212,27 @@ struct CronJobEditView: View {
             return
         }
         isSaving = true
+        defer { isSaving = false }
         let fields: [String: Any] = [
+            "name": name.trimmingCharacters(in: .whitespaces),
             "prompt": prompt,
-            "schedule": schedule,
+            "schedule": schedule.trimmingCharacters(in: .whitespaces),
             "deliver_to": deliverTo,
             "skills": Array(selectedSkills).sorted(),
             "enabled": enabled,
         ]
         do {
-            try await bridge.updateCronJob(profile: profile.name, jobID: job.id, fields: fields)
+            if isCreating {
+                try await bridge.createCronJob(profile: activeProfile.name, fields: fields)
+            } else if let job = editingJob, let profile = editingProfile {
+                // 편집 시에도 name 포함해 전달 (Bridge 화이트리스트가 name 허용).
+                try await bridge.updateCronJob(profile: profile.name, jobID: job.id, fields: fields)
+            }
             await onSaved()
             dismiss()
         } catch {
-            statusMessage = "저장 실패: \(error.localizedDescription)"
+            statusMessage = (isCreating ? "생성 실패: " : "저장 실패: ") + error.localizedDescription
             statusIsError = true
         }
-        isSaving = false
     }
 }

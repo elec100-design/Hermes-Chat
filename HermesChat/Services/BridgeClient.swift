@@ -88,10 +88,34 @@ final class BridgeClient {
         return try decode(Response.self, from: data).jobs
     }
 
+    /// 새 크론잡을 jobs.json에 추가한다 (대시보드 "CREATE"). name·schedule은 필수.
+    func createCronJob(profile: String, fields: [String: Any]) async throws {
+        let body = try JSONSerialization.data(withJSONObject: fields)
+        _ = try await request("POST", "profiles/\(profile)/cron", body: body, timeout: 30)
+    }
+
     /// 편집된 필드만 보내 해당 잡을 갱신한다 — 나머지 필드는 Bridge가 보존한다.
     func updateCronJob(profile: String, jobID: String, fields: [String: Any]) async throws {
         let body = try JSONSerialization.data(withJSONObject: fields)
         _ = try await request("PUT", "profiles/\(profile)/cron/\(jobID)", body: body, timeout: 30)
+    }
+
+    /// 크론잡 사용/일시정지 — `enabled` 한 필드만 갱신하는 편의 래퍼.
+    func setCronJobEnabled(profile: String, jobID: String, enabled: Bool) async throws {
+        try await updateCronJob(profile: profile, jobID: jobID, fields: ["enabled": enabled])
+    }
+
+    /// 크론잡을 즉시 실행한다 (대시보드 "Trigger now"). 실행 출력을 돌려준다.
+    @discardableResult
+    func triggerCronJob(profile: String, jobID: String) async throws -> String {
+        struct Response: Decodable { let output: String? }
+        let data = try await request("POST", "profiles/\(profile)/cron/\(jobID)/run", timeout: 120)
+        return (try? decode(Response.self, from: data).output ?? "") ?? ""
+    }
+
+    /// 크론잡을 jobs.json에서 삭제한다.
+    func deleteCronJob(profile: String, jobID: String) async throws {
+        _ = try await request("DELETE", "profiles/\(profile)/cron/\(jobID)", timeout: 30)
     }
 
     // MARK: - Profile 생성 / 모델
