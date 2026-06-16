@@ -251,6 +251,7 @@
 | ID | 작업 | 파일 | 상태 |
 |----|------|------|------|
 | T-138 | 프로필별 크론잡 조회·편집 — hermes-agent 대시보드(:8000)의 Cron 화면을 네이티브로 재현. 프로필 보드 카드의 시계 버튼 → 잡 목록(시트) → 잡 편집(프롬프트·스케줄·전달대상·스킬·활성화). **Bridge 신규 엔드포인트** `GET /profiles/<name>/cron`(cron/jobs.json 잡 목록), `PUT /profiles/<name>/cron/<job_id>`(편집된 필드만 read-modify-write, id·mode·script·실행상태 등 나머지 필드 보존, .bak 백업 + 원자적 교체). 쓰기 CLI 미확인이라 파일 직접 수정. 신규 3파일 pbxproj 등록. **빌드 검증 필요(맥)**. 후속: 생성/삭제/즉시실행/실행리포트 뷰어 | `server/hermes_bridge.py`, `Models/CronModels.swift`(신규), `Services/BridgeClient.swift`, `Views/CronJobsView.swift`(신규), `Views/CronJobEditView.swift`(신규), `Views/ProfileBoardView.swift`, `HermesChat.xcodeproj/project.pbxproj` | NEEDS-BUILD |
+| T-146 | **크론 중앙 관리 화면** (T-138 후속, 사용자 요청). 프로필마다 흩어져 있던 크론 시트를 **한 화면(`CronManagerView`)**으로 통합 — 상단 **드롭다운으로 프로필 필터링**, 각 잡에 **재개/일시정지 · 지금 실행 · 편집 · 삭제** 버튼(대시보드 :8000 Cron 화면 재현). 전 프로필 jobs.json을 동시 로드해 프로필별 섹션으로 표시. 일시정지/재개=`enabled` 토글(기존 PUT), 편집=`CronJobEditView` 재사용(시트). **Bridge 신규**: `POST /profiles/<n>/cron/<id>/run`(즉시 실행 — `hermes [--profile <n>] cron run <id>`, ⚠️CLI 형태 버전별 상이 가능·실패 시 stdout/stderr 노출), `DELETE /profiles/<n>/cron/<id>`(jobs.json에서 제거, .bak+원자적). 진입: 프로필 보드 툴바 "크론 관리"(전체) + 카드 시계 버튼(해당 프로필 필터). **기존 파일만 수정 → pbxproj 무수정**(`CronJobsView.swift` 내용을 `CronManagerView`로 재작성). **빌드 검증 필요(맥)** + **브리지 재배포 필요** | `server/hermes_bridge.py`, `Services/BridgeClient.swift`, `Views/CronJobsView.swift`, `Views/ProfileBoardView.swift` | NEEDS-BUILD |
 
 ## Phase 19 — 프로필 추가('+' 카드) + 모델 카탈로그 선택
 

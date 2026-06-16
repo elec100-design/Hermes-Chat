@@ -758,6 +758,35 @@ class Handler(BaseHTTPRequestHandler):
             )
             return self.send_json({"profile": name, "ok": True, "output": output})
 
+        # POST /profiles/<name>/cron/<job_id>/run — 크론잡 즉시 실행 (대시보드 "Trigger now").
+        # 게이트웨이 스케줄러를 기다리지 않고 `hermes [--profile <name>] cron run <id>`로 바로 돌린다.
+        # (CLI 형태는 hermes-agent 버전에 따라 다를 수 있으니, 실패 시 출력을 그대로 노출한다.)
+        if len(parts) == 5 and parts[0] == "profiles" and parts[2] == "cron" and parts[4] == "run":
+            name = self.check_profile(parts[1])
+            if not name:
+                return self.fail(404, "unknown profile")
+            job_id = parts[3]
+            if not SAFE_NAME.match(job_id):
+                return self.fail(400, "invalid job id")
+            jobs, _ = read_cron_jobs(name)
+            if not any(isinstance(j, dict) and str(j.get("id")) == job_id for j in jobs):
+                return self.fail(404, "unknown job")
+            hermes = find_hermes()
+            if not hermes:
+                return self.fail(500, "hermes 실행파일을 찾지 못했습니다 (HERMES_BIN 설정 필요)")
+            base = [hermes] if name == "default" else [hermes, "--profile", name]
+            try:
+                proc = subprocess.run(
+                    base + ["cron", "run", job_id],
+                    capture_output=True, text=True, timeout=120, env=hermes_env(),
+                )
+            except subprocess.TimeoutExpired:
+                return self.fail(500, "cron run timeout (작업이 백그라운드에서 계속 실행 중일 수 있습니다)")
+            out = ((proc.stdout or "") + (("\n" + proc.stderr) if proc.stderr else "")).strip()
+            if proc.returncode != 0:
+                return self.fail(500, f"cron run 실패: {out[-500:] or 'unknown error'}")
+            return self.send_json({"profile": name, "job": job_id, "ok": True, "output": out[-500:]})
+
         # POST /upload/<profile>  (raw body + X-Filename 헤더)
         if len(parts) == 2 and parts[0] == "upload":
             name = self.check_profile(parts[1])
@@ -1007,6 +1036,35 @@ class Handler(BaseHTTPRequestHandler):
                 detail = (proc.stderr or proc.stdout or "").strip()[-500:]
                 return self.fail(500, f"profile delete 실패: {detail}")
             return self.send_json({"profile": name, "ok": True})
+
+        # DELETE /profiles/<name>/cron/<job_id> — jobs.json에서 해당 잡 제거
+        # (read-modify-write, 컨테이너 형태 보존, .bak 백업 + 원자적 교체)
+        if len(parts) == 4 and parts[0] == "profiles" and parts[2] == "cron":
+            name = self.check_profile(parts[1])
+            if not name:
+                return self.fail(404, "unknown profile")
+            job_id = parts[3]
+            if not SAFE_NAME.match(job_id):
+                return self.fail(400, "invalid job id")
+            path = cron_jobs_file(name)
+            if not path.is_file():
+                return self.fail(404, "cron jobs.json not found")
+            jobs, container = read_cron_jobs(name)
+            new_jobs = [
+                j for j in jobs
+                if not (isinstance(j, dict) and str(j.get("id")) == job_id)
+            ]
+            if len(new_jobs) == len(jobs):
+                return self.fail(404, "unknown job")
+            if isinstance(container, dict):
+                container["jobs"] = new_jobs
+            else:
+                container = new_jobs  # 최상위가 리스트인 형태
+            path.with_suffix(".json.bak").write_text(path.read_text(errors="replace"))
+            tmp = path.with_suffix(".json.tmp")
+            tmp.write_text(json.dumps(container, ensure_ascii=False, indent=2))
+            os.replace(str(tmp), str(path))  # 원자적 교체
+            return self.send_json({"profile": name, "job": job_id, "ok": True})
 
         return self.fail(404, "not found")
 

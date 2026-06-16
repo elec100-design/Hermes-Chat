@@ -15,6 +15,7 @@ struct ProfileBoardView: View {
     @State private var status: [UUID: ProfileStatus] = [:]
     @State private var isProbing = false
     @State private var showDiscussion = false
+    @State private var showCronManager = false
     @State private var selectedCronProfile: HermesProfile?
     @State private var showCreateProfile = false
 
@@ -44,6 +45,12 @@ struct ProfileBoardView: View {
                         Label("Deep think", systemImage: "brain.head.profile")
                             .labelStyle(.titleAndIcon)
                     }
+                    // 전 프로필 크론 관리 (한 곳에서 드롭다운 필터)
+                    Button {
+                        showCronManager = true
+                    } label: {
+                        Label("크론 관리", systemImage: "clock.arrow.circlepath")
+                    }
                     if isProbing {
                         ProgressView().scaleEffect(0.8)
                     } else {
@@ -58,8 +65,11 @@ struct ProfileBoardView: View {
             .fullScreenCover(isPresented: $showDiscussion) {
                 DiscussionView(appSettings: appSettings)
             }
+            .sheet(isPresented: $showCronManager) {
+                CronManagerView(appSettings: appSettings)
+            }
             .sheet(item: $selectedCronProfile) { profile in
-                CronJobsView(appSettings: appSettings, profile: profile)
+                CronManagerView(appSettings: appSettings, initialProfileName: profile.name)
             }
             .sheet(isPresented: $showCreateProfile) {
                 CreateProfileView(appSettings: appSettings)
