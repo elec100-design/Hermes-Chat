@@ -277,6 +277,12 @@
 |----|------|------|------|
 | T-147 | 세션 목록 trailing 스와이프 강화 — 삭제 버튼 왼편에 **이름변경**(pencil·파랑)·**고정/고정해제**(pin/pin.slash·주황) 아이콘 버튼 추가. **고정(Pin)**: 서버 미지원이라 `pinnedSessionIDs`(UserDefaults 키 `pinnedSessionIDs`)에 로컬 보관 — `isPinned`/`togglePin` + `filteredSessions`가 고정 세션을 맨 위로 안정 정렬(검색 경로도 적용), 행 제목 옆 `pin.fill` 표시, 앱 재실행 후 유지. **이름변경**: 기존 `updateSessionTitle` API(HermesAPIClient) + `updateSession` 로컬 갱신을 alert(TextField)로 연결(SettingsView 프로필 rename 패턴 재사용). **풀 스와이프 자동 삭제 비활성화**(`allowsFullSwipe: false`) — 버튼 확인하려 길게 밀어도 자동 삭제 안 되고 삭제 버튼을 눌러야만 삭제(사용자 보고 사고 대응). leading(분기) 스와이프는 그대로. 기존 파일만 수정 → pbxproj 무수정 | `Views/SessionListView.swift`, `Services/AppDefaults.swift` | NEEDS-BUILD |
 
+## Phase 21 — 대시보드 핀치 줌 + 데스크톱 모드 (브랜치 `claude/focused-hypatia-w558o2`)
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-148 | 대시보드 탭에 **두 손가락 핀치 줌**과 **데스크톱 모드 토글** 추가(사용자 요청 — 모바일 화면에서 작아서 안 눌리거나 레이아웃에 숨겨져 접근 안 되는 버튼 대응). 대시보드 페이지(:8000)는 맥미니가 서빙해 HTML 직접 수정 불가 → 앱에서 보조. **핀치 줌**: 페이지의 `<meta viewport>`가 보통 `user-scalable=no`라 막혀 있어, `WKUserScript`(.atDocumentEnd) + 네비 완료 시 `evaluateJavaScript`로 viewport를 `user-scalable=yes, maximum-scale=10`으로 덮어씀. **데스크톱 모드**: 우상단 툴바 토글(iphone/desktopcomputer 아이콘) → `customUserAgent`를 macOS Safari로 바꾸고 viewport `width=1024`로 전체 데스크톱 레이아웃을 불러옴(숨겨진 버튼 노출) + 핀치 줌으로 탐색. 상태는 `@AppStorage("dashboardDesktopMode")`로 영속화. 모드 전환 시 UA 교체 후 `reload()`, 기존 host/port 변경 재로드 로직 보존. 기존 파일만 수정 → **pbxproj 무수정**. **빌드 검증 필요(맥)** | `Views/DashboardWebView.swift` | NEEDS-BUILD |
+
 ## 빌드 검증 기록 (검증자가 갱신)
 
 | 날짜 | 브랜치/커밋 | 결과 | 비고 |
