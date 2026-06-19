@@ -93,7 +93,8 @@ struct ChatView: View {
                 }
                 .accessibilityLabel("세션 메뉴")
             }
-            ToolbarItem(placement: .keyboard) {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
                 Button("완료") { isInputFocused = false }
             }
         }
