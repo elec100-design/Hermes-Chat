@@ -93,10 +93,6 @@ struct ChatView: View {
                 }
                 .accessibilityLabel("세션 메뉴")
             }
-            ToolbarItemGroup(placement: .keyboard) {
-                Spacer()
-                Button("완료") { isInputFocused = false }
-            }
         }
         // 분기된 세션으로 push — 부모 NavigationStack(SessionListView)의 path를 건드리지 않는다
         .navigationDestination(item: $forkedSession) { session in
