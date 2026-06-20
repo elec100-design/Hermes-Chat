@@ -1,6 +1,12 @@
 import Foundation
 import SwiftUI
 
+// MARK: - Connection Mode (T-C02)
+enum ConnectionMode: String {
+    case selfHosted = "selfHosted"
+    case cloud      = "cloud"
+}
+
 @MainActor
 final class AppSettings: ObservableObject {
     /// 게이트웨이 호스트. 포트가 포함되어 있어도 프로필 포트로 대체된다.
@@ -37,6 +43,9 @@ final class AppSettings: ObservableObject {
     @Published var cloudPlan: String = ""
 
     var isCloudAuthenticated: Bool { !supabaseJWT.isEmpty && !supabaseUserID.isEmpty }
+
+    /// .cloud 모드에서는 cloudGatewayURL + supabaseJWT 사용
+    @AppStorage("connectionMode") var connectionMode: ConnectionMode = .selfHosted
 
     func signOutCloud() {
         supabaseJWT     = ""
@@ -124,11 +133,19 @@ final class AppSettings: ObservableObject {
     }
 
     var hermesClient: HermesAPIClient {
-        let profile = selectedProfile
-        return HermesAPIClient(
-            baseURL: baseURL(for: profile),
-            apiKey: profile.apiKey.isEmpty ? apiKey : profile.apiKey
-        )
+        switch connectionMode {
+        case .cloud:
+            let raw = cloudGatewayURL.trimmingCharacters(in: .whitespaces)
+            let url = URL(string: raw.isEmpty ? "http://localhost:8642" : raw)
+                      ?? URL(string: "http://localhost:8642")!
+            return HermesAPIClient(baseURL: url, apiKey: supabaseJWT)
+        case .selfHosted:
+            let profile = selectedProfile
+            return HermesAPIClient(
+                baseURL: baseURL(for: profile),
+                apiKey: profile.apiKey.isEmpty ? apiKey : profile.apiKey
+            )
+        }
     }
 
     /// 대시보드(:8000) URL — serverHost의 스킴/호스트에 dashboardPort 결합
