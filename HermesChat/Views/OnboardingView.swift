@@ -101,7 +101,7 @@ struct OnboardingView: View {
             HStack(spacing: 16) {
                 Image(systemName: icon)
                     .font(.title2)
-                    .foregroundStyle(isEnabled ? .tint : .secondary)
+                    .foregroundStyle(isEnabled ? Color.accentColor : Color.secondary)
                     .frame(width: 36)
 
                 VStack(alignment: .leading, spacing: 4) {
