@@ -3,6 +3,7 @@ import Security
 
 struct SettingsView: View {
     @ObservedObject var appSettings: AppSettings
+    @Environment(\.openURL) private var openURL
     @State private var testResult: ConnectionTestResult? = nil
     @State private var isTesting = false
     @State private var showApiKeyInput = false
@@ -183,6 +184,19 @@ struct SettingsView: View {
 
             Section {
                 Link("settings.tailscale.download", destination: URL(string: "https://tailscale.com")!)
+            }
+
+            Section {
+                Button {
+                    if let url = URL(string: "app-settings:") {
+                        openURL(url)
+                    }
+                } label: {
+                    Label("settings.language", systemImage: "globe")
+                        .foregroundStyle(.primary)
+                }
+            } footer: {
+                Text("settings.language.footer")
             }
 
             Section {

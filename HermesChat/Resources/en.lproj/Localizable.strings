@@ -42,6 +42,8 @@
 "settings.filebrowser" = "File Browser (~/.hermes)";
 "settings.tailscale.download" = "Download Tailscale";
 "settings.privacy.policy" = "Privacy Policy";
+"settings.language" = "App Language";
+"settings.language.footer" = "Change HermesChat's display language in iOS Settings (한국어 · English · 简体中文).";
 
 /* Session List */
 "session.new" = "New Session";

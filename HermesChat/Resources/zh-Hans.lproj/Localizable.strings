@@ -42,6 +42,8 @@
 "settings.filebrowser" = "文件浏览器 (~/.hermes)";
 "settings.tailscale.download" = "下载 Tailscale";
 "settings.privacy.policy" = "隐私政策";
+"settings.language" = "应用语言";
+"settings.language.footer" = "可在 iOS 设置中更改 HermesChat 的显示语言（한국어 · English · 简体中文）。";
 
 /* Session List */
 "session.new" = "新建会话";
