@@ -3,7 +3,7 @@ import Security
 
 struct SettingsView: View {
     @ObservedObject var appSettings: AppSettings
-    @State private var testResult: String? = nil
+    @State private var testResult: ConnectionTestResult? = nil
     @State private var isTesting = false
     @State private var showApiKeyInput = false
     @State private var showBridgeTokenInput = false
@@ -15,10 +15,14 @@ struct SettingsView: View {
     @State private var editingProfileName = ""
     @State private var showEditAlert = false
 
+    private enum ConnectionTestResult {
+        case success, failure(String)
+    }
+
     var body: some View {
         Form {
-            Section("Hermes 연결") {
-                TextField("Server Host", text: $appSettings.serverHost)
+            Section("settings.connection") {
+                TextField("settings.connection.host", text: $appSettings.serverHost)
                     .textContentType(.URL)
                     .keyboardType(.URL)
                 HStack {
@@ -34,15 +38,23 @@ struct SettingsView: View {
                     }
                     .buttonStyle(.plain)
                 }
-                Button("연결 테스트") {
+                Button("settings.connection.test") {
                     testConnection()
                 }
                 .disabled(isTesting)
 
-                if let testResult {
-                    Text(testResult)
-                        .font(.footnote)
-                        .foregroundStyle(testResult.contains("성공") ? .green : .red)
+                if let result = testResult {
+                    HStack(spacing: 6) {
+                        switch result {
+                        case .success:
+                            Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                            Text("settings.connection.test.success").foregroundStyle(.green)
+                        case .failure(let msg):
+                            Image(systemName: "xmark.circle.fill").foregroundStyle(.red)
+                            Text(verbatim: msg).foregroundStyle(.red)
+                        }
+                    }
+                    .font(.footnote)
                 }
             }
 
@@ -51,7 +63,7 @@ struct SettingsView: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(profile.name)
-                            Text("포트 " + String(profile.port))
+                            Text(verbatim: String(format: NSLocalizedString("settings.profiles.port", comment: ""), profile.port))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -79,11 +91,11 @@ struct SettingsView: View {
                 .onDelete { appSettings.removeProfiles(at: $0) }
 
                 HStack {
-                    TextField("이름", text: $newProfileName)
-                    TextField("포트", text: $newProfilePort)
+                    TextField("settings.profiles.name.placeholder", text: $newProfileName)
+                    TextField("settings.profiles.port.placeholder", text: $newProfilePort)
                         .keyboardType(.numberPad)
                         .frame(width: 70)
-                    Button("추가") {
+                    Button("common.add") {
                         if let port = Int(newProfilePort.trimmingCharacters(in: .whitespaces)) {
                             appSettings.addProfile(name: newProfileName, port: port)
                             newProfileName = ""
@@ -98,33 +110,35 @@ struct SettingsView: View {
                     Task {
                         discoveryResult = nil
                         let added = await appSettings.discoverProfiles()
-                        discoveryResult = added > 0 ? "\(added)개 프로필 추가·갱신" : "변경 없음 (8642–8651 스캔)"
+                        discoveryResult = added > 0
+                            ? String(format: NSLocalizedString("settings.profiles.discover.added", comment: ""), added)
+                            : String(localized: "settings.profiles.discover.none")
                     }
                 } label: {
                     if appSettings.isDiscoveringProfiles {
                         HStack(spacing: 8) {
                             ProgressView().scaleEffect(0.8)
-                            Text("검색 중...")
+                            Text("settings.profiles.discovering")
                         }
                     } else {
-                        Label("프로필 자동 검색", systemImage: "antenna.radiowaves.left.and.right")
+                        Label("settings.profiles.discover", systemImage: "antenna.radiowaves.left.and.right")
                     }
                 }
                 .disabled(appSettings.isDiscoveringProfiles)
 
                 if let discoveryResult {
-                    Text(discoveryResult)
+                    Text(verbatim: discoveryResult)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
             } header: {
-                Text("프로필 (맥미니 게이트웨이)")
+                Text("settings.profiles")
             } footer: {
-                Text("행을 탭하면 해당 프로필로 전환하고, ⓘ를 탭하면 모델 선택·SOUL.md 편집·게이트웨이 재시작 화면으로 이동합니다.")
+                Text("settings.profiles.footer")
             }
 
             Section {
-                TextField("Bridge URL (예: http://100.x.x.x:8765)", text: $appSettings.bridgeHost)
+                TextField("settings.bridge.url.placeholder", text: $appSettings.bridgeHost)
                     .textContentType(.URL)
                     .keyboardType(.URL)
                     .textInputAutocapitalization(.never)
@@ -143,12 +157,12 @@ struct SettingsView: View {
                     .buttonStyle(.plain)
                 }
             } header: {
-                Text("Hermes Bridge")
+                Text("settings.bridge")
             } footer: {
-                Text("맥미니의 브리지(:8765)입니다. SOUL.md 편집, 게이트웨이 재시작, 프로필 자동 검색, 파일 업로드에 사용합니다.")
+                Text("settings.bridge.desc")
             }
 
-            Section("기본 모델") {
+            Section("settings.model.default") {
                 TextField("Model", text: $appSettings.selectedModel)
             }
 
@@ -156,40 +170,40 @@ struct SettingsView: View {
                 NavigationLink {
                     SkillsView(appSettings: appSettings)
                 } label: {
-                    Label("Skills & Tools", systemImage: "wand.and.stars")
+                    Label("settings.skills", systemImage: "wand.and.stars")
                 }
                 NavigationLink {
                     FileBrowserView(appSettings: appSettings)
                 } label: {
-                    Label("파일 브라우저 (~/.hermes)", systemImage: "folder")
+                    Label("settings.filebrowser", systemImage: "folder")
                 }
             } footer: {
-                Text("Skills & Tools는 현재 선택된 프로필(\(appSettings.selectedProfile.name)) 게이트웨이 기준이고, 파일 브라우저는 Bridge가 필요합니다 (읽기전용).")
+                Text(verbatim: String(format: NSLocalizedString("settings.skills.footer", comment: ""), appSettings.selectedProfile.name))
             }
 
             Section {
-                Link("Tailscale 다운로드", destination: URL(string: "https://tailscale.com")!)
+                Link("settings.tailscale.download", destination: URL(string: "https://tailscale.com")!)
             }
 
             Section {
                 Link("settings.privacy.policy", destination: URL(string: "https://hermeschat.app/privacy")!)
             }
         }
-        .navigationTitle("설정")
+        .navigationTitle("settings.title")
         .navigationBarTitleDisplayMode(.large)
         .navigationDestination(item: $detailProfile) { profile in
             ProfileDetailView(appSettings: appSettings, profileID: profile.id)
         }
-        .alert("프로필 이름 수정", isPresented: $showEditAlert, presenting: editingProfile) { profile in
-            TextField("프로필 이름", text: $editingProfileName)
-            Button("취소", role: .cancel) { }
-            Button("저장") {
+        .alert("settings.profile.rename.title", isPresented: $showEditAlert, presenting: editingProfile) { profile in
+            TextField("settings.profile.rename.placeholder", text: $editingProfileName)
+            Button("common.cancel", role: .cancel) { }
+            Button("common.save") {
                 var updated = profile
                 updated.name = editingProfileName.trimmingCharacters(in: .whitespaces)
                 appSettings.updateProfile(updated)
             }
-        } message: { profile in
-            Text("프로필 이름을 변경하세요.")
+        } message: { _ in
+            Text("settings.profile.rename.message")
         }
     }
 
@@ -208,12 +222,16 @@ struct SettingsView: View {
             do {
                 let (_, response) = try await URLSession.shared.data(for: request)
                 if let http = response as? HTTPURLResponse {
-                    testResult = http.statusCode == 200 ? "연결 성공" : "상태 코드: \(http.statusCode)"
+                    if http.statusCode == 200 {
+                        testResult = .success
+                    } else {
+                        testResult = .failure(String(format: NSLocalizedString("settings.connection.test.status", comment: ""), http.statusCode))
+                    }
                 } else {
-                    testResult = "응답 형식 오류"
+                    testResult = .failure(String(localized: "settings.connection.test.response_error"))
                 }
             } catch {
-                testResult = "연결 실패: \(error.localizedDescription)"
+                testResult = .failure(String(format: NSLocalizedString("settings.connection.test.failed", comment: ""), error.localizedDescription))
             }
             isTesting = false
         }

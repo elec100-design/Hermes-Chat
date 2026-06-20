@@ -45,8 +45,34 @@
 
 /* Session List */
 "session.new" = "새 세션 만들기";
+"session.creating" = "생성 중...";
 "session.search.placeholder" = "세션 검색";
 "session.pinned" = "고정됨";
+"session.rename" = "이름변경";
+"session.pin" = "고정";
+"session.unpin" = "고정해제";
+"session.fork" = "분기";
+"session.rename.title" = "세션 이름 변경";
+"session.rename.placeholder" = "세션 이름";
+"session.rename.message" = "세션 이름을 변경하세요.";
+
+/* Settings (extended) */
+"settings.profiles.name.placeholder" = "이름";
+"settings.profiles.port.placeholder" = "포트";
+"settings.profiles.discover" = "프로필 자동 검색";
+"settings.profiles.discovering" = "검색 중...";
+"settings.profiles.discover.none" = "변경 없음 (8642–8651 스캔)";
+"settings.profiles.discover.added" = "%ld개 프로필 추가·갱신";
+"settings.profiles.footer" = "행을 탭하면 해당 프로필로 전환하고, ⓘ를 탭하면 모델 선택·SOUL.md 편집·게이트웨이 재시작 화면으로 이동합니다.";
+"settings.bridge.url.placeholder" = "Bridge URL (예: http://100.x.x.x:8765)";
+"settings.profile.rename.title" = "프로필 이름 수정";
+"settings.profile.rename.placeholder" = "프로필 이름";
+"settings.profile.rename.message" = "프로필 이름을 변경하세요.";
+"settings.connection.test.success" = "연결 성공";
+"settings.connection.test.status" = "상태 코드: %d";
+"settings.connection.test.response_error" = "응답 형식 오류";
+"settings.connection.test.failed" = "연결 실패: %@";
+"settings.skills.footer" = "Skills & Tools는 현재 선택된 프로필(%@) 게이트웨이 기준이고, 파일 브라우저는 Bridge가 필요합니다 (읽기전용).";
 
 /* Common */
 "common.cancel" = "취소";
@@ -59,3 +85,5 @@
 "common.delete" = "삭제";
 "common.add" = "추가";
 "common.edit" = "편집";
+"common.load_more" = "더 보기";
+"common.all" = "전체";

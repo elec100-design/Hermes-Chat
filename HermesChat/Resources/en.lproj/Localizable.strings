@@ -45,8 +45,34 @@
 
 /* Session List */
 "session.new" = "New Session";
+"session.creating" = "Creating...";
 "session.search.placeholder" = "Search sessions";
 "session.pinned" = "Pinned";
+"session.rename" = "Rename";
+"session.pin" = "Pin";
+"session.unpin" = "Unpin";
+"session.fork" = "Fork";
+"session.rename.title" = "Rename Session";
+"session.rename.placeholder" = "Session name";
+"session.rename.message" = "Enter a new name for the session.";
+
+/* Settings (extended) */
+"settings.profiles.name.placeholder" = "Name";
+"settings.profiles.port.placeholder" = "Port";
+"settings.profiles.discover" = "Auto-discover Profiles";
+"settings.profiles.discovering" = "Discovering...";
+"settings.profiles.discover.none" = "No changes (scanned 8642–8651)";
+"settings.profiles.discover.added" = "%ld profiles added/updated";
+"settings.profiles.footer" = "Tap a row to switch to that profile. Tap ⓘ to access model selection, SOUL.md editing, and gateway restart.";
+"settings.bridge.url.placeholder" = "Bridge URL (e.g. http://100.x.x.x:8765)";
+"settings.profile.rename.title" = "Rename Profile";
+"settings.profile.rename.placeholder" = "Profile name";
+"settings.profile.rename.message" = "Enter a new name for the profile.";
+"settings.connection.test.success" = "Connected";
+"settings.connection.test.status" = "Status code: %d";
+"settings.connection.test.response_error" = "Invalid response format";
+"settings.connection.test.failed" = "Connection failed: %@";
+"settings.skills.footer" = "Skills & Tools uses the selected profile (%@) gateway. File browser requires Bridge (read-only).";
 
 /* Common */
 "common.cancel" = "Cancel";
@@ -59,3 +85,5 @@
 "common.delete" = "Delete";
 "common.add" = "Add";
 "common.edit" = "Edit";
+"common.load_more" = "Load More";
+"common.all" = "All";

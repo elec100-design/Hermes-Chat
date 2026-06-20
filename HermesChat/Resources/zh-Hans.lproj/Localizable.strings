@@ -45,8 +45,34 @@
 
 /* Session List */
 "session.new" = "新建会话";
+"session.creating" = "创建中…";
 "session.search.placeholder" = "搜索会话";
 "session.pinned" = "已固定";
+"session.rename" = "重命名";
+"session.pin" = "固定";
+"session.unpin" = "取消固定";
+"session.fork" = "分支";
+"session.rename.title" = "重命名会话";
+"session.rename.placeholder" = "会话名称";
+"session.rename.message" = "请输入新的会话名称。";
+
+/* Settings (extended) */
+"settings.profiles.name.placeholder" = "名称";
+"settings.profiles.port.placeholder" = "端口";
+"settings.profiles.discover" = "自动搜索配置文件";
+"settings.profiles.discovering" = "搜索中…";
+"settings.profiles.discover.none" = "无变化（已扫描 8642–8651）";
+"settings.profiles.discover.added" = "已添加/更新 %ld 个配置文件";
+"settings.profiles.footer" = "点击行切换到该配置文件，点击 ⓘ 进入模型选择、SOUL.md 编辑和网关重启页面。";
+"settings.bridge.url.placeholder" = "Bridge URL（如 http://100.x.x.x:8765）";
+"settings.profile.rename.title" = "重命名配置文件";
+"settings.profile.rename.placeholder" = "配置文件名称";
+"settings.profile.rename.message" = "请输入新的配置文件名称。";
+"settings.connection.test.success" = "连接成功";
+"settings.connection.test.status" = "状态码：%d";
+"settings.connection.test.response_error" = "响应格式错误";
+"settings.connection.test.failed" = "连接失败：%@";
+"settings.skills.footer" = "技能与工具基于当前选择的配置文件（%@）网关，文件浏览器需要 Bridge（只读）。";
 
 /* Common */
 "common.cancel" = "取消";
@@ -59,3 +85,5 @@
 "common.delete" = "删除";
 "common.add" = "添加";
 "common.edit" = "编辑";
+"common.load_more" = "加载更多";
+"common.all" = "全部";

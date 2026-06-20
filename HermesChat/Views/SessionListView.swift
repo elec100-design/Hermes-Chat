@@ -21,7 +21,7 @@ struct SessionListView: View {
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                         Spacer()
-                        Button("재시도") { appSettings.loadSessions() }
+                        Button("common.retry") { appSettings.loadSessions() }
                             .font(.footnote.bold())
                     }
                     .listRowBackground(Color.orange.opacity(0.08))
@@ -44,11 +44,11 @@ struct SessionListView: View {
                     if isCreatingSession {
                         HStack(spacing: 8) {
                             ProgressView().scaleEffect(0.8)
-                            Text("생성 중...")
+                            Text("session.creating")
                                 .foregroundStyle(.secondary)
                         }
                     } else {
-                        Label("새 세션 만들기", systemImage: "speaker.wave.2.bubble.fill")
+                        Label("session.new", systemImage: "speaker.wave.2.bubble.fill")
                             .foregroundStyle(.tint)
                     }
                 }
@@ -90,22 +90,22 @@ struct SessionListView: View {
                         Button(role: .destructive) {
                             appSettings.deleteSession(id: session.id)
                         } label: {
-                            Label("삭제", systemImage: "trash")
+                            Label("common.delete", systemImage: "trash")
                         }
                         Button {
                             renamingSession = session
                             renameText = session.title ?? ""
                         } label: {
-                            Label("이름변경", systemImage: "pencil")
+                            Label("session.rename", systemImage: "pencil")
                         }
                         .tint(.blue)
                         Button {
                             appSettings.togglePin(id: session.id)
                         } label: {
                             if appSettings.isPinned(id: session.id) {
-                                Label("고정해제", systemImage: "pin.slash")
+                                Label("session.unpin", systemImage: "pin.slash")
                             } else {
-                                Label("고정", systemImage: "pin")
+                                Label("session.pin", systemImage: "pin")
                             }
                         }
                         .tint(.orange)
@@ -121,7 +121,7 @@ struct SessionListView: View {
                                 }
                             }
                         } label: {
-                            Label("분기", systemImage: "arrow.triangle.branch")
+                            Label("session.fork", systemImage: "arrow.triangle.branch")
                         }
                         .tint(.indigo)
                     }
@@ -134,7 +134,7 @@ struct SessionListView: View {
                         if appSettings.isLoadingMoreSessions {
                             ProgressView().scaleEffect(0.8)
                         } else {
-                            Text("더 보기")
+                            Text("common.load_more")
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
                         }
@@ -145,14 +145,14 @@ struct SessionListView: View {
             }
             .listStyle(.insetGrouped)
             .navigationTitle(appSettings.selectedProfile.name)
-            .searchable(text: $searchText, prompt: "세션 검색")
-            .alert("세션 이름 변경", isPresented: Binding(
+            .searchable(text: $searchText, prompt: "session.search.placeholder")
+            .alert("session.rename.title", isPresented: Binding(
                 get: { renamingSession != nil },
                 set: { if !$0 { renamingSession = nil } }
             ), presenting: renamingSession) { session in
-                TextField("세션 이름", text: $renameText)
-                Button("취소", role: .cancel) { }
-                Button("저장") {
+                TextField("session.rename.placeholder", text: $renameText)
+                Button("common.cancel", role: .cancel) { }
+                Button("common.save") {
                     var updated = session
                     let trimmed = renameText.trimmingCharacters(in: .whitespaces)
                     updated.title = trimmed
@@ -161,7 +161,7 @@ struct SessionListView: View {
                     Task { try? await client.updateSessionTitle(id: session.id, title: trimmed) }
                 }
             } message: { _ in
-                Text("세션 이름을 변경하세요.")
+                Text("session.rename.message")
             }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -175,7 +175,7 @@ struct SessionListView: View {
                         NavigationLink {
                             SettingsView(appSettings: appSettings)
                         } label: {
-                            Text("설정")
+                            Text("settings.title")
                         }
                     }
                 }
@@ -209,9 +209,9 @@ struct SessionListView: View {
                     appSettings.selectedSource = nil
                 } label: {
                     if appSettings.selectedSource == nil {
-                        Label("전체", systemImage: "checkmark")
+                        Label("common.all", systemImage: "checkmark")
                     } else {
-                        Text("전체")
+                        Text("common.all")
                     }
                 }
                 ForEach(appSettings.availableSources, id: \.self) { source in
