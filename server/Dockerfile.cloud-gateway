@@ -1,0 +1,17 @@
+# cloud_gateway.py용 경량 컨테이너 — T-B03
+# Docker socket 마운트가 필요하므로 호스트 docker CLI 버전과 맞춰야 함
+FROM python:3.11-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    docker.io \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY server/cloud_gateway.py /app/cloud_gateway.py
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+CMD ["python3", "/app/cloud_gateway.py"]

@@ -1,4 +1,4 @@
-# hermes-agent per-user 컨테이너 템플릿 — T-B01
+# hermes-agent per-user 컨테이너 템플릿 — T-B01 / cloud_gateway — T-B03
 #
 # 로컬 단일 사용자 테스트:
 #   cp server/.env.example server/.env  # 값 채우기
@@ -49,23 +49,34 @@ services:
       start_period: 60s
 
   # ── T-B03: cloud_gateway.py (JWT 검증 + 컨테이너 라우팅) ─────────────────
-  # 구현 후 주석 해제
-  #
-  # cloud-gateway:
-  #   build:
-  #     context: ..
-  #     dockerfile: server/Dockerfile.cloud-gateway  # T-B03에서 신규 생성
-  #   ports:
-  #     - "8080:8080"
-  #   environment:
-  #     - SUPABASE_URL=${SUPABASE_URL}
-  #     - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
-  #     - DOCKER_HOST=unix:///var/run/docker.sock
-  #   volumes:
-  #     - /var/run/docker.sock:/var/run/docker.sock  # 동적 컨테이너 생성용
-  #   networks:
-  #     - hermes-internal
-  #   restart: unless-stopped
+  cloud-gateway:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile.cloud-gateway
+    ports:
+      - "${CLOUD_GW_PORT:-8080}:8080"
+    environment:
+      # Supabase 프로젝트 > Settings > API > JWT Secret
+      - SUPABASE_JWT_SECRET=${SUPABASE_JWT_SECRET:?SUPABASE_JWT_SECRET is required}
+      # per-user API Key 파생 시드 (64자 랜덤 권장)
+      - GATEWAY_SECRET=${GATEWAY_SECRET:?GATEWAY_SECRET is required}
+      # LLM provider 키 (신규 컨테이너 생성 시 주입)
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - HERMES_IMAGE=${HERMES_IMAGE:-hermes-agent:latest}
+      - DOCKER_NETWORK=hermes-internal
+    volumes:
+      # Docker 소켓: cloud_gateway.py가 사용자 컨테이너를 동적 생성
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - hermes-internal
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   # ── T-B04: nginx + Let's Encrypt (외부 HTTPS 종단) ───────────────────────
   # 구현 후 주석 해제
