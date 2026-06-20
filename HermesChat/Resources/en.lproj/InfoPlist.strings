@@ -1,0 +1,4 @@
+CFBundleDisplayName = "HermesChat";
+NSPhotoLibraryUsageDescription = "We need access to your photo library to attach photos to messages and automatically detect photos captured with Meta glasses.";
+NSMicrophoneUsageDescription = "Microphone access is required to record voice messages.";
+NSSpeechRecognitionUsageDescription = "Speech recognition is used to convert your spoken words to text.";

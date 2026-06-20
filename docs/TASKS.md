@@ -283,6 +283,18 @@
 |----|------|------|------|
 | T-148 | 대시보드 탭에 **두 손가락 핀치 줌**과 **데스크톱 모드 토글** 추가(사용자 요청 — 모바일 화면에서 작아서 안 눌리거나 레이아웃에 숨겨져 접근 안 되는 버튼 대응). 대시보드 페이지(:8000)는 맥미니가 서빙해 HTML 직접 수정 불가 → 앱에서 보조. **핀치 줌**: 페이지의 `<meta viewport>`가 보통 `user-scalable=no`라 막혀 있어, `WKUserScript`(.atDocumentEnd) + 네비 완료 시 `evaluateJavaScript`로 viewport를 `user-scalable=yes, maximum-scale=10`으로 덮어씀. **데스크톱 모드**: 우상단 툴바 토글(iphone/desktopcomputer 아이콘) → `customUserAgent`를 macOS Safari로 바꾸고 viewport `width=1024`로 전체 데스크톱 레이아웃을 불러옴(숨겨진 버튼 노출) + 핀치 줌으로 탐색. 상태는 `@AppStorage("dashboardDesktopMode")`로 영속화. 모드 전환 시 UA 교체 후 `reload()`, 기존 host/port 변경 재로드 로직 보존. 기존 파일만 수정 → **pbxproj 무수정**. **빌드 검증 필요(맥)** | `Views/DashboardWebView.swift` | NEEDS-BUILD |
 
+## Phase A — 앱스토어 상품화 Phase 0: 컴플라이언스 + 다국어 기반 (브랜치 `claude/cool-maxwell-jbo5w1`)
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-A01 | `PrivacyInfo.xcprivacy` 생성 (Apple 2024 Privacy Manifest 요건) + pbxproj 등록. `NSPrivacyTracking: false`, `NSPrivacyAccessedAPITypes`: UserDefaults(CA92.1), FileTimestamp(C617.1), SystemBootTime(35F9.1) | `HermesChat/Resources/PrivacyInfo.xcprivacy`, `project.pbxproj` | DOING(Claude, 2026-06-20) |
+| T-A02 | `Info.plist`: `armv7` → `arm64` 수정 | `HermesChat/Resources/Info.plist` | DOING(Claude, 2026-06-20) |
+| T-A03 | `OnboardingView.swift` 신설 (3단계: 환영→서버연결→완료). `AppDefaults.isFirstLaunchComplete` 추가 + `HermesChatApp.swift`에 `.fullScreenCover` 연결 | `Views/OnboardingView.swift`, `Services/AppDefaults.swift`, `HermesChatApp.swift`, `project.pbxproj` | DOING(Claude, 2026-06-20) |
+| T-A04 | 다국어 기반 설정: `ko.lproj/`, `en.lproj/`, `zh-Hans.lproj/` + `Localizable.strings`/`InfoPlist.strings` 생성. 탭 레이블 LocalizedStringKey 전환 | `Resources/{ko,en,zh-Hans}.lproj/*`, `HermesChatApp.swift`, `project.pbxproj` | DOING(Claude, 2026-06-20) |
+| T-A05 | `SettingsView.swift`에 "개인정보 처리방침" 링크 추가 (Privacy Policy URL placeholder) | `Views/SettingsView.swift` | DOING(Claude, 2026-06-20) |
+| T-A06 | Sign in with Apple 엔타이틀먼트 추가 (Phase 2 계정 시스템 준비용, 코드 미사용) | `HermesChat.entitlements` | TODO |
+| T-A07 | 전체 Views 한국어 하드코딩 → `LocalizedStringKey` 전환 (SessionListView, ChatView, SettingsView, KanbanView 우선) | 전체 `Views/` | TODO |
+
 ## 빌드 검증 기록 (검증자가 갱신)
 
 | 날짜 | 브랜치/커밋 | 결과 | 비고 |

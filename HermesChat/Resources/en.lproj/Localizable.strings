@@ -1,0 +1,61 @@
+/* Tab Bar */
+"tab.board" = "Board";
+"tab.sessions" = "Sessions";
+"tab.kanban" = "Kanban";
+"tab.dashboard" = "Dashboard";
+"tab.settings" = "Settings";
+
+/* Onboarding */
+"onboarding.welcome.title" = "Welcome to HermesChat";
+"onboarding.welcome.subtitle" = "Use your AI agent on mobile";
+"onboarding.welcome.selfhosted" = "Use My Server (Self-hosted)";
+"onboarding.welcome.selfhosted.desc" = "Connect to your own Mac mini or server via Tailscale";
+"onboarding.welcome.cloud" = "Use Cloud Service (Coming Soon)";
+"onboarding.welcome.cloud.desc" = "Connect to Hermes cloud servers — service in preparation";
+"onboarding.server.title" = "Server Connection";
+"onboarding.server.host.label" = "Server Address";
+"onboarding.server.host.placeholder" = "http://100.x.x.x:8642";
+"onboarding.server.apikey.label" = "API Key (optional)";
+"onboarding.server.apikey.placeholder" = "Leave empty if not configured";
+"onboarding.server.test" = "Test Connection";
+"onboarding.server.testing" = "Testing…";
+"onboarding.server.success" = "Connected!";
+"onboarding.server.failed" = "Connection Failed";
+"onboarding.done.title" = "All Set!";
+"onboarding.done.subtitle" = "HermesChat is ready to use";
+"onboarding.done.start" = "Get Started";
+"onboarding.next" = "Next";
+"onboarding.back" = "Back";
+"onboarding.skip" = "Skip";
+
+/* Settings */
+"settings.title" = "Settings";
+"settings.connection" = "Hermes Connection";
+"settings.connection.host" = "Server Host";
+"settings.connection.test" = "Test Connection";
+"settings.bridge" = "Hermes Bridge";
+"settings.bridge.desc" = "The Mac mini bridge (:8765). Used for SOUL.md editing, gateway restart, profile auto-discovery, and file uploads.";
+"settings.model.default" = "Default Model";
+"settings.profiles" = "Profiles (Mac Mini Gateway)";
+"settings.profiles.port" = "Port %d";
+"settings.skills" = "Skills & Tools";
+"settings.filebrowser" = "File Browser (~/.hermes)";
+"settings.tailscale.download" = "Download Tailscale";
+"settings.privacy.policy" = "Privacy Policy";
+
+/* Session List */
+"session.new" = "New Session";
+"session.search.placeholder" = "Search sessions";
+"session.pinned" = "Pinned";
+
+/* Common */
+"common.cancel" = "Cancel";
+"common.save" = "Save";
+"common.done" = "Done";
+"common.ok" = "OK";
+"common.error" = "Error";
+"common.retry" = "Retry";
+"common.loading" = "Loading…";
+"common.delete" = "Delete";
+"common.add" = "Add";
+"common.edit" = "Edit";

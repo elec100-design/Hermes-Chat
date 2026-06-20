@@ -1,0 +1,61 @@
+/* Tab Bar */
+"tab.board" = "보드";
+"tab.sessions" = "세션";
+"tab.kanban" = "칸반";
+"tab.dashboard" = "대시보드";
+"tab.settings" = "설정";
+
+/* Onboarding */
+"onboarding.welcome.title" = "HermesChat에 오신 것을 환영합니다";
+"onboarding.welcome.subtitle" = "AI 에이전트를 모바일에서 사용하세요";
+"onboarding.welcome.selfhosted" = "내 서버 사용 (자체 호스팅)";
+"onboarding.welcome.selfhosted.desc" = "Tailscale로 연결된 Mac mini 등 자체 서버에 연결합니다";
+"onboarding.welcome.cloud" = "클라우드 서비스 사용 (준비 중)";
+"onboarding.welcome.cloud.desc" = "Hermes 클라우드 서버에 연결합니다 — 서비스 준비 중";
+"onboarding.server.title" = "서버 연결";
+"onboarding.server.host.label" = "서버 주소";
+"onboarding.server.host.placeholder" = "http://100.x.x.x:8642";
+"onboarding.server.apikey.label" = "API 키 (선택)";
+"onboarding.server.apikey.placeholder" = "설정하지 않아도 됩니다";
+"onboarding.server.test" = "연결 테스트";
+"onboarding.server.testing" = "테스트 중…";
+"onboarding.server.success" = "연결 성공!";
+"onboarding.server.failed" = "연결 실패";
+"onboarding.done.title" = "설정 완료!";
+"onboarding.done.subtitle" = "이제 HermesChat을 사용할 준비가 됐습니다";
+"onboarding.done.start" = "시작하기";
+"onboarding.next" = "다음";
+"onboarding.back" = "뒤로";
+"onboarding.skip" = "건너뛰기";
+
+/* Settings */
+"settings.title" = "설정";
+"settings.connection" = "Hermes 연결";
+"settings.connection.host" = "Server Host";
+"settings.connection.test" = "연결 테스트";
+"settings.bridge" = "Hermes Bridge";
+"settings.bridge.desc" = "맥미니의 브리지(:8765)입니다. SOUL.md 편집, 게이트웨이 재시작, 프로필 자동 검색, 파일 업로드에 사용합니다.";
+"settings.model.default" = "기본 모델";
+"settings.profiles" = "프로필 (맥미니 게이트웨이)";
+"settings.profiles.port" = "포트 %d";
+"settings.skills" = "Skills & Tools";
+"settings.filebrowser" = "파일 브라우저 (~/.hermes)";
+"settings.tailscale.download" = "Tailscale 다운로드";
+"settings.privacy.policy" = "개인정보 처리방침";
+
+/* Session List */
+"session.new" = "새 세션 만들기";
+"session.search.placeholder" = "세션 검색";
+"session.pinned" = "고정됨";
+
+/* Common */
+"common.cancel" = "취소";
+"common.save" = "저장";
+"common.done" = "완료";
+"common.ok" = "확인";
+"common.error" = "오류";
+"common.retry" = "재시도";
+"common.loading" = "로딩 중…";
+"common.delete" = "삭제";
+"common.add" = "추가";
+"common.edit" = "편집";

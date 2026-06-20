@@ -170,6 +170,10 @@ struct SettingsView: View {
             Section {
                 Link("Tailscale 다운로드", destination: URL(string: "https://tailscale.com")!)
             }
+
+            Section {
+                Link("settings.privacy.policy", destination: URL(string: "https://hermeschat.app/privacy")!)
+            }
         }
         .navigationTitle("설정")
         .navigationBarTitleDisplayMode(.large)
