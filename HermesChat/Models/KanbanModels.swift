@@ -64,11 +64,11 @@ enum KanbanAction: String, Identifiable {
 
     var label: String {
         switch self {
-        case .promote: return "실행 (Ready로)"
-        case .block: return "보류"
-        case .unblock: return "재개 (Ready로)"
-        case .complete: return "완료 처리"
-        case .archive: return "아카이브"
+        case .promote: return String(localized: "kanban.action.promote")
+        case .block: return String(localized: "kanban.action.block")
+        case .unblock: return String(localized: "kanban.action.unblock")
+        case .complete: return String(localized: "kanban.action.complete")
+        case .archive: return String(localized: "kanban.action.archive")
         }
     }
 
@@ -108,7 +108,7 @@ extension KanbanTask {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = (try? container.decode(String.self, forKey: .id)) ?? UUID().uuidString
-        title = (try? container.decode(String.self, forKey: .title)) ?? "(제목 없음)"
+        title = (try? container.decode(String.self, forKey: .title)) ?? String(localized: "kanban.task.no_title")
         detail = try? container.decode(String.self, forKey: .detail)
         status = (try? container.decode(KanbanStatus.self, forKey: .status)) ?? .triage
         assignee = try? container.decode(String.self, forKey: .assignee)
@@ -165,17 +165,17 @@ enum KanbanCreateMode: String, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .ready: return "바로 실행"
-        case .triage: return "구체화 후 실행"
-        case .blocked: return "보류"
+        case .ready: return String(localized: "kanban.mode.ready")
+        case .triage: return String(localized: "kanban.mode.triage")
+        case .blocked: return String(localized: "kanban.mode.blocked")
         }
     }
 
     var footnote: String {
         switch self {
-        case .ready: return "1분 내에 담당 프로필 워커가 작업을 시작합니다."
-        case .triage: return "스펙 구체화 에이전트가 내용을 다듬은 뒤 실행됩니다."
-        case .blocked: return "보드에 보관만 하고 실행하지 않습니다. Blocked 컬럼에서 재개할 수 있습니다."
+        case .ready: return String(localized: "kanban.mode.ready.footnote")
+        case .triage: return String(localized: "kanban.mode.triage.footnote")
+        case .blocked: return String(localized: "kanban.mode.blocked.footnote")
         }
     }
 }

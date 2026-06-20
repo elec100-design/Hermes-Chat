@@ -42,11 +42,39 @@
 "settings.filebrowser" = "文件浏览器 (~/.hermes)";
 "settings.tailscale.download" = "下载 Tailscale";
 "settings.privacy.policy" = "隐私政策";
+"settings.language" = "应用语言";
+"settings.language.footer" = "可在 iOS 设置中更改 HermesChat 的显示语言（한국어 · English · 简体中文）。";
 
 /* Session List */
 "session.new" = "新建会话";
+"session.creating" = "创建中…";
 "session.search.placeholder" = "搜索会话";
 "session.pinned" = "已固定";
+"session.rename" = "重命名";
+"session.pin" = "固定";
+"session.unpin" = "取消固定";
+"session.fork" = "分支";
+"session.rename.title" = "重命名会话";
+"session.rename.placeholder" = "会话名称";
+"session.rename.message" = "请输入新的会话名称。";
+
+/* Settings (extended) */
+"settings.profiles.name.placeholder" = "名称";
+"settings.profiles.port.placeholder" = "端口";
+"settings.profiles.discover" = "自动搜索配置文件";
+"settings.profiles.discovering" = "搜索中…";
+"settings.profiles.discover.none" = "无变化（已扫描 8642–8651）";
+"settings.profiles.discover.added" = "已添加/更新 %ld 个配置文件";
+"settings.profiles.footer" = "点击行切换到该配置文件，点击 ⓘ 进入模型选择、SOUL.md 编辑和网关重启页面。";
+"settings.bridge.url.placeholder" = "Bridge URL（如 http://100.x.x.x:8765）";
+"settings.profile.rename.title" = "重命名配置文件";
+"settings.profile.rename.placeholder" = "配置文件名称";
+"settings.profile.rename.message" = "请输入新的配置文件名称。";
+"settings.connection.test.success" = "连接成功";
+"settings.connection.test.status" = "状态码：%d";
+"settings.connection.test.response_error" = "响应格式错误";
+"settings.connection.test.failed" = "连接失败：%@";
+"settings.skills.footer" = "技能与工具基于当前选择的配置文件（%@）网关，文件浏览器需要 Bridge（只读）。";
 
 /* Common */
 "common.cancel" = "取消";
@@ -59,3 +87,69 @@
 "common.delete" = "删除";
 "common.add" = "添加";
 "common.edit" = "编辑";
+"common.load_more" = "加载更多";
+"common.all" = "全部";
+
+/* Chat */
+"chat.loading_history" = "加载对话中…";
+"chat.fork_session" = "分支此会话";
+"chat.session_menu" = "会话菜单";
+"chat.fork_failed" = "分支失败";
+"chat.voice_error" = "语音输入错误";
+"chat.photo_access.title" = "照片访问权限";
+"chat.photo_access.limited" = "眼镜照片自动发送需要完整的照片库访问权限。请前往设置 > 隐私与安全性 > 照片，将 Hermes Chat 更改为\"完整访问\"。";
+"chat.photo_access.denied" = "需要照片访问权限。请在设置 > 隐私与安全性 > 照片中允许访问。";
+"chat.working.generating" = "生成响应中…";
+"chat.working.thinking" = "思考中…";
+"chat.working.responding" = "响应中";
+"chat.voice.listening" = "聆听中…";
+"chat.voice.thinking" = "思考中…";
+"chat.voice.speaking" = "说话中…";
+"chat.voice.stop" = "结束语音对话";
+"chat.voice.read_stop" = "停止朗读";
+"chat.voice.start" = "开始语音对话";
+"chat.glasses.detected" = "已检测到照片（%ld 张）· 最近：%@";
+"chat.glasses.watching" = "正在监视眼镜拍照 — 拍照后将自动附加";
+"chat.glasses.enable" = "开启眼镜自动发送";
+"chat.glasses.disable" = "关闭眼镜自动发送";
+"chat.attach.photo" = "照片";
+"chat.attach.file" = "文件（含云盘）";
+"chat.attach.add" = "添加附件";
+"chat.message.placeholder" = "输入消息";
+
+/* Kanban */
+"kanban.title" = "看板";
+"kanban.bridge_required.title" = "需要配置 Bridge";
+"kanban.bridge_required.desc" = "在设置的 Hermes Bridge 部分输入 URL 和令牌即可使用看板。";
+"kanban.loading" = "加载看板中…";
+"kanban.board.empty" = "无看板";
+"kanban.board.empty.hint" = "在 Mac mini 上运行 `hermes kanban boards create <名称>` 创建看板。";
+"kanban.board.reload" = "重新加载";
+"kanban.board.new" = "新建看板";
+"kanban.board.new.title" = "新建看板";
+"kanban.board.name.placeholder" = "看板名称";
+"kanban.column.empty" = "空";
+"kanban.task.title.placeholder" = "标题（做什么）";
+"kanban.task.assignee" = "负责配置文件";
+"kanban.task.assignee.auto" = "自动";
+"kanban.task.assignee.label" = "负责人";
+"kanban.task.content" = "内容";
+"kanban.task.mode" = "启动方式";
+"kanban.task.new.title" = "新任务";
+"kanban.task.create" = "创建";
+"kanban.task.status" = "状态";
+"kanban.task.created" = "创建时间";
+"kanban.task.updated" = "更新时间";
+"kanban.task.close" = "关闭";
+"kanban.task.no_title" = "（无标题）";
+"kanban.action.promote" = "运行（至 Ready）";
+"kanban.action.block" = "阻塞";
+"kanban.action.unblock" = "恢复（至 Ready）";
+"kanban.action.complete" = "完成";
+"kanban.action.archive" = "归档";
+"kanban.mode.ready" = "立即运行";
+"kanban.mode.triage" = "细化后运行";
+"kanban.mode.blocked" = "阻塞";
+"kanban.mode.ready.footnote" = "负责配置文件的工作器将在一分钟内开始任务。";
+"kanban.mode.triage.footnote" = "规格细化代理将先完善内容，然后再运行。";
+"kanban.mode.blocked.footnote" = "仅存储在看板上，不运行。可在 Blocked 列中恢复。";

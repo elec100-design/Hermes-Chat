@@ -42,11 +42,39 @@
 "settings.filebrowser" = "File Browser (~/.hermes)";
 "settings.tailscale.download" = "Download Tailscale";
 "settings.privacy.policy" = "Privacy Policy";
+"settings.language" = "App Language";
+"settings.language.footer" = "Change HermesChat's display language in iOS Settings (한국어 · English · 简体中文).";
 
 /* Session List */
 "session.new" = "New Session";
+"session.creating" = "Creating...";
 "session.search.placeholder" = "Search sessions";
 "session.pinned" = "Pinned";
+"session.rename" = "Rename";
+"session.pin" = "Pin";
+"session.unpin" = "Unpin";
+"session.fork" = "Fork";
+"session.rename.title" = "Rename Session";
+"session.rename.placeholder" = "Session name";
+"session.rename.message" = "Enter a new name for the session.";
+
+/* Settings (extended) */
+"settings.profiles.name.placeholder" = "Name";
+"settings.profiles.port.placeholder" = "Port";
+"settings.profiles.discover" = "Auto-discover Profiles";
+"settings.profiles.discovering" = "Discovering...";
+"settings.profiles.discover.none" = "No changes (scanned 8642–8651)";
+"settings.profiles.discover.added" = "%ld profiles added/updated";
+"settings.profiles.footer" = "Tap a row to switch to that profile. Tap ⓘ to access model selection, SOUL.md editing, and gateway restart.";
+"settings.bridge.url.placeholder" = "Bridge URL (e.g. http://100.x.x.x:8765)";
+"settings.profile.rename.title" = "Rename Profile";
+"settings.profile.rename.placeholder" = "Profile name";
+"settings.profile.rename.message" = "Enter a new name for the profile.";
+"settings.connection.test.success" = "Connected";
+"settings.connection.test.status" = "Status code: %d";
+"settings.connection.test.response_error" = "Invalid response format";
+"settings.connection.test.failed" = "Connection failed: %@";
+"settings.skills.footer" = "Skills & Tools uses the selected profile (%@) gateway. File browser requires Bridge (read-only).";
 
 /* Common */
 "common.cancel" = "Cancel";
@@ -59,3 +87,69 @@
 "common.delete" = "Delete";
 "common.add" = "Add";
 "common.edit" = "Edit";
+"common.load_more" = "Load More";
+"common.all" = "All";
+
+/* Chat */
+"chat.loading_history" = "Loading conversation...";
+"chat.fork_session" = "Fork Session";
+"chat.session_menu" = "Session menu";
+"chat.fork_failed" = "Fork Failed";
+"chat.voice_error" = "Voice Input Error";
+"chat.photo_access.title" = "Photo Access";
+"chat.photo_access.limited" = "Glasses photo auto-send requires full photo library access. Go to Settings > Privacy & Security > Photos and change Hermes Chat to Full Access.";
+"chat.photo_access.denied" = "Photo access is required. Please allow it in Settings > Privacy & Security > Photos.";
+"chat.working.generating" = "Generating response...";
+"chat.working.thinking" = "Thinking...";
+"chat.working.responding" = "Responding";
+"chat.voice.listening" = "Listening…";
+"chat.voice.thinking" = "Thinking…";
+"chat.voice.speaking" = "Speaking…";
+"chat.voice.stop" = "End voice chat";
+"chat.voice.read_stop" = "Stop reading";
+"chat.voice.start" = "Start voice chat";
+"chat.glasses.detected" = "Photo detected (%ld) · Latest: %@";
+"chat.glasses.watching" = "Watching for glasses photos — auto-attached when taken";
+"chat.glasses.enable" = "Enable glasses auto-send";
+"chat.glasses.disable" = "Disable glasses auto-send";
+"chat.attach.photo" = "Photo";
+"chat.attach.file" = "File (incl. Drive)";
+"chat.attach.add" = "Add attachment";
+"chat.message.placeholder" = "Type a message";
+
+/* Kanban */
+"kanban.title" = "Kanban";
+"kanban.bridge_required.title" = "Bridge Required";
+"kanban.bridge_required.desc" = "Enter the URL and token in the Hermes Bridge section of Settings to use Kanban.";
+"kanban.loading" = "Loading boards...";
+"kanban.board.empty" = "No Boards";
+"kanban.board.empty.hint" = "Create a board on your Mac mini with: `hermes kanban boards create <name>`";
+"kanban.board.reload" = "Reload";
+"kanban.board.new" = "New Board";
+"kanban.board.new.title" = "New Board";
+"kanban.board.name.placeholder" = "Board name";
+"kanban.column.empty" = "Empty";
+"kanban.task.title.placeholder" = "Title (what to do)";
+"kanban.task.assignee" = "Assignee Profile";
+"kanban.task.assignee.auto" = "Auto";
+"kanban.task.assignee.label" = "Assignee";
+"kanban.task.content" = "Content";
+"kanban.task.mode" = "Start Mode";
+"kanban.task.new.title" = "New Task";
+"kanban.task.create" = "Create";
+"kanban.task.status" = "Status";
+"kanban.task.created" = "Created";
+"kanban.task.updated" = "Updated";
+"kanban.task.close" = "Close";
+"kanban.task.no_title" = "(No title)";
+"kanban.action.promote" = "Run (to Ready)";
+"kanban.action.block" = "Block";
+"kanban.action.unblock" = "Resume (to Ready)";
+"kanban.action.complete" = "Complete";
+"kanban.action.archive" = "Archive";
+"kanban.mode.ready" = "Run now";
+"kanban.mode.triage" = "Triage then run";
+"kanban.mode.blocked" = "Block";
+"kanban.mode.ready.footnote" = "The assigned profile worker will start within a minute.";
+"kanban.mode.triage.footnote" = "A spec-refinement agent will polish the details before running.";
+"kanban.mode.blocked.footnote" = "Stored on the board without running. Can be resumed from the Blocked column.";
