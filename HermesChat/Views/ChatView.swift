@@ -32,7 +32,7 @@ struct ChatView: View {
     var body: some View {
         VStack(spacing: 0) {
             if viewModel.isLoadingHistory {
-                ProgressView("대화 기록 불러오는 중...")
+                ProgressView("chat.loading_history")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 if let err = viewModel.historyError {
@@ -81,7 +81,7 @@ struct ChatView: View {
                     Button {
                         forkSession()
                     } label: {
-                        Label("이 세션 분기", systemImage: "arrow.triangle.branch")
+                        Label("chat.fork_session", systemImage: "arrow.triangle.branch")
                     }
                     .disabled(isForking || viewModel.isWorking)
                 } label: {
@@ -91,26 +91,26 @@ struct ChatView: View {
                         Image(systemName: "ellipsis.circle")
                     }
                 }
-                .accessibilityLabel("세션 메뉴")
+                .accessibilityLabel("chat.session_menu")
             }
         }
         // 분기된 세션으로 push — 부모 NavigationStack(SessionListView)의 path를 건드리지 않는다
         .navigationDestination(item: $forkedSession) { session in
             ChatView(sessionId: session.id, appSettings: appSettings)
         }
-        .alert("세션 분기 실패", isPresented: .init(
+        .alert("chat.fork_failed", isPresented: .init(
             get: { forkError != nil },
             set: { if !$0 { forkError = nil } }
         )) {
-            Button("확인", role: .cancel) {}
+            Button("common.ok", role: .cancel) {}
         } message: {
             Text(forkError ?? "")
         }
-        .alert("음성 입력 오류", isPresented: .init(
+        .alert("chat.voice_error", isPresented: .init(
             get: { speech.errorMessage != nil },
             set: { if !$0 { speech.errorMessage = nil } }
         )) {
-            Button("확인", role: .cancel) {}
+            Button("common.ok", role: .cancel) {}
         } message: {
             Text(speech.errorMessage ?? "")
         }
@@ -144,11 +144,11 @@ struct ChatView: View {
             photoWatcher.stop()
             viewModel.glassesCaptureActive = false
         }
-        .alert("사진 접근 권한", isPresented: .init(
+        .alert("chat.photo_access.title", isPresented: .init(
             get: { photoAccessAlert != nil },
             set: { if !$0 { photoAccessAlert = nil } }
         )) {
-            Button("확인", role: .cancel) {}
+            Button("common.ok", role: .cancel) {}
         } message: {
             Text(photoAccessAlert ?? "")
         }
@@ -211,10 +211,9 @@ struct ChatView: View {
             case .authorized:
                 viewModel.glassesCaptureActive = true
             case .limited:
-                photoAccessAlert = "글라스 사진 자동 전송은 사진 '전체 접근' 권한이 필요합니다. "
-                    + "설정 > 개인정보 보호 및 보안 > 사진에서 Hermes Chat을 '전체 접근'으로 바꿔주세요."
+                photoAccessAlert = String(localized: "chat.photo_access.limited")
             case .denied:
-                photoAccessAlert = "사진 접근 권한이 필요합니다. 설정 > 개인정보 보호 및 보안 > 사진에서 허용해주세요."
+                photoAccessAlert = String(localized: "chat.photo_access.denied")
             }
         }
     }
@@ -228,15 +227,14 @@ struct ChatView: View {
         }
     }
 
-    /// 사고 중(<think> 미닫힘)이면 "생각 중...", 보일 내용이 생기면 "응답 중" (T-103)
     private var workingStatusText: String {
         guard let last = viewModel.messages.last, last.role == .assistant else {
-            return "응답 생성 중..."
+            return String(localized: "chat.working.generating")
         }
-        if MarkdownLite.hasOpenThink(last.content) { return "생각 중..." }
+        if MarkdownLite.hasOpenThink(last.content) { return String(localized: "chat.working.thinking") }
         let visible = MarkdownLite.strippingThink(last.content)
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        return visible.isEmpty ? "응답 생성 중..." : "응답 중"
+        return visible.isEmpty ? String(localized: "chat.working.generating") : String(localized: "chat.working.responding")
     }
 
     /// 음성 대화 상태 배너 (T-118) — 듣는 중/생각 중/말하는 중 + 실시간 받아쓰기 한 줄
@@ -260,7 +258,7 @@ struct ChatView: View {
                 Image(systemName: "xmark.circle.fill")
                     .foregroundStyle(.secondary)
             }
-            .accessibilityLabel(voice.handsFree ? "음성 대화 종료" : "낭독 중지")
+            .accessibilityLabel(voice.handsFree ? String(localized: "chat.voice.stop") : String(localized: "chat.voice.read_stop"))
         }
         .padding(.horizontal)
         .padding(.vertical, 8)
@@ -278,9 +276,9 @@ struct ChatView: View {
 
     private var voiceStatusText: String {
         switch voice.state {
-        case .listening: return "듣는 중…"
-        case .waitingResponse: return "생각 중…"
-        case .speaking: return "말하는 중…"
+        case .listening: return String(localized: "chat.voice.listening")
+        case .waitingResponse: return String(localized: "chat.voice.thinking")
+        case .speaking: return String(localized: "chat.voice.speaking")
         case .idle: return ""
         }
     }
@@ -291,12 +289,12 @@ struct ChatView: View {
             Image(systemName: viewModel.lastGlassesPhotoName == nil ? "eyeglasses" : "camera.fill")
                 .foregroundStyle(Color.green)
             if let name = viewModel.lastGlassesPhotoName {
-                Text("사진 감지됨 (\(viewModel.glassesPhotosDetected)장) · 최근: \(name)")
+                Text(verbatim: String(format: NSLocalizedString("chat.glasses.detected", comment: ""), viewModel.glassesPhotosDetected, name))
                     .font(.subheadline)
                     .lineLimit(1)
                     .truncationMode(.middle)
             } else {
-                Text("글라스 사진 감시 중 — 찍으면 자동 첨부됩니다")
+                Text("chat.glasses.watching")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
@@ -370,19 +368,19 @@ struct ChatView: View {
                     Button {
                         showPhotoPicker = true
                     } label: {
-                        Label("사진", systemImage: "photo")
+                        Label("chat.attach.photo", systemImage: "photo")
                     }
                     Button {
                         showFileImporter = true
                     } label: {
-                        Label("파일 (드라이브 포함)", systemImage: "folder")
+                        Label("chat.attach.file", systemImage: "folder")
                     }
                 } label: {
                     Image(systemName: "plus.circle.fill")
                         .font(.system(size: 22))
                 }
                 .disabled(viewModel.isWorking)
-                .accessibilityLabel("첨부 추가")
+                .accessibilityLabel("chat.attach.add")
 
                 Button {
                     if voice.handsFree {
@@ -396,7 +394,7 @@ struct ChatView: View {
                         .font(.system(size: 20))
                         .foregroundStyle(voice.handsFree ? Color.red : Color.accentColor)
                 }
-                .accessibilityLabel(voice.handsFree ? "음성 대화 종료" : "음성 대화 시작")
+                .accessibilityLabel(voice.handsFree ? String(localized: "chat.voice.stop") : String(localized: "chat.voice.start"))
 
                 Button {
                     toggleGlassesCapture()
@@ -405,9 +403,9 @@ struct ChatView: View {
                         .font(.system(size: 20))
                         .foregroundStyle(viewModel.glassesCaptureActive ? Color.green : Color.accentColor)
                 }
-                .accessibilityLabel(viewModel.glassesCaptureActive ? "글라스 사진 자동 전송 끄기" : "글라스 사진 자동 전송 켜기")
+                .accessibilityLabel(viewModel.glassesCaptureActive ? String(localized: "chat.glasses.disable") : String(localized: "chat.glasses.enable"))
 
-                TextField("메시지를 입력하세요", text: $viewModel.inputText, axis: .vertical)
+                TextField("chat.message.placeholder", text: $viewModel.inputText, axis: .vertical)
                     .textFieldStyle(.roundedBorder)
                     .focused($isInputFocused)
 

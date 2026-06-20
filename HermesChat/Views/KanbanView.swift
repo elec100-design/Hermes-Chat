@@ -26,7 +26,7 @@ final class KanbanViewModel: ObservableObject {
     var selectedBoardTitle: String {
         boards.first { $0.board == selectedSlug }?.name
             ?? board?.name
-            ?? "칸반"
+            ?? String(localized: "kanban.title")
     }
 
     func start() async {
@@ -183,9 +183,9 @@ struct KanbanView: View {
     private var content: some View {
         if !viewModel.bridgeConfigured {
             ContentUnavailableView(
-                "Bridge 설정 필요",
+                "kanban.bridge_required.title",
                 systemImage: "antenna.radiowaves.left.and.right.slash",
-                description: Text("설정 화면의 Hermes Bridge 섹션에 URL과 토큰을 입력하면 칸반을 쓸 수 있습니다.")
+                description: Text("kanban.bridge_required.desc")
             )
         } else if let board = viewModel.board {
             VStack(spacing: 0) {
@@ -199,15 +199,14 @@ struct KanbanView: View {
                 columnPager(board)
             }
         } else if viewModel.isLoading {
-            ProgressView("보드 불러오는 중...")
+            ProgressView("kanban.loading")
         } else {
             ContentUnavailableView {
-                Label("보드 없음", systemImage: "rectangle.split.3x1")
+                Label("kanban.board.empty", systemImage: "rectangle.split.3x1")
             } description: {
-                Text(viewModel.errorMessage
-                     ?? "맥미니에서 `hermes kanban boards create <이름>` 으로 보드를 만들 수 있습니다.")
+                Text(viewModel.errorMessage ?? String(localized: "kanban.board.empty.hint"))
             } actions: {
-                Button("다시 불러오기") {
+                Button("kanban.board.reload") {
                     Task { await viewModel.refresh() }
                 }
                 .buttonStyle(.borderedProminent)
@@ -232,7 +231,7 @@ struct KanbanView: View {
             Button {
                 showBoardCreator = true
             } label: {
-                Label("새 보드 만들기", systemImage: "plus.rectangle")
+                Label("kanban.board.new", systemImage: "plus.rectangle")
             }
         } label: {
             HStack(spacing: 3) {
@@ -296,7 +295,7 @@ struct KanbanView: View {
             .refreshable { await viewModel.refresh() }
             .overlay {
                 if tasks.isEmpty {
-                    Text("비어 있음")
+                    Text("kanban.column.empty")
                         .foregroundStyle(.secondary)
                 }
             }
@@ -374,20 +373,20 @@ private struct KanbanTaskComposer: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("제목 (무엇을 할지)", text: $title)
-                    Picker("담당 프로필", selection: $assignee) {
-                        Text("자동").tag("")
+                    TextField("kanban.task.title.placeholder", text: $title)
+                    Picker("kanban.task.assignee", selection: $assignee) {
+                        Text("kanban.task.assignee.auto").tag("")
                         ForEach(profiles, id: \.self) { name in
                             Text(name).tag(name)
                         }
                     }
                 }
-                Section("내용") {
+                Section("kanban.task.content") {
                     TextEditor(text: $detail)
                         .frame(minHeight: 120)
                 }
                 Section {
-                    Picker("시작 방식", selection: $mode) {
+                    Picker("kanban.task.mode", selection: $mode) {
                         ForEach(KanbanCreateMode.allCases) { mode in
                             Text(mode.label).tag(mode)
                         }
@@ -397,11 +396,11 @@ private struct KanbanTaskComposer: View {
                     Text(mode.footnote)
                 }
             }
-            .navigationTitle("새 작업")
+            .navigationTitle("kanban.task.new.title")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("만들기") {
+                    Button("kanban.task.create") {
                         onCreate(
                             title.trimmingCharacters(in: .whitespaces),
                             detail.isEmpty ? nil : detail,
@@ -413,7 +412,7 @@ private struct KanbanTaskComposer: View {
                     .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("취소") { dismiss() }
+                    Button("common.cancel") { dismiss() }
                 }
             }
         }
@@ -431,7 +430,7 @@ private struct KanbanTaskDetail: View {
         NavigationStack {
             Form {
                 Section {
-                    LabeledContent("상태") {
+                    LabeledContent("kanban.task.status") {
                         HStack(spacing: 6) {
                             Circle()
                                 .fill(task.status.color)
@@ -440,18 +439,18 @@ private struct KanbanTaskDetail: View {
                         }
                     }
                     if let assignee = task.assignee, !assignee.isEmpty {
-                        LabeledContent("담당", value: assignee)
+                        LabeledContent("kanban.task.assignee.label", value: assignee)
                     }
                     LabeledContent("ID", value: task.id)
                     if let created = task.createdAt {
-                        LabeledContent("생성", value: created)
+                        LabeledContent("kanban.task.created", value: created)
                     }
                     if let updated = task.updatedAt {
-                        LabeledContent("갱신", value: updated)
+                        LabeledContent("kanban.task.updated", value: updated)
                     }
                 }
                 if let detail = task.detail, !detail.isEmpty {
-                    Section("내용") {
+                    Section("kanban.task.content") {
                         Text(detail)
                             .font(.callout)
                             .textSelection(.enabled)
@@ -474,7 +473,7 @@ private struct KanbanTaskDetail: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("닫기") { dismiss() }
+                    Button("kanban.task.close") { dismiss() }
                 }
             }
         }
@@ -489,16 +488,16 @@ private struct BoardCreatorSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                TextField("보드 이름", text: $name)
+                TextField("kanban.board.name.placeholder", text: $name)
             }
-            .navigationTitle("새 보드 만들기")
+            .navigationTitle("kanban.board.new.title")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("취소") { dismiss() }
+                    Button("common.cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("만들기") {
+                    Button("kanban.task.create") {
                         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
                         guard !trimmed.isEmpty else { return }
                         onCreate(trimmed)
