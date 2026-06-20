@@ -234,7 +234,7 @@
 "cron.manager.empty.desc" = "尚未注册定时任务。";
 "cron.manager.empty.filtered.desc %@" = "%@ 配置文件中没有定时任务。";
 "cron.manager.delete.confirm" = "确认删除此定时任务？";
-"cron.manager.bridge.required" = "查看定时任务需要 Hermes Bridge。\n请在设置的"Hermes Bridge"栏填写 URL 和令牌。";
+"cron.manager.bridge.required" = "查看定时任务需要 Hermes Bridge。\n请在设置的\"Hermes Bridge\"栏填写 URL 和令牌。";
 "cron.job.last.run %@" = "上次 %@";
 "cron.job.next.run %@" = "下次 %@";
 "cron.job.toggle.pause" = "暂停";
