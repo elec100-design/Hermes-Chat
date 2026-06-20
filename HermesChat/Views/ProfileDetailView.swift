@@ -42,9 +42,9 @@ struct ProfileDetailView: View {
 
     var body: some View {
         Form {
-            Section("연결") {
-                LabeledContent("프로필", value: profile.name)
-                LabeledContent("포트", value: String(profile.port))
+            Section("profile.detail.connection") {
+                LabeledContent("profile.detail.profile.label", value: profile.name)
+                LabeledContent("profile.detail.port.label", value: String(profile.port))
             }
 
             modelSection
@@ -56,7 +56,7 @@ struct ProfileDetailView: View {
                     Button {
                         showLogs = true
                     } label: {
-                        Label("게이트웨이 로그 보기 (최근 200줄)", systemImage: "doc.plaintext")
+                        Label("profile.detail.gateway.logs", systemImage: "doc.plaintext")
                     }
                 }
 
@@ -67,15 +67,15 @@ struct ProfileDetailView: View {
                         if isRestarting {
                             HStack(spacing: 8) {
                                 ProgressView()
-                                Text("재시작 중...")
+                                Text("profile.detail.restarting")
                             }
                         } else {
-                            Label("Gateway 재시작", systemImage: "arrow.clockwise")
+                            Label("profile.detail.gateway.restart", systemImage: "arrow.clockwise")
                         }
                     }
                     .disabled(isRestarting)
                 } footer: {
-                    Text("SOUL.md 변경은 게이트웨이를 재시작해야 반영됩니다.")
+                    Text("profile.detail.restart.footer")
                 }
 
                 if profile.name != "default" {
@@ -86,15 +86,15 @@ struct ProfileDetailView: View {
                             if isDeleting {
                                 HStack(spacing: 8) {
                                     ProgressView()
-                                    Text("삭제 중...")
+                                    Text("profile.detail.deleting")
                                 }
                             } else {
-                                Label("프로필 삭제", systemImage: "trash")
+                                Label("profile.detail.delete.action", systemImage: "trash")
                             }
                         }
                         .disabled(isDeleting)
                     } footer: {
-                        Text("이 프로필을 백엔드에서 완전히 삭제합니다 (hermes profile delete).")
+                        Text("profile.detail.delete.footer")
                     }
                 }
             }
@@ -110,24 +110,24 @@ struct ProfileDetailView: View {
         .navigationTitle(profile.name)
         .navigationBarTitleDisplayMode(.inline)
         .confirmationDialog(
-            "\(profile.name) 게이트웨이를 재시작할까요?\n진행 중인 응답이 끊길 수 있습니다.",
+            String(format: String(localized: "profile.detail.restart.confirm %@"), profile.name),
             isPresented: $showRestartConfirm,
             titleVisibility: .visible
         ) {
-            Button("재시작", role: .destructive) {
+            Button("common.restart", role: .destructive) {
                 Task { await restartGateway() }
             }
-            Button("취소", role: .cancel) {}
+            Button("common.cancel", role: .cancel) {}
         }
         .confirmationDialog(
-            "\(profile.name) 프로필을 삭제할까요?\n백엔드에서 완전히 제거되며 되돌릴 수 없습니다.",
+            String(format: String(localized: "profile.detail.delete.confirm %@"), profile.name),
             isPresented: $showDeleteConfirm,
             titleVisibility: .visible
         ) {
-            Button("삭제", role: .destructive) {
+            Button("common.delete", role: .destructive) {
                 Task { await deleteProfile() }
             }
-            Button("취소", role: .cancel) {}
+            Button("common.cancel", role: .cancel) {}
         }
         .task {
             await loadModel()
@@ -151,14 +151,14 @@ struct ProfileDetailView: View {
                             .textSelection(.enabled)
                     }
                 } else {
-                    ProgressView("로그 불러오는 중...")
+                    ProgressView("profile.detail.loading")
                 }
             }
             .navigationTitle("\(profile.name) 로그")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("닫기") { showLogs = false }
+                    Button("common.close") { showLogs = false }
                 }
             }
         }
@@ -178,7 +178,7 @@ struct ProfileDetailView: View {
     private var soulSection: some View {
         Section {
             if !bridgeConfigured {
-                Text("설정 화면의 \"Hermes Bridge\" 섹션에 URL과 토큰을 입력하면 SOUL.md 편집과 게이트웨이 재시작을 쓸 수 있습니다.")
+                Text("profile.detail.bridge.soul.required")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             } else {
@@ -186,13 +186,13 @@ struct ProfileDetailView: View {
                 case .loading:
                     HStack(spacing: 8) {
                         ProgressView()
-                        Text("불러오는 중...")
+                        Text("profile.detail.loading")
                     }
                 case .failed(let message):
-                    Text("불러오기 실패: \(message)")
+                    Text(String(format: String(localized: "profile.detail.load.failed %@"), message))
                         .font(.footnote)
                         .foregroundStyle(.red)
-                    Button("다시 시도") {
+                    Button("common.retry") {
                         Task { await loadSoul() }
                     }
                 case .loaded:
@@ -207,17 +207,17 @@ struct ProfileDetailView: View {
                         if isSavingSoul {
                             HStack(spacing: 8) {
                                 ProgressView()
-                                Text("저장 중...")
+                                Text("common.saving")
                             }
                         } else {
-                            Label("SOUL.md 저장", systemImage: "square.and.arrow.down")
+                            Label("profile.detail.soul.save", systemImage: "square.and.arrow.down")
                         }
                     }
                     .disabled(isSavingSoul)
                 }
             }
         } header: {
-            Text("SOUL.md (성격/지침)")
+            Text("profile.detail.soul.header")
         }
     }
 
@@ -225,7 +225,7 @@ struct ProfileDetailView: View {
     private var modelSection: some View {
         Section {
             if !bridgeConfigured {
-                Text("모델 선택은 Hermes Bridge가 필요합니다. 설정 화면에서 URL과 토큰을 입력하세요.")
+                Text("profile.detail.model.bridge.required")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             } else {
@@ -233,25 +233,24 @@ struct ProfileDetailView: View {
                 case .loading:
                     HStack(spacing: 8) {
                         ProgressView()
-                        Text("불러오는 중...")
+                        Text("profile.detail.loading")
                     }
                 case .failed(let message):
-                    Text("불러오기 실패: \(message)")
+                    Text(String(format: String(localized: "profile.detail.load.failed %@"), message))
                         .font(.footnote)
                         .foregroundStyle(.red)
-                    Button("다시 시도") { Task { await loadModel() } }
+                    Button("common.retry") { Task { await loadModel() } }
                 case .loaded:
                     if modelCatalog.isEmpty {
-                        Text("모델 카탈로그가 비어 있습니다. 게이트웨이를 1회 기동하면 cache/model_catalog.json이 생성됩니다.")
+                        Text("profile.detail.model.catalog.empty")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                         if let currentModel {
-                            LabeledContent("현재 모델", value: currentModel)
+                            LabeledContent("profile.detail.model.current", value: currentModel)
                         }
                     } else {
-                        Picker("모델", selection: $pickedModel) {
+                        Picker("profile.detail.model.picker", selection: $pickedModel) {
                             ForEach(modelCatalog, id: \.self) { Text($0).tag($0) }
-                            // 카탈로그에 없는 현재값도 노출 (외부에서 바뀐 경우)
                             if !pickedModel.isEmpty, !modelCatalog.contains(pickedModel) {
                                 Text(pickedModel).tag(pickedModel)
                             }
@@ -262,10 +261,10 @@ struct ProfileDetailView: View {
                             if isSavingModel {
                                 HStack(spacing: 8) {
                                     ProgressView()
-                                    Text("저장·재시작 중...")
+                                    Text("profile.detail.model.saving")
                                 }
                             } else {
-                                Label("모델 저장 (게이트웨이 재시작)", systemImage: "square.and.arrow.down")
+                                Label("profile.detail.model.save", systemImage: "square.and.arrow.down")
                             }
                         }
                         .disabled(isSavingModel || pickedModel.isEmpty || pickedModel == currentModel)
@@ -273,9 +272,9 @@ struct ProfileDetailView: View {
                 }
             }
         } header: {
-            Text("모델")
+            Text("profile.detail.model.header")
         } footer: {
-            Text("config.yaml의 model.default를 바꾸고 게이트웨이를 재시작합니다. (provider·base_url은 유지)")
+            Text("profile.detail.model.footer")
         }
     }
 

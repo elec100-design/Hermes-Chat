@@ -15,7 +15,7 @@ struct FileBrowserView: View {
             if isLoading {
                 HStack(spacing: 8) {
                     ProgressView()
-                    Text("불러오는 중...")
+                    Text("common.loading")
                         .foregroundStyle(.secondary)
                 }
             } else if let loadError {
@@ -26,13 +26,13 @@ struct FileBrowserView: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                     Spacer()
-                    Button("재시도") {
+                    Button("common.retry") {
                         Task { await load() }
                     }
                     .font(.footnote.bold())
                 }
             } else if entries.isEmpty {
-                Text("비어 있음")
+                Text("common.empty")
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(entries) { entry in
@@ -74,7 +74,7 @@ struct FileBrowserView: View {
 
     private func load() async {
         guard let bridge = appSettings.bridgeClient else {
-            loadError = "설정에서 Hermes Bridge URL/토큰을 입력하세요."
+            loadError = String(localized: "files.bridge.required")
             isLoading = false
             return
         }
@@ -113,19 +113,19 @@ struct FileContentView: View {
                 }
             } else if let loadError {
                 ContentUnavailableView(
-                    "열 수 없음",
+                    "files.cannot.open",
                     systemImage: "doc.questionmark",
                     description: Text(loadError)
                 )
             } else {
-                ProgressView("불러오는 중...")
+                ProgressView("common.loading")
             }
         }
         .navigationTitle((path as NSString).lastPathComponent)
         .navigationBarTitleDisplayMode(.inline)
         .task {
             guard let bridge = appSettings.bridgeClient else {
-                loadError = "Bridge 미설정"
+                loadError = String(localized: "files.bridge.not.configured")
                 return
             }
             do {

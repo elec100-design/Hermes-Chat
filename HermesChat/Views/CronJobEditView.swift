@@ -79,7 +79,7 @@ struct CronJobEditView: View {
         Form {
             if isCreating {
                 Section("PROFILE") {
-                    Picker("프로필", selection: $selectedProfile) {
+                    Picker("cron.edit.profile", selection: $selectedProfile) {
                         ForEach(appSettings.profiles) { profile in
                             Text(profile.name).tag(profile)
                         }
@@ -88,14 +88,14 @@ struct CronJobEditView: View {
             }
 
             Section {
-                TextField("이름", text: $name)
+                TextField("cron.edit.name", text: $name)
                     .autocorrectionDisabled()
-                Toggle("이 크론잡 사용", isOn: $enabled)
+                Toggle("cron.edit.enabled", isOn: $enabled)
             } header: {
                 Text("NAME")
             } footer: {
                 if let mode = editingJob?.mode, !mode.isEmpty {
-                    Text("모드: \(mode)")
+                    Text(String(format: String(localized: "cron.edit.mode %@"), mode))
                 }
             }
 
@@ -107,7 +107,7 @@ struct CronJobEditView: View {
             } header: {
                 Text("PROMPT")
             } footer: {
-                Text("에이전트가 실행할 지시. 스크립트형(no_agent) 잡은 비어 있을 수 있습니다.")
+                Text("cron.edit.prompt.footer")
             }
 
             Section {
@@ -119,9 +119,9 @@ struct CronJobEditView: View {
                 Text("SCHEDULE (CRON EXPRESSION)")
             } footer: {
                 if let human = CronJob.humanizeSchedule(schedule) {
-                    Text("\(human) · 분 시 일 월 요일")
+                    Text(String(format: String(localized: "cron.edit.schedule.human %@"), human))
                 } else {
-                    Text("분 시 일 월 요일. 예: `0 8 * * *` = 매일 08:00.")
+                    Text("cron.edit.schedule.footer")
                 }
             }
 
@@ -140,10 +140,10 @@ struct CronJobEditView: View {
                     if isSaving {
                         HStack(spacing: 8) {
                             ProgressView()
-                            Text(isCreating ? "생성 중..." : "저장 중...")
+                            Text(isCreating ? "cron.edit.creating" : "cron.edit.saving")
                         }
                     } else {
-                        Label(isCreating ? "크론잡 생성" : "변경 저장",
+                        Label(isCreating ? "cron.edit.create" : "cron.edit.save",
                               systemImage: isCreating ? "plus.circle" : "square.and.arrow.down")
                     }
                 }
@@ -158,7 +158,7 @@ struct CronJobEditView: View {
                 }
             }
         }
-        .navigationTitle(isCreating ? "새 크론잡" : (editingJob?.displayTitle ?? "크론잡"))
+        .navigationTitle(isCreating ? String(localized: "cron.edit.title.new") : (editingJob?.displayTitle ?? "크론잡"))
         .navigationBarTitleDisplayMode(.inline)
         .task(id: activeProfile.id) { await loadSkills() }
     }
@@ -169,7 +169,7 @@ struct CronJobEditView: View {
             let all = Array(Set(availableSkills).union(selectedSkills))
                 .sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
             if all.isEmpty {
-                Text("사용 가능한 스킬 없음")
+                Text("cron.edit.skills.empty")
                     .foregroundStyle(.secondary)
             }
             ForEach(all, id: \.self) { skill in

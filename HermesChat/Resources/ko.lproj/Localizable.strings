@@ -153,3 +153,144 @@
 "kanban.mode.ready.footnote" = "1분 내에 담당 프로필 워커가 작업을 시작합니다.";
 "kanban.mode.triage.footnote" = "스펙 구체화 에이전트가 내용을 다듬은 뒤 실행됩니다.";
 "kanban.mode.blocked.footnote" = "보드에 보관만 하고 실행하지 않습니다. Blocked 컬럼에서 재개할 수 있습니다.";
+
+/* Common (additional) */
+"common.close" = "닫기";
+"common.restart" = "재시작";
+"common.saving" = "저장 중...";
+"common.creating" = "생성 중...";
+"common.empty" = "비어 있음";
+
+/* Profile Board */
+"profile.board.title" = "프로필 보드";
+"profile.board.cron.manage" = "크론 관리";
+"profile.add" = "프로필 추가";
+"profile.add.accessibility" = "새 프로필 추가";
+"profile.status.checking" = "확인 중...";
+"profile.status.offline" = "오프라인";
+"profile.status.online" = "온라인";
+"profile.sessions.count %lld" = "세션 %lld개";
+
+/* Profile Detail */
+"profile.detail.connection" = "연결";
+"profile.detail.profile.label" = "프로필";
+"profile.detail.port.label" = "포트";
+"profile.detail.gateway.logs" = "게이트웨이 로그 보기 (최근 200줄)";
+"profile.detail.restarting" = "재시작 중...";
+"profile.detail.gateway.restart" = "Gateway 재시작";
+"profile.detail.restart.footer" = "SOUL.md 변경은 게이트웨이를 재시작해야 반영됩니다.";
+"profile.detail.deleting" = "삭제 중...";
+"profile.detail.delete.action" = "프로필 삭제";
+"profile.detail.delete.footer" = "이 프로필을 백엔드에서 완전히 삭제합니다 (hermes profile delete).";
+"profile.detail.bridge.soul.required" = "설정 화면의 \"Hermes Bridge\" 섹션에 URL과 토큰을 입력하면 SOUL.md 편집과 게이트웨이 재시작을 쓸 수 있습니다.";
+"profile.detail.soul.header" = "SOUL.md (성격/지침)";
+"profile.detail.soul.save" = "SOUL.md 저장";
+"profile.detail.model.header" = "모델";
+"profile.detail.model.picker" = "모델";
+"profile.detail.model.bridge.required" = "모델 선택은 Hermes Bridge가 필요합니다. 설정 화면에서 URL과 토큰을 입력하세요.";
+"profile.detail.model.catalog.empty" = "모델 카탈로그가 비어 있습니다. 게이트웨이를 1회 기동하면 cache/model_catalog.json이 생성됩니다.";
+"profile.detail.model.current" = "현재 모델";
+"profile.detail.model.saving" = "저장·재시작 중...";
+"profile.detail.model.save" = "모델 저장 (게이트웨이 재시작)";
+"profile.detail.model.footer" = "config.yaml의 model.default를 바꾸고 게이트웨이를 재시작합니다. (provider·base_url은 유지)";
+"profile.detail.loading" = "불러오는 중...";
+"profile.detail.load.failed %@" = "불러오기 실패: %@";
+"profile.detail.restart.confirm %@" = "%@ 게이트웨이를 재시작할까요?\n진행 중인 응답이 끊길 수 있습니다.";
+"profile.detail.delete.confirm %@" = "%@ 프로필을 삭제할까요?\n백엔드에서 완전히 제거되며 되돌릴 수 없습니다.";
+
+/* Skills */
+"skills.empty" = "설치된 스킬 없음";
+"skills.toolsets.empty" = "툴셋 없음";
+"skills.header %lld" = "스킬 (%lld)";
+"skills.toolsets.header %lld" = "툴셋 (%lld)";
+"skills.footer %@" = "프로필: %@. 활성/비활성 변경은 맥미니의 config.yaml에서 합니다.";
+
+/* File Browser */
+"files.bridge.required" = "설정에서 Hermes Bridge URL/토큰을 입력하세요.";
+"files.cannot.open" = "열 수 없음";
+"files.bridge.not.configured" = "Bridge 미설정";
+
+/* Profile Create */
+"profile.create.bridge.required" = "새 프로필 생성은 Hermes Bridge가 필요합니다.\n설정 화면의 \"Hermes Bridge\" 섹션에 URL과 토큰을 입력하세요.";
+"profile.create.section.profile" = "프로필";
+"profile.create.name.placeholder" = "이름 (예: work)";
+"profile.create.soul.header" = "SOUL.md (선택)";
+"profile.create.soul.footer" = "프로필의 성격/지침. 나중에 상세 화면에서도 편집할 수 있습니다.";
+"profile.create.creating" = "생성 중... (게이트웨이 기동까지 수십 초)";
+"profile.create.action" = "프로필 생성";
+"profile.create.action.footer" = "디렉터리·.env·SOUL.md를 만들고 게이트웨이를 기동합니다.";
+"profile.create.title" = "새 프로필";
+
+/* Dashboard */
+"dashboard.desktop.label" = "데스크톱 보기 (탭하면 모바일 보기)";
+"dashboard.mobile.label" = "모바일 보기 (탭하면 데스크톱 보기)";
+
+/* Cron Manager */
+"cron.manager.title" = "크론 관리";
+"cron.manager.new.job" = "새 크론잡";
+"cron.manager.filter.all" = "전체 프로필";
+"cron.manager.jobs.count %lld" = "크론잡 %lld개";
+"cron.manager.empty" = "크론잡 없음";
+"cron.manager.empty.desc" = "등록된 크론잡이 없습니다.";
+"cron.manager.empty.filtered.desc %@" = "%@ 프로필에는 등록된 크론잡이 없습니다.";
+"cron.manager.delete.confirm" = "이 크론잡을 삭제할까요?";
+"cron.manager.bridge.required" = "크론잡을 보려면 Hermes Bridge가 필요합니다.\n설정 화면의 \"Hermes Bridge\" 섹션에 URL과 토큰을 입력하세요.";
+"cron.job.last.run %@" = "최근 %@";
+"cron.job.next.run %@" = "다음 %@";
+"cron.job.toggle.pause" = "일시정지";
+"cron.job.toggle.resume" = "재개";
+"cron.job.run" = "실행";
+"cron.job.edit" = "편집";
+
+/* Cron Job Edit */
+"cron.edit.profile" = "프로필";
+"cron.edit.name" = "이름";
+"cron.edit.enabled" = "이 크론잡 사용";
+"cron.edit.prompt.footer" = "에이전트가 실행할 지시. 스크립트형(no_agent) 잡은 비어 있을 수 있습니다.";
+"cron.edit.schedule.footer" = "분 시 일 월 요일. 예: `0 8 * * *` = 매일 08:00.";
+"cron.edit.schedule.human %@" = "%@ · 분 시 일 월 요일";
+"cron.edit.saving" = "저장 중...";
+"cron.edit.creating" = "생성 중... (게이트웨이 통신까지 수 초)";
+"cron.edit.save" = "변경 저장";
+"cron.edit.create" = "크론잡 생성";
+"cron.edit.title.new" = "새 크론잡";
+"cron.edit.skills.empty" = "사용 가능한 스킬 없음";
+"cron.edit.mode %@" = "모드: %@";
+
+/* Discussion (Deep Think) */
+"discuss.stop.confirm" = "토론이 진행 중입니다. 중단하고 나갈까요?";
+"discuss.stop.action" = "중단하고 나가기";
+"discuss.continue" = "계속 진행";
+"discuss.setup.topic" = "토론 주제";
+"discuss.setup.topic.placeholder" = "토론 주제를 입력하세요";
+"discuss.setup.participants %lld" = "참가자 (%lld명 선택)";
+"discuss.setup.participants.hint" = "서로 다른 모델·성향의 에이전트를 모을수록 상호 검증 효과가 커집니다.";
+"discuss.setup.mode" = "진행 방식";
+"discuss.setup.rounds %lld" = "라운드 수: %lld";
+"discuss.setup.tools" = "도구 사용 허용";
+"discuss.setup.tools.hint" = "에이전트가 웹 검색 등으로 근거를 찾습니다. 한 발언이 수 분까지 길어질 수 있습니다.";
+"discuss.start" = "토론 시작";
+"discuss.start.hint" = "주제와 2명 이상의 참가자가 필요합니다.";
+"discuss.past" = "지난 토론";
+"discuss.moderator" = "사회자 (결론 작성)";
+"discuss.moderator.first" = "첫 참가자";
+"discuss.room.topic" = "주제";
+"discuss.room.stop" = "중지";
+"discuss.room.copy.conclusion" = "결론 복사";
+"discuss.room.share" = "공유";
+"discuss.room.new" = "새 토론";
+"discuss.room.back.setup" = "설정으로 돌아가기";
+"discuss.status.concluding" = "사회자가 결론을 정리하는 중...";
+"discuss.status.speaking %@" = "%@ 발언 중...";
+"discuss.status.speaking.count %lld" = "%lld명 발언 중...";
+"discuss.status.round %lld %lld" = "라운드 %lld/%lld 진행 중...";
+"discuss.status.running" = "진행 중...";
+"discuss.conclusion.label %@" = "최종 결론 — %@";
+
+/* Message / Chat UI */
+"message.copy" = "복사";
+"message.copy.plain" = "평문 복사 (마크다운 제거)";
+"message.tts.stop" = "읽기 중지";
+"message.tts.read" = "읽어주기";
+"message.thinking" = "생각 중";
+"tool.calls.count %lld" = "도구 %lld회 실행";

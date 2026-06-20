@@ -39,15 +39,15 @@ struct DiscussionView: View {
                 }
             }
             .confirmationDialog(
-                "토론이 진행 중입니다. 중단하고 나갈까요?",
+                "discuss.stop.confirm",
                 isPresented: $showStopConfirm,
                 titleVisibility: .visible
             ) {
-                Button("중단하고 나가기", role: .destructive) {
+                Button("discuss.stop.action", role: .destructive) {
                     viewModel.stop()
                     dismiss()
                 }
-                Button("계속 진행", role: .cancel) {}
+                Button("discuss.continue", role: .cancel) {}
             }
         }
         .environment(\.bridgeClient, appSettings.bridgeClient)
@@ -74,16 +74,16 @@ private struct DiscussionSetupView: View {
             VStack(alignment: .leading, spacing: 20) {
                 // 주제
                 VStack(alignment: .leading, spacing: 6) {
-                    sectionTitle("토론 주제")
-                    TextField("토론 주제를 입력하세요", text: $viewModel.topic, axis: .vertical)
+                    sectionTitle(String(localized: "discuss.setup.topic"))
+                    TextField("discuss.setup.topic.placeholder", text: $viewModel.topic, axis: .vertical)
                         .lineLimit(2...4)
                         .textFieldStyle(.roundedBorder)
                 }
 
                 // 참가자
                 VStack(alignment: .leading, spacing: 6) {
-                    sectionTitle("참가자 (\(viewModel.selectedProfileIDs.count)명 선택)")
-                    Text("서로 다른 모델·성향의 에이전트를 모을수록 상호 검증 효과가 커집니다.")
+                    sectionTitle(String(format: String(localized: "discuss.setup.participants %lld"), Int64(viewModel.selectedProfileIDs.count)))
+                    Text("discuss.setup.participants.hint")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     LazyVGrid(columns: chipColumns, alignment: .leading, spacing: 8) {
@@ -95,12 +95,12 @@ private struct DiscussionSetupView: View {
 
                 // 진행 옵션
                 VStack(alignment: .leading, spacing: 10) {
-                    sectionTitle("진행 방식")
-                    Stepper("라운드 수: \(viewModel.rounds)", value: $viewModel.rounds, in: 1...5)
+                    sectionTitle(String(localized: "discuss.setup.mode"))
+                    Stepper(String(format: String(localized: "discuss.setup.rounds %lld"), Int64(viewModel.rounds)), value: $viewModel.rounds, in: 1...5)
                     moderatorPicker
-                    Toggle("도구 사용 허용", isOn: $viewModel.allowTools)
+                    Toggle("discuss.setup.tools", isOn: $viewModel.allowTools)
                     if viewModel.allowTools {
-                        Text("에이전트가 웹 검색 등으로 근거를 찾습니다. 한 발언이 수 분까지 길어질 수 있습니다.")
+                        Text("discuss.setup.tools.hint")
                             .font(.caption)
                             .foregroundStyle(.orange)
                     }
@@ -111,13 +111,13 @@ private struct DiscussionSetupView: View {
                     Button {
                         viewModel.start()
                     } label: {
-                        Label("토론 시작", systemImage: "bubble.left.and.bubble.right.fill")
+                        Label("discuss.start", systemImage: "bubble.left.and.bubble.right.fill")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(!viewModel.canStart)
                     if !viewModel.canStart {
-                        Text("주제와 2명 이상의 참가자가 필요합니다.")
+                        Text("discuss.start.hint")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -126,7 +126,7 @@ private struct DiscussionSetupView: View {
                 // 지난 토론
                 if !viewModel.savedDiscussions.isEmpty {
                     VStack(alignment: .leading, spacing: 6) {
-                        sectionTitle("지난 토론")
+                        sectionTitle(String(localized: "discuss.past"))
                         ForEach(viewModel.savedDiscussions) { saved in
                             savedRow(saved)
                         }
@@ -172,8 +172,8 @@ private struct DiscussionSetupView: View {
     }
 
     private var moderatorPicker: some View {
-        Picker("사회자 (결론 작성)", selection: $viewModel.moderatorID) {
-            Text("첫 참가자").tag(UUID?.none)
+        Picker("discuss.moderator", selection: $viewModel.moderatorID) {
+            Text("discuss.moderator.first").tag(UUID?.none)
             ForEach(viewModel.selectedProfiles) { profile in
                 Text(profile.name).tag(UUID?.some(profile.id))
             }
@@ -209,7 +209,7 @@ private struct DiscussionSetupView: View {
             Button(role: .destructive) {
                 viewModel.deleteSaved(id: saved.id)
             } label: {
-                Label("삭제", systemImage: "trash")
+                Label("common.delete", systemImage: "trash")
             }
         }
     }
@@ -249,7 +249,7 @@ private struct DiscussionRoomView: View {
 
     private var topicHeader: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("주제")
+            Text("discuss.room.topic")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Text(viewModel.topic)
@@ -275,7 +275,7 @@ private struct DiscussionRoomView: View {
                 Button(role: .destructive) {
                     viewModel.stop()
                 } label: {
-                    Label("중지", systemImage: "stop.fill")
+                    Label("discuss.room.stop", systemImage: "stop.fill")
                 }
                 .buttonStyle(.bordered)
             }
@@ -286,19 +286,19 @@ private struct DiscussionRoomView: View {
                     Button {
                         UIPasteboard.general.string = MarkdownLite.plainText(from: conclusion.content)
                     } label: {
-                        Label("결론 복사", systemImage: "doc.on.doc")
+                        Label("discuss.room.copy.conclusion", systemImage: "doc.on.doc")
                     }
                     .buttonStyle(.bordered)
                 }
                 ShareLink(item: viewModel.shareText) {
-                    Label("공유", systemImage: "square.and.arrow.up")
+                    Label("discuss.room.share", systemImage: "square.and.arrow.up")
                 }
                 .buttonStyle(.bordered)
                 Spacer()
                 Button {
                     viewModel.resetToSetup()
                 } label: {
-                    Label("새 토론", systemImage: "plus.bubble")
+                    Label("discuss.room.new", systemImage: "plus.bubble")
                 }
                 .buttonStyle(.borderedProminent)
             }
@@ -312,7 +312,7 @@ private struct DiscussionRoomView: View {
                 Button {
                     viewModel.resetToSetup()
                 } label: {
-                    Label("설정으로 돌아가기", systemImage: "arrow.uturn.backward")
+                    Label("discuss.room.back.setup", systemImage: "arrow.uturn.backward")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
@@ -325,18 +325,18 @@ private struct DiscussionRoomView: View {
 
     private var statusText: String {
         if case .concluding = viewModel.phase {
-            return "사회자가 결론을 정리하는 중..."
+            return String(localized: "discuss.status.concluding")
         }
         if viewModel.speakingNames.count == 1, let name = viewModel.speakingNames.first {
-            return "\(name) 발언 중..."
+            return String(format: String(localized: "discuss.status.speaking %@"), name)
         }
         if viewModel.speakingNames.count > 1 {
-            return "\(viewModel.speakingNames.count)명 발언 중..."
+            return String(format: String(localized: "discuss.status.speaking.count %lld"), Int64(viewModel.speakingNames.count))
         }
         if case .running(let round, let total) = viewModel.phase {
-            return "라운드 \(round)/\(total) 진행 중..."
+            return String(format: String(localized: "discuss.status.round %lld %lld"), Int64(round), Int64(total))
         }
-        return "진행 중..."
+        return String(localized: "discuss.status.running")
     }
 }
 
@@ -376,7 +376,7 @@ private struct DiscussionEntryRow: View {
                 Circle()
                     .fill(color)
                     .frame(width: 8, height: 8)
-                Text(highlighted ? "최종 결론 — \(entry.speakerName)" : entry.speakerName)
+                Text(highlighted ? String(format: String(localized: "discuss.conclusion.label %@"), entry.speakerName) : entry.speakerName)
                     .font(.subheadline.weight(.bold))
                     .foregroundStyle(color)
                 if let round = entry.round {
@@ -413,12 +413,12 @@ private struct SavedDiscussionDetailView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("주제")
+                    Text("discuss.room.topic")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Text(discussion.topic)
                         .font(.subheadline.weight(.semibold))
-                    Text("\(discussion.date.formatted(date: .abbreviated, time: .shortened)) · 라운드 \(discussion.rounds) · 사회자 \(discussion.moderatorName)")
+                    Text("\(discussion.date.formatted(date: .abbreviated, time: .shortened)) · \(String(format: String(localized: "discuss.setup.rounds %lld"), Int64(discussion.rounds))) · \(discussion.moderatorName)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -433,7 +433,7 @@ private struct SavedDiscussionDetailView: View {
             }
             .padding()
         }
-        .navigationTitle("지난 토론")
+        .navigationTitle("discuss.past")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {

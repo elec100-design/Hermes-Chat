@@ -283,7 +283,10 @@
 |----|------|------|------|
 | T-148 | 대시보드 탭에 **두 손가락 핀치 줌**과 **데스크톱 모드 토글** 추가(사용자 요청 — 모바일 화면에서 작아서 안 눌리거나 레이아웃에 숨겨져 접근 안 되는 버튼 대응). 대시보드 페이지(:8000)는 맥미니가 서빙해 HTML 직접 수정 불가 → 앱에서 보조. **핀치 줌**: 페이지의 `<meta viewport>`가 보통 `user-scalable=no`라 막혀 있어, `WKUserScript`(.atDocumentEnd) + 네비 완료 시 `evaluateJavaScript`로 viewport를 `user-scalable=yes, maximum-scale=10`으로 덮어씀. **데스크톱 모드**: 우상단 툴바 토글(iphone/desktopcomputer 아이콘) → `customUserAgent`를 macOS Safari로 바꾸고 viewport `width=1024`로 전체 데스크톱 레이아웃을 불러옴(숨겨진 버튼 노출) + 핀치 줌으로 탐색. 상태는 `@AppStorage("dashboardDesktopMode")`로 영속화. 모드 전환 시 UA 교체 후 `reload()`, 기존 host/port 변경 재로드 로직 보존. 기존 파일만 수정 → **pbxproj 무수정**. **빌드 검증 필요(맥)** | `Views/DashboardWebView.swift` | NEEDS-BUILD |
 
-## Phase A — 앱스토어 상품화 Phase 0: 컴플라이언스 + 다국어 기반 (브랜치 `claude/cool-maxwell-jbo5w1`)
+## Phase A — 앱스토어 상품화 Phase 0: 컴플라이언스 + 다국어 기반
+
+> 상업화 전체 계획은 `docs/COMMERCIALIZATION.md` 참조. Phase B~D 태스크는 이 파일 하단에 추가됨.
+> 브랜치 `claude/cool-maxwell-jbo5w1`(T-A01~A06), `claude/sweet-meitner-6xlqeq`(T-A07~A08+)
 
 | ID | 작업 | 파일 | 상태 |
 |----|------|------|------|
@@ -293,7 +296,42 @@
 | T-A04 | 다국어 기반 설정: `ko.lproj/`, `en.lproj/`, `zh-Hans.lproj/` + `Localizable.strings`/`InfoPlist.strings` 생성. 탭 레이블 LocalizedStringKey 전환 | `Resources/{ko,en,zh-Hans}.lproj/*`, `HermesChatApp.swift`, `project.pbxproj` | DONE (2026-06-20) |
 | T-A05 | `SettingsView.swift`에 "개인정보 처리방침" 링크 추가 (Privacy Policy URL placeholder) | `Views/SettingsView.swift` | DONE (2026-06-20) |
 | T-A06 | Sign in with Apple 엔타이틀먼트 추가 (Phase 2 계정 시스템 준비용, 코드 미사용) | `HermesChat.entitlements` | DONE (2026-06-20) |
-| T-A07 | 전체 Views 한국어 하드코딩 → `LocalizedStringKey` 전환 (SessionListView, ChatView, SettingsView, KanbanView 우선) | 전체 `Views/` | NEEDS-BUILD (2026-06-20) |
+| T-A07 | 전체 Views 한국어 하드코딩 → `LocalizedStringKey` 전환 완료. ProfileDetailView(soulSection·modelSection·confirmDialog), CronJobsView, CronJobEditView, DiscussionView, FileBrowserView, Components(MessageView·ToolResultView) 포함 전체 완료. | 전체 `Views/`, `Resources/{ko,en,zh-Hans}.lproj/Localizable.strings` | NEEDS-BUILD (2026-06-20) |
+| T-A08 | ATS 정리: `Info.plist` NSAllowsArbitraryLoads 유지 + localhost 중복 예외 제거. App Store 심사 노트 템플릿은 `docs/COMMERCIALIZATION.md` 참조. | `HermesChat/Resources/Info.plist` | NEEDS-BUILD (2026-06-20) |
+
+## Phase B — 클라우드 SaaS 인프라 (백엔드, Phase 0 제출 후 병행)
+
+> 전체 아키텍처: `docs/COMMERCIALIZATION.md` §Phase 1 참조.
+> per-user Docker 컨테이너, Supabase Auth, API Gateway 프록시.
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-B01 | hermes-agent Dockerfile + docker-compose.yml (per-user 컨테이너, ~/.hermes/ 볼륨, default 프로필 자동 생성) | `server/Dockerfile`, `server/docker-compose.yml` (신규) | TODO |
+| T-B02 | Supabase 프로젝트 생성 + `users(id, email, plan, container_id)` 테이블 + Sign in with Apple OAuth 설정 | Supabase 대시보드 (코드 아님) | TODO |
+| T-B03 | `server/cloud_gateway.py` 신규 — JWT 검증 미들웨어 + 사용자별 컨테이너 라우팅 프록시. 엔드포인트: `POST /auth/login`, `GET /status`, `GET /usage`, `*` 프록시 | `server/cloud_gateway.py` (신규) | TODO |
+| T-B04 | 클라우드 제공자 배포 — Fly.io 또는 Hetzner CCX13. nginx + Let's Encrypt SSL. Docker Compose로 다수 컨테이너 기동 | 인프라 (코드 아님) | TODO |
+| T-B05 | 가격 플랜 (무료/Basic₩9,900/Pro₩29,900) — Supabase `users.plan` 컬럼 + `cloud_gateway.py` 제한 로직 (무료=월 200 메시지, Basic=3 프로필, Pro=10 프로필) | `server/cloud_gateway.py` | TODO |
+
+## Phase C — 앱 SaaS 전환 (Phase B 완료 후)
+
+> 자체 호스팅 모드는 그대로 유지. 클라우드 모드를 선택지로 추가.
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-C01 | `AuthView.swift` 신규 — Sign in with Apple + Supabase Auth. JWT를 `KeychainHelper.swift`에 저장. 로그아웃/계정 삭제 | `Views/AuthView.swift` (신규, **pbxproj 등록**) | TODO |
+| T-C02 | 연결 모드 분기 — `AppSettings.connectionMode: .cloud \| .selfHosted`. `HermesAPIClient`에 모드별 baseURL 분기. `.cloud`는 클라우드 게이트웨이 URL 하드코딩 | `Services/AppDefaults.swift`, `Services/HermesAPIClient.swift` | TODO |
+| T-C03 | StoreKit 2 구독 — `SubscriptionService.swift` 신규 (Basic/Pro 제품 로드, 엔타이틀먼트 확인, 업그레이드 시트). `SettingsView.swift`에 "구독 관리" 섹션 추가 | `Services/SubscriptionService.swift` (신규, **pbxproj 등록**), `Views/SettingsView.swift` | TODO |
+| T-C04 | OnboardingView 클라우드 경로 활성화 — 현재 `isEnabled: false`인 클라우드 버튼 → AuthView 연결. 자체 호스팅 경로는 그대로 | `Views/OnboardingView.swift` | TODO (T-C01 뒤) |
+| T-C05 | 사용량 표시 — SettingsView 또는 `UsageView.swift`에 무료 플랜 잔여 메시지 수 표시. 클라우드 `GET /usage` 폴링 | `Views/SettingsView.swift` 또는 `Views/UsageView.swift` (신규) | TODO (T-C02 뒤) |
+
+## Phase D — 출시 및 운영
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-D01 | App Store Connect 메타데이터 — 한국어/영어 앱 이름·설명·키워드·스크린샷(6.7인치 6장). 개인정보 처리방침 웹 페이지 (URL 채움) | App Store Connect (코드 아님) | TODO |
+| T-D02 | TestFlight 베타 — 내부 테스터 → 외부 100명. 측정: 온보딩 완료율·연결 실패율·채팅 전환율 | TestFlight (코드 아님) | TODO |
+| T-D03 | 앱 심사 제출 준비 — 리뷰어 계정·ATS 심사 노트·PrivacyInfo.xcprivacy 최종 확인. 심사 노트는 `docs/COMMERCIALIZATION.md` §App Store 심사 노트 템플릿 참조 | App Store Connect (코드 아님) | TODO |
+| T-D04 | v1.1 출시 계획 — Phase 15 핸즈프리 음성(NEEDS-BUILD 완료 후) → TestFlight → 업데이트 심사 | 계획 | TODO |
 
 ## 빌드 검증 기록 (검증자가 갱신)
 

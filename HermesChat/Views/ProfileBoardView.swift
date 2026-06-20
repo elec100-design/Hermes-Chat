@@ -34,7 +34,7 @@ struct ProfileBoardView: View {
                 }
                 .padding()
             }
-            .navigationTitle("프로필 보드")
+            .navigationTitle("profile.board.title")
             .toolbar {
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     // 멀티 에이전트 토론룸 진입 (Phase 14)
@@ -48,7 +48,7 @@ struct ProfileBoardView: View {
                     Button {
                         showCronManager = true
                     } label: {
-                        Label("크론 관리", systemImage: "clock.arrow.circlepath")
+                        Label("profile.board.cron.manage", systemImage: "clock.arrow.circlepath")
                     }
                     if isProbing {
                         ProgressView().scaleEffect(0.8)
@@ -95,7 +95,7 @@ struct ProfileBoardView: View {
                             .foregroundStyle(.tint)
                     }
                 }
-                Text("포트 \(String(profile.port))")
+                Text(String(format: String(localized: "settings.profiles.port"), profile.port))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Text(sessionLabel(profileStatus))
@@ -118,7 +118,7 @@ struct ProfileBoardView: View {
             VStack(spacing: 8) {
                 Image(systemName: "plus")
                     .font(.system(size: 32, weight: .semibold))
-                Text("프로필 추가")
+                Text("profile.add")
                     .font(.caption)
             }
             .foregroundStyle(.tint)
@@ -133,7 +133,7 @@ struct ProfileBoardView: View {
             )
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("새 프로필 추가")
+        .accessibilityLabel("profile.add.accessibility")
     }
 
     private func statusColor(_ online: Bool?) -> Color {
@@ -145,10 +145,14 @@ struct ProfileBoardView: View {
     }
 
     private func sessionLabel(_ profileStatus: ProfileStatus?) -> String {
-        guard let profileStatus, let online = profileStatus.online else { return "확인 중..." }
-        guard online else { return "오프라인" }
-        if let count = profileStatus.sessionCount { return "세션 \(count)개" }
-        return "온라인"
+        guard let profileStatus, let online = profileStatus.online else {
+            return String(localized: "profile.status.checking")
+        }
+        guard online else { return String(localized: "profile.status.offline") }
+        if let count = profileStatus.sessionCount {
+            return String(format: String(localized: "profile.sessions.count %lld"), Int64(count))
+        }
+        return String(localized: "profile.status.online")
     }
 
     private func probeAll() async {

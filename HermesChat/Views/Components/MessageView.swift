@@ -54,19 +54,19 @@ struct MessageBubble: View {
                     Button {
                         UIPasteboard.general.string = message.content
                     } label: {
-                        Label("복사", systemImage: "doc.on.doc")
+                        Label("message.copy", systemImage: "doc.on.doc")
                     }
                     if !isUser {
                         Button {
                             UIPasteboard.general.string = MarkdownLite.plainText(from: message.content)
                         } label: {
-                            Label("평문 복사 (마크다운 제거)", systemImage: "doc.plaintext")
+                            Label("message.copy.plain", systemImage: "doc.plaintext")
                         }
                         if speech.speakingMessageID == message.id {
                             Button {
                                 speech.stopSpeaking()
                             } label: {
-                                Label("읽기 중지", systemImage: "stop.circle")
+                                Label("message.tts.stop", systemImage: "stop.circle")
                             }
                         } else {
                             Button {
@@ -75,12 +75,12 @@ struct MessageBubble: View {
                                     messageID: message.id
                                 )
                             } label: {
-                                Label("읽어주기", systemImage: "speaker.wave.2")
+                                Label("message.tts.read", systemImage: "speaker.wave.2")
                             }
                         }
                     }
                     ShareLink(item: message.content) {
-                        Label("공유", systemImage: "square.and.arrow.up")
+                        Label("discuss.room.share", systemImage: "square.and.arrow.up")
                     }
                 }
             }
@@ -136,6 +136,6 @@ struct ThinkingIndicator: View {
         }
         .foregroundStyle(.secondary)
         .onReceive(timer) { _ in phase = (phase + 1) % 3 }
-        .accessibilityLabel("생각 중")
+        .accessibilityLabel("message.thinking")
     }
 }
