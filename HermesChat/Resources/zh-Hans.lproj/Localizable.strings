@@ -95,7 +95,7 @@
 "chat.fork_failed" = "分支失败";
 "chat.voice_error" = "语音输入错误";
 "chat.photo_access.title" = "照片访问权限";
-"chat.photo_access.limited" = "眼镜照片自动发送需要完整的照片库访问权限。请前往设置 > 隐私与安全性 > 照片，将 Hermes Chat 更改为"完整访问"。";
+"chat.photo_access.limited" = "眼镜照片自动发送需要完整的照片库访问权限。请前往设置 > 隐私与安全性 > 照片，将 Hermes Chat 更改为\"完整访问\"。";
 "chat.photo_access.denied" = "需要照片访问权限。请在设置 > 隐私与安全性 > 照片中允许访问。";
 "chat.working.generating" = "生成响应中…";
 "chat.working.thinking" = "思考中…";
