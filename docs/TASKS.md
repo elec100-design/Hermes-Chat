@@ -306,7 +306,7 @@
 
 | ID | 작업 | 파일 | 상태 |
 |----|------|------|------|
-| T-B01 | hermes-agent Dockerfile + docker-compose.yml (per-user 컨테이너, ~/.hermes/ 볼륨, default 프로필 자동 생성) | `server/Dockerfile`, `server/docker-compose.yml` (신규) | TODO |
+| T-B01 | hermes-agent Dockerfile + docker-compose.yml (per-user 컨테이너, ~/.hermes/ 볼륨, default 프로필 자동 생성) | `server/Dockerfile`, `server/docker-compose.yml`, `server/docker-entrypoint.sh`, `server/.env.example` (신규) | NEEDS-BUILD (2026-06-20 — hermes-agent 패키지명 확정 후 Docker build 검증 필요) |
 | T-B02 | Supabase 프로젝트 생성 + `users(id, email, plan, container_id)` 테이블 + Sign in with Apple OAuth 설정 | Supabase 대시보드 (코드 아님) | TODO |
 | T-B03 | `server/cloud_gateway.py` 신규 — JWT 검증 미들웨어 + 사용자별 컨테이너 라우팅 프록시. 엔드포인트: `POST /auth/login`, `GET /status`, `GET /usage`, `*` 프록시 | `server/cloud_gateway.py` (신규) | TODO |
 | T-B04 | 클라우드 제공자 배포 — Fly.io 또는 Hetzner CCX13. nginx + Let's Encrypt SSL. Docker Compose로 다수 컨테이너 기동 | 인프라 (코드 아님) | TODO |
