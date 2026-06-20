@@ -8,6 +8,7 @@ struct OnboardingView: View {
     @State private var showApiKey = false
     @State private var testResult: TestResult? = nil
     @State private var isTesting = false
+    @State private var goToCloudAuth = false
 
     enum TestResult {
         case success, failure(String)
@@ -27,6 +28,16 @@ struct OnboardingView: View {
                 .animation(.easeInOut, value: step)
             }
             .navigationBarHidden(true)
+        .navigationDestination(isPresented: $goToCloudAuth) {
+            AuthView(appSettings: appSettings)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("onboarding.done.start") {
+                            appSettings.isFirstLaunchComplete = true
+                        }
+                    }
+                }
+        }
         }
     }
 
@@ -82,8 +93,11 @@ struct OnboardingView: View {
                     icon: "icloud.fill",
                     titleKey: "onboarding.welcome.cloud",
                     descKey: "onboarding.welcome.cloud.desc",
-                    isEnabled: false
-                ) {}
+                    isEnabled: true
+                ) {
+                    appSettings.connectionMode = .cloud
+                    goToCloudAuth = true
+                }
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 48)
