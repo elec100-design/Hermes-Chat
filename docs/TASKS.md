@@ -306,11 +306,11 @@
 
 | ID | 작업 | 파일 | 상태 |
 |----|------|------|------|
-| T-B01 | hermes-agent Dockerfile + docker-compose.yml (per-user 컨테이너, ~/.hermes/ 볼륨, default 프로필 자동 생성) | `server/Dockerfile`, `server/docker-compose.yml`, `server/docker-entrypoint.sh`, `server/.env.example` (신규) | NEEDS-BUILD (2026-06-20 — hermes-agent 패키지명 확정 후 Docker build 검증 필요) |
+| T-B01 | hermes-agent Dockerfile + docker-compose.yml (per-user 컨테이너, ~/.hermes/ 볼륨, default 프로필 자동 생성) | `server/Dockerfile`, `server/docker-compose.yml`, `server/docker-entrypoint.sh`, `server/.env.example` (신규) | DONE (2026-06-20) |
 | T-B02 | Supabase 프로젝트 생성 + `users(id, email, plan, container_id)` 테이블 + Sign in with Apple OAuth 설정 | Supabase 대시보드 (코드 아님) | TODO |
-| T-B03 | `server/cloud_gateway.py` 신규 — JWT 검증 미들웨어 + 사용자별 컨테이너 라우팅 프록시. 엔드포인트: `POST /auth/login`, `GET /status`, `GET /usage`, `DELETE /account`, `*` 프록시. `server/Dockerfile.cloud-gateway` + docker-compose.yml cloud-gateway 서비스 추가 | `server/cloud_gateway.py`, `server/Dockerfile.cloud-gateway` (신규), `server/docker-compose.yml`, `server/.env.example` | NEEDS-BUILD (2026-06-20 — Supabase JWT Secret + Docker 환경에서 검증 필요) |
+| T-B03 | `server/cloud_gateway.py` 신규 — JWT 검증 미들웨어 + 사용자별 컨테이너 라우팅 프록시. 엔드포인트: `POST /auth/login`, `GET /status`, `GET /usage`, `DELETE /account`, `*` 프록시. `server/Dockerfile.cloud-gateway` + docker-compose.yml cloud-gateway 서비스 추가 | `server/cloud_gateway.py`, `server/Dockerfile.cloud-gateway` (신규), `server/docker-compose.yml`, `server/.env.example` | DONE (2026-06-20) |
 | T-B04 | 클라우드 제공자 배포 — Fly.io 또는 Hetzner CCX13. nginx + Let's Encrypt SSL. Docker Compose로 다수 컨테이너 기동 | 인프라 (코드 아님) | TODO |
-| T-B05 | 가격 플랜 (무료/Basic₩9,900/Pro₩29,900) — Supabase `users.plan` 컬럼 + `cloud_gateway.py` 제한 로직 (무료=월 200 메시지, Basic=3 프로필, Pro=10 프로필) | `server/cloud_gateway.py` | TODO |
+| T-B05 | 가격 플랜 (무료/Basic₩9,900/Pro₩29,900) — Supabase `users.plan` 컬럼 + `cloud_gateway.py` 제한 로직 (무료=월 200 메시지, Basic=3 프로필, Pro=10 프로필) | `server/cloud_gateway.py` | DOING(Claude, 2026-06-20) |
 
 ## Phase C — 앱 SaaS 전환 (Phase B 완료 후)
 
@@ -343,3 +343,5 @@
 | 06-11 | main @ 879b47e (PR #1 병합) | BUILD SUCCEEDED | 사용자 Xcode 빌드 + 실기기 확인 — Deep think 토론(동시 발언·폴백 회수·결론) 정상 동작. T-090~115 DONE 전환 (음성·사진/파일 기능 확인은 별도 세션 예정) |
 | 06-20 | claude/cool-maxwell-jbo5w1 @ 30328cb | BUILD SUCCEEDED | 사용자 빌드 확인 — T-A01~A05 DONE (PrivacyInfo, arm64, OnboardingView, 다국어 기반, 개인정보방침 링크) |
 | 06-20 | claude/adoring-thompson-pdohly @ daafef5 | BUILD SUCCEEDED | 사용자 빌드 확인 — T-A06 DONE (Sign in with Apple 엔타이틀먼트) |
+| 06-20 | claude/hopeful-edison-1p5q91 @ 8ec3575 | DOCKER BUILD SUCCEEDED | 사용자 확인 — T-B01 DONE (hermes-agent Dockerfile + docker-compose.yml) |
+| 06-20 | claude/hopeful-edison-1p5q91 @ 6ce0852 | DOCKER BUILD SUCCEEDED | 사용자 확인 — T-B03 DONE (cloud_gateway.py Dockerfile + 컨테이너 프록시) |
