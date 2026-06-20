@@ -1,0 +1,61 @@
+/* Tab Bar */
+"tab.board" = "面板";
+"tab.sessions" = "会话";
+"tab.kanban" = "看板";
+"tab.dashboard" = "仪表板";
+"tab.settings" = "设置";
+
+/* Onboarding */
+"onboarding.welcome.title" = "欢迎使用 HermesChat";
+"onboarding.welcome.subtitle" = "在手机上使用您的 AI 智能体";
+"onboarding.welcome.selfhosted" = "使用我的服务器（自托管）";
+"onboarding.welcome.selfhosted.desc" = "通过 Tailscale 连接到您自己的 Mac mini 或服务器";
+"onboarding.welcome.cloud" = "使用云服务（即将推出）";
+"onboarding.welcome.cloud.desc" = "连接到 Hermes 云服务器 — 服务准备中";
+"onboarding.server.title" = "服务器连接";
+"onboarding.server.host.label" = "服务器地址";
+"onboarding.server.host.placeholder" = "http://100.x.x.x:8642";
+"onboarding.server.apikey.label" = "API 密钥（可选）";
+"onboarding.server.apikey.placeholder" = "未设置则留空";
+"onboarding.server.test" = "测试连接";
+"onboarding.server.testing" = "测试中…";
+"onboarding.server.success" = "连接成功！";
+"onboarding.server.failed" = "连接失败";
+"onboarding.done.title" = "设置完成！";
+"onboarding.done.subtitle" = "HermesChat 已准备就绪";
+"onboarding.done.start" = "开始使用";
+"onboarding.next" = "下一步";
+"onboarding.back" = "返回";
+"onboarding.skip" = "跳过";
+
+/* Settings */
+"settings.title" = "设置";
+"settings.connection" = "Hermes 连接";
+"settings.connection.host" = "服务器地址";
+"settings.connection.test" = "测试连接";
+"settings.bridge" = "Hermes Bridge";
+"settings.bridge.desc" = "Mac mini 的桥接服务(:8765)。用于编辑 SOUL.md、重启网关、自动搜索配置文件和上传文件。";
+"settings.model.default" = "默认模型";
+"settings.profiles" = "配置文件（Mac Mini 网关）";
+"settings.profiles.port" = "端口 %d";
+"settings.skills" = "技能与工具";
+"settings.filebrowser" = "文件浏览器 (~/.hermes)";
+"settings.tailscale.download" = "下载 Tailscale";
+"settings.privacy.policy" = "隐私政策";
+
+/* Session List */
+"session.new" = "新建会话";
+"session.search.placeholder" = "搜索会话";
+"session.pinned" = "已固定";
+
+/* Common */
+"common.cancel" = "取消";
+"common.save" = "保存";
+"common.done" = "完成";
+"common.ok" = "确定";
+"common.error" = "错误";
+"common.retry" = "重试";
+"common.loading" = "加载中…";
+"common.delete" = "删除";
+"common.add" = "添加";
+"common.edit" = "编辑";

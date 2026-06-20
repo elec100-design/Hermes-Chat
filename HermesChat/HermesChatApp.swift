@@ -23,26 +23,32 @@ struct HermesChatApp: App {
         WindowGroup {
             TabView(selection: $selectedTab) {
                 ProfileBoardView(appSettings: appSettings, selectedTab: $selectedTab)
-                    .tabItem { Label("보드", systemImage: "square.grid.2x2") }
+                    .tabItem { Label("tab.board", systemImage: "square.grid.2x2") }
                     .tag(AppTab.board)
 
                 SessionListView(appSettings: appSettings)
-                    .tabItem { Label("세션", systemImage: "bubble.left.and.bubble.right") }
+                    .tabItem { Label("tab.sessions", systemImage: "bubble.left.and.bubble.right") }
                     .tag(AppTab.sessions)
 
                 KanbanView(appSettings: appSettings)
-                    .tabItem { Label("칸반", systemImage: "rectangle.split.3x1") }
+                    .tabItem { Label("tab.kanban", systemImage: "rectangle.split.3x1") }
                     .tag(AppTab.kanban)
 
                 DashboardWebView(appSettings: appSettings)
-                    .tabItem { Label("대시보드", systemImage: "gauge.with.dots.needle.50percent") }
+                    .tabItem { Label("tab.dashboard", systemImage: "gauge.with.dots.needle.50percent") }
                     .tag(AppTab.dashboard)
 
                 NavigationStack {
                     SettingsView(appSettings: appSettings)
                 }
-                .tabItem { Label("설정", systemImage: "gearshape") }
+                .tabItem { Label("tab.settings", systemImage: "gearshape") }
                 .tag(AppTab.settings)
+            }
+            .fullScreenCover(isPresented: Binding(
+                get: { !appSettings.isFirstLaunchComplete },
+                set: { if !$0 { appSettings.isFirstLaunchComplete = true } }
+            )) {
+                OnboardingView(appSettings: appSettings)
             }
             .task {
                 await NotificationService.shared.requestAuthorization()

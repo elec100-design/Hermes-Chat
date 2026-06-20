@@ -9,6 +9,8 @@ final class AppSettings: ObservableObject {
     /// Hermes Bridge 주소 (예: http://100.x.x.x:8765). 비어 있으면 브리지 기능 비활성.
     @AppStorage("bridgeHost") var bridgeHost: String = ""
     @AppStorage("dashboardPort") var dashboardPort: Int = 8000
+    /// 온보딩 완료 여부 — false면 앱 시작 시 OnboardingView를 표시한다.
+    @AppStorage("isFirstLaunchComplete") var isFirstLaunchComplete: Bool = false
 
     /// 비밀값은 Keychain 보관 (T-070). 구버전 UserDefaults 값은 init에서 1회 이관.
     @Published var apiKey: String = "" {

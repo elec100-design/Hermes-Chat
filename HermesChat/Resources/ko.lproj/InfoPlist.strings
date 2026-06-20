@@ -1,0 +1,4 @@
+CFBundleDisplayName = "헤르메스챗";
+NSPhotoLibraryUsageDescription = "사진을 Hermes에게 첨부해 보내고, 메타 글라스로 찍은 사진을 자동으로 감지·전송하기 위해 사진 보관함 전체 접근이 필요합니다.";
+NSMicrophoneUsageDescription = "음성으로 메시지를 입력하기 위해 마이크 접근이 필요합니다.";
+NSSpeechRecognitionUsageDescription = "말한 내용을 텍스트로 변환하기 위해 음성 인식이 필요합니다.";
