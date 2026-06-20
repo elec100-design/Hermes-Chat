@@ -24,16 +24,16 @@ struct CreateProfileView: View {
             Form {
                 if !bridgeConfigured {
                     Section {
-                        Text("새 프로필 생성은 Hermes Bridge가 필요합니다.\n설정 화면의 \"Hermes Bridge\" 섹션에 URL과 토큰을 입력하세요.")
+                        Text("profile.create.bridge.required")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
                 } else {
-                    Section("프로필") {
-                        TextField("이름 (예: work)", text: $name)
+                    Section("profile.create.section.profile") {
+                        TextField("profile.create.name.placeholder", text: $name)
                             .autocorrectionDisabled()
                             .textInputAutocapitalization(.never)
-                        TextField("포트 (\(suggestedPort))", text: $port)
+                        TextField(String(format: String(localized: "settings.profiles.port"), suggestedPort), text: $port)
                             .keyboardType(.numberPad)
                     }
 
@@ -43,9 +43,9 @@ struct CreateProfileView: View {
                             .frame(minHeight: 120)
                             .autocorrectionDisabled()
                     } header: {
-                        Text("SOUL.md (선택)")
+                        Text("profile.create.soul.header")
                     } footer: {
-                        Text("프로필의 성격/지침. 나중에 상세 화면에서도 편집할 수 있습니다.")
+                        Text("profile.create.soul.footer")
                     }
 
                     Section {
@@ -55,15 +55,15 @@ struct CreateProfileView: View {
                             if isCreating {
                                 HStack(spacing: 8) {
                                     ProgressView()
-                                    Text("생성 중... (게이트웨이 기동까지 수십 초)")
+                                    Text("profile.create.creating")
                                 }
                             } else {
-                                Label("프로필 생성", systemImage: "plus.circle")
+                                Label("profile.create.action", systemImage: "plus.circle")
                             }
                         }
                         .disabled(isCreating || trimmedName.isEmpty)
                     } footer: {
-                        Text("디렉터리·.env·SOUL.md를 만들고 게이트웨이를 기동합니다.")
+                        Text("profile.create.action.footer")
                     }
 
                     if let statusMessage {
@@ -75,11 +75,11 @@ struct CreateProfileView: View {
                     }
                 }
             }
-            .navigationTitle("새 프로필")
+            .navigationTitle("profile.create.title")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("취소") { dismiss() }
+                    Button("common.cancel") { dismiss() }
                 }
             }
         }

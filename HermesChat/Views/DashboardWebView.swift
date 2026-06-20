@@ -20,7 +20,7 @@ struct DashboardWebView: View {
         NavigationStack {
             WebView(url: appSettings.dashboardURL, desktopMode: desktopMode)
                 .ignoresSafeArea(edges: .bottom)
-                .navigationTitle("대시보드")
+                .navigationTitle("tab.dashboard")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
@@ -29,7 +29,7 @@ struct DashboardWebView: View {
                         } label: {
                             Image(systemName: desktopMode ? "desktopcomputer" : "iphone")
                         }
-                        .accessibilityLabel(desktopMode ? "데스크톱 보기 (탭하면 모바일 보기)" : "모바일 보기 (탭하면 데스크톱 보기)")
+                        .accessibilityLabel(desktopMode ? "dashboard.desktop.label" : "dashboard.mobile.label")
                     }
                 }
         }

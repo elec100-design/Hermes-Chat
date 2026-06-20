@@ -74,11 +74,11 @@ struct CronManagerView: View {
                     content
                 }
             }
-            .navigationTitle("크론 관리")
+            .navigationTitle("cron.manager.title")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("닫기") { dismiss() }
+                    Button("common.close") { dismiss() }
                 }
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     if bridgeConfigured {
@@ -91,7 +91,7 @@ struct CronManagerView: View {
                         Button {
                             showCreate = true
                         } label: {
-                            Label("새 크론잡", systemImage: "plus")
+                            Label("cron.manager.new.job", systemImage: "plus")
                         }
                         .disabled(appSettings.profiles.isEmpty)
                     }
@@ -107,7 +107,7 @@ struct CronManagerView: View {
                     }
                     .toolbar {
                         ToolbarItem(placement: .topBarLeading) {
-                            Button("취소") { showCreate = false }
+                            Button("common.cancel") { showCreate = false }
                         }
                     }
                 }
@@ -123,13 +123,13 @@ struct CronManagerView: View {
                     }
                     .toolbar {
                         ToolbarItem(placement: .topBarLeading) {
-                            Button("취소") { editTarget = nil }
+                            Button("common.cancel") { editTarget = nil }
                         }
                     }
                 }
             }
             .confirmationDialog(
-                "이 크론잡을 삭제할까요?",
+                "cron.manager.delete.confirm",
                 isPresented: Binding(
                     get: { pendingDelete != nil },
                     set: { if !$0 { pendingDelete = nil } }
@@ -137,10 +137,10 @@ struct CronManagerView: View {
                 titleVisibility: .visible,
                 presenting: pendingDelete
             ) { target in
-                Button("삭제", role: .destructive) {
+                Button("common.delete", role: .destructive) {
                     Task { await delete(target) }
                 }
-                Button("취소", role: .cancel) {}
+                Button("common.cancel", role: .cancel) {}
             } message: { target in
                 Text("\(target.profile.name) · \(target.job.displayTitle)\n이 작업은 되돌릴 수 없습니다.")
             }
@@ -167,7 +167,7 @@ struct CronManagerView: View {
                 Button {
                     filterProfileName = nil
                 } label: {
-                    Label("전체 프로필", systemImage: filterProfileName == nil ? "checkmark" : "tray.full")
+                    Label("cron.manager.filter.all", systemImage: filterProfileName == nil ? "checkmark" : "tray.full")
                 }
                 Divider()
                 ForEach(appSettings.profiles) { profile in
@@ -184,7 +184,7 @@ struct CronManagerView: View {
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: "line.3.horizontal.decrease.circle")
-                    Text(filterProfileName ?? "전체 프로필")
+                    Text(filterProfileName ?? String(localized: "cron.manager.filter.all"))
                         .fontWeight(.medium)
                     Image(systemName: "chevron.down")
                         .font(.caption2)
@@ -198,7 +198,7 @@ struct CronManagerView: View {
             if isLoading {
                 ProgressView().scaleEffect(0.8)
             } else {
-                Text("크론잡 \(totalVisibleJobs)개")
+                Text(String(format: String(localized: "cron.manager.jobs.count %lld"), Int64(totalVisibleJobs)))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -213,11 +213,11 @@ struct CronManagerView: View {
             errorState(loadError)
         } else if !isLoading && totalVisibleJobs == 0 {
             ContentUnavailableView(
-                "크론잡 없음",
+                "cron.manager.empty",
                 systemImage: "clock.badge.xmark",
                 description: Text(filterProfileName == nil
-                    ? "등록된 크론잡이 없습니다."
-                    : "\(filterProfileName!) 프로필에는 등록된 크론잡이 없습니다.")
+                    ? String(localized: "cron.manager.empty.desc")
+                    : String(format: String(localized: "cron.manager.empty.filtered.desc %@"), filterProfileName!))
             )
         } else {
             List {
@@ -277,10 +277,10 @@ struct CronManagerView: View {
             if job.lastRunDisplay != nil || job.nextRunDisplay != nil {
                 HStack(spacing: 12) {
                     if let last = job.lastRunDisplay {
-                        Text("최근 \(last)")
+                        Text(String(format: String(localized: "cron.job.last.run %@"), last))
                     }
                     if let next = job.nextRunDisplay {
-                        Text("다음 \(next)")
+                        Text(String(format: String(localized: "cron.job.next.run %@"), next))
                     }
                 }
                 .font(.caption2)
@@ -314,18 +314,18 @@ struct CronManagerView: View {
     private func actionRow(target: EditTarget, enabled: Bool, isBusy: Bool) -> some View {
         HStack(spacing: 8) {
             actionButton(
-                enabled ? "일시정지" : "재개",
+                String(localized: enabled ? "cron.job.toggle.pause" : "cron.job.toggle.resume"),
                 systemImage: enabled ? "pause.fill" : "play.fill"
             ) {
                 Task { await toggleEnabled(target, to: !enabled) }
             }
-            actionButton("실행", systemImage: "bolt.fill", tint: .orange) {
+            actionButton(String(localized: "cron.job.run"), systemImage: "bolt.fill", tint: .orange) {
                 Task { await trigger(target) }
             }
-            actionButton("편집", systemImage: "pencil") {
+            actionButton(String(localized: "cron.job.edit"), systemImage: "pencil") {
                 editTarget = target
             }
-            actionButton("삭제", systemImage: "trash", tint: .red) {
+            actionButton(String(localized: "common.delete"), systemImage: "trash", tint: .red) {
                 pendingDelete = target
             }
         }
@@ -400,7 +400,7 @@ struct CronManagerView: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
-            Button("다시 시도") { Task { await loadAll() } }
+            Button("common.retry") { Task { await loadAll() } }
         }
         .padding()
         .frame(maxHeight: .infinity)
@@ -411,7 +411,7 @@ struct CronManagerView: View {
             Image(systemName: "link.badge.plus")
                 .font(.largeTitle)
                 .foregroundStyle(.secondary)
-            Text("크론잡을 보려면 Hermes Bridge가 필요합니다.\n설정 화면의 \"Hermes Bridge\" 섹션에 URL과 토큰을 입력하세요.")
+            Text("cron.manager.bridge.required")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)

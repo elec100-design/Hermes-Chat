@@ -13,7 +13,7 @@ struct ToolCallsChip: View {
             } label: {
                 HStack(spacing: 5) {
                     Image(systemName: "wrench.and.screwdriver.fill")
-                    Text("도구 \(toolCalls.count)회 실행")
+                    Text(String(format: String(localized: "tool.calls.count %lld"), Int64(toolCalls.count)))
                     Image(systemName: expanded ? "chevron.up" : "chevron.down")
                         .font(.caption2)
                 }

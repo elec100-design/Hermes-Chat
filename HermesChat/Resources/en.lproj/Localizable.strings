@@ -153,3 +153,144 @@
 "kanban.mode.ready.footnote" = "The assigned profile worker will start within a minute.";
 "kanban.mode.triage.footnote" = "A spec-refinement agent will polish the details before running.";
 "kanban.mode.blocked.footnote" = "Stored on the board without running. Can be resumed from the Blocked column.";
+
+/* Common (additional) */
+"common.close" = "Close";
+"common.restart" = "Restart";
+"common.saving" = "Saving...";
+"common.creating" = "Creating...";
+"common.empty" = "Empty";
+
+/* Profile Board */
+"profile.board.title" = "Profile Board";
+"profile.board.cron.manage" = "Cron Manager";
+"profile.add" = "Add Profile";
+"profile.add.accessibility" = "Add new profile";
+"profile.status.checking" = "Checking...";
+"profile.status.offline" = "Offline";
+"profile.status.online" = "Online";
+"profile.sessions.count %lld" = "%lld sessions";
+
+/* Profile Detail */
+"profile.detail.connection" = "Connection";
+"profile.detail.profile.label" = "Profile";
+"profile.detail.port.label" = "Port";
+"profile.detail.gateway.logs" = "View Gateway Logs (last 200 lines)";
+"profile.detail.restarting" = "Restarting...";
+"profile.detail.gateway.restart" = "Restart Gateway";
+"profile.detail.restart.footer" = "Changes to SOUL.md take effect after restarting the gateway.";
+"profile.detail.deleting" = "Deleting...";
+"profile.detail.delete.action" = "Delete Profile";
+"profile.detail.delete.footer" = "Permanently removes this profile from the backend (hermes profile delete).";
+"profile.detail.bridge.soul.required" = "Enter the URL and token in the \"Hermes Bridge\" section of Settings to enable SOUL.md editing and gateway restart.";
+"profile.detail.soul.header" = "SOUL.md (Personality/Instructions)";
+"profile.detail.soul.save" = "Save SOUL.md";
+"profile.detail.model.header" = "Model";
+"profile.detail.model.picker" = "Model";
+"profile.detail.model.bridge.required" = "Model selection requires Hermes Bridge. Enter the URL and token in Settings.";
+"profile.detail.model.catalog.empty" = "Model catalog is empty. Start the gateway once to generate cache/model_catalog.json.";
+"profile.detail.model.current" = "Current Model";
+"profile.detail.model.saving" = "Saving & Restarting...";
+"profile.detail.model.save" = "Save Model (Restart Gateway)";
+"profile.detail.model.footer" = "Updates model.default in config.yaml and restarts the gateway. (provider·base_url are preserved)";
+"profile.detail.loading" = "Loading...";
+"profile.detail.load.failed %@" = "Load failed: %@";
+"profile.detail.restart.confirm %@" = "Restart %@ gateway?\nActive responses may be interrupted.";
+"profile.detail.delete.confirm %@" = "Delete %@ profile?\nThis will be permanently removed from the backend and cannot be undone.";
+
+/* Skills */
+"skills.empty" = "No skills installed";
+"skills.toolsets.empty" = "No toolsets";
+"skills.header %lld" = "Skills (%lld)";
+"skills.toolsets.header %lld" = "Toolsets (%lld)";
+"skills.footer %@" = "Profile: %@. Enable/disable via config.yaml on your Mac mini.";
+
+/* File Browser */
+"files.bridge.required" = "Enter Hermes Bridge URL/token in Settings.";
+"files.cannot.open" = "Cannot Open";
+"files.bridge.not.configured" = "Bridge not configured";
+
+/* Profile Create */
+"profile.create.bridge.required" = "Creating a new profile requires Hermes Bridge.\nEnter the URL and token in the \"Hermes Bridge\" section of Settings.";
+"profile.create.section.profile" = "Profile";
+"profile.create.name.placeholder" = "Name (e.g. work)";
+"profile.create.soul.header" = "SOUL.md (optional)";
+"profile.create.soul.footer" = "Profile personality/instructions. Can also be edited later in the detail screen.";
+"profile.create.creating" = "Creating... (gateway startup may take tens of seconds)";
+"profile.create.action" = "Create Profile";
+"profile.create.action.footer" = "Creates directory, .env, SOUL.md and starts the gateway.";
+"profile.create.title" = "New Profile";
+
+/* Dashboard */
+"dashboard.desktop.label" = "Desktop view (tap for mobile view)";
+"dashboard.mobile.label" = "Mobile view (tap for desktop view)";
+
+/* Cron Manager */
+"cron.manager.title" = "Cron Manager";
+"cron.manager.new.job" = "New Cron Job";
+"cron.manager.filter.all" = "All Profiles";
+"cron.manager.jobs.count %lld" = "%lld cron jobs";
+"cron.manager.empty" = "No Cron Jobs";
+"cron.manager.empty.desc" = "No cron jobs registered.";
+"cron.manager.empty.filtered.desc %@" = "No cron jobs in %@ profile.";
+"cron.manager.delete.confirm" = "Delete this cron job?";
+"cron.manager.bridge.required" = "Hermes Bridge is required to view cron jobs.\nEnter URL and token in the \"Hermes Bridge\" section of Settings.";
+"cron.job.last.run %@" = "Last %@";
+"cron.job.next.run %@" = "Next %@";
+"cron.job.toggle.pause" = "Pause";
+"cron.job.toggle.resume" = "Resume";
+"cron.job.run" = "Run";
+"cron.job.edit" = "Edit";
+
+/* Cron Job Edit */
+"cron.edit.profile" = "Profile";
+"cron.edit.name" = "Name";
+"cron.edit.enabled" = "Enable this cron job";
+"cron.edit.prompt.footer" = "Instructions for the agent. Script-type (no_agent) jobs may leave this empty.";
+"cron.edit.schedule.footer" = "min hr day month weekday. E.g. `0 8 * * *` = daily 08:00.";
+"cron.edit.schedule.human %@" = "%@ · min hr day month weekday";
+"cron.edit.saving" = "Saving...";
+"cron.edit.creating" = "Creating...";
+"cron.edit.save" = "Save Changes";
+"cron.edit.create" = "Create Cron Job";
+"cron.edit.title.new" = "New Cron Job";
+"cron.edit.skills.empty" = "No available skills";
+"cron.edit.mode %@" = "Mode: %@";
+
+/* Discussion (Deep Think) */
+"discuss.stop.confirm" = "Discussion is in progress. Stop and exit?";
+"discuss.stop.action" = "Stop and Exit";
+"discuss.continue" = "Keep Going";
+"discuss.setup.topic" = "Discussion Topic";
+"discuss.setup.topic.placeholder" = "Enter discussion topic";
+"discuss.setup.participants %lld" = "Participants (%lld selected)";
+"discuss.setup.participants.hint" = "Gathering agents with different models and perspectives improves mutual verification.";
+"discuss.setup.mode" = "Session Settings";
+"discuss.setup.rounds %lld" = "Rounds: %lld";
+"discuss.setup.tools" = "Allow Tool Use";
+"discuss.setup.tools.hint" = "Agents can search the web for evidence. A single turn may take several minutes.";
+"discuss.start" = "Start Discussion";
+"discuss.start.hint" = "A topic and at least 2 participants are required.";
+"discuss.past" = "Past Discussions";
+"discuss.moderator" = "Moderator (writes conclusion)";
+"discuss.moderator.first" = "First participant";
+"discuss.room.topic" = "Topic";
+"discuss.room.stop" = "Stop";
+"discuss.room.copy.conclusion" = "Copy Conclusion";
+"discuss.room.share" = "Share";
+"discuss.room.new" = "New Discussion";
+"discuss.room.back.setup" = "Back to Settings";
+"discuss.status.concluding" = "Moderator is writing the conclusion...";
+"discuss.status.speaking %@" = "%@ is speaking...";
+"discuss.status.speaking.count %lld" = "%lld participants speaking...";
+"discuss.status.round %lld %lld" = "Round %lld/%lld in progress...";
+"discuss.status.running" = "In progress...";
+"discuss.conclusion.label %@" = "Final Conclusion — %@";
+
+/* Message / Chat UI */
+"message.copy" = "Copy";
+"message.copy.plain" = "Copy Plain Text (Strip Markdown)";
+"message.tts.stop" = "Stop Reading";
+"message.tts.read" = "Read Aloud";
+"message.thinking" = "Thinking";
+"tool.calls.count %lld" = "%lld tool calls";

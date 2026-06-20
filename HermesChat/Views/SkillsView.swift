@@ -15,7 +15,7 @@ struct SkillsView: View {
             if isLoading {
                 HStack(spacing: 8) {
                     ProgressView()
-                    Text("불러오는 중...")
+                    Text("common.loading")
                         .foregroundStyle(.secondary)
                 }
             } else if let loadError {
@@ -26,7 +26,7 @@ struct SkillsView: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                     Spacer()
-                    Button("재시도") {
+                    Button("common.retry") {
                         Task { await load() }
                     }
                     .font(.footnote.bold())
@@ -34,24 +34,24 @@ struct SkillsView: View {
             } else {
                 Section {
                     if skills.isEmpty {
-                        Text("설치된 스킬 없음")
+                        Text("skills.empty")
                             .foregroundStyle(.secondary)
                     }
                     ForEach(skills) { capabilityRow($0) }
                 } header: {
-                    Text("스킬 (\(skills.count))")
+                    Text(String(format: String(localized: "skills.header %lld"), Int64(skills.count)))
                 }
 
                 Section {
                     if toolsets.isEmpty {
-                        Text("툴셋 없음")
+                        Text("skills.toolsets.empty")
                             .foregroundStyle(.secondary)
                     }
                     ForEach(toolsets) { capabilityRow($0) }
                 } header: {
-                    Text("툴셋 (\(toolsets.count))")
+                    Text(String(format: String(localized: "skills.toolsets.header %lld"), Int64(toolsets.count)))
                 } footer: {
-                    Text("프로필: \(appSettings.selectedProfile.name). 활성/비활성 변경은 맥미니의 config.yaml에서 합니다.")
+                    Text(String(format: String(localized: "skills.footer %@"), appSettings.selectedProfile.name))
                 }
             }
         }

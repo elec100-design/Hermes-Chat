@@ -153,3 +153,144 @@
 "kanban.mode.ready.footnote" = "负责配置文件的工作器将在一分钟内开始任务。";
 "kanban.mode.triage.footnote" = "规格细化代理将先完善内容，然后再运行。";
 "kanban.mode.blocked.footnote" = "仅存储在看板上，不运行。可在 Blocked 列中恢复。";
+
+/* Common (additional) */
+"common.close" = "关闭";
+"common.restart" = "重启";
+"common.saving" = "保存中…";
+"common.creating" = "创建中…";
+"common.empty" = "空";
+
+/* Profile Board */
+"profile.board.title" = "配置文件面板";
+"profile.board.cron.manage" = "定时任务管理";
+"profile.add" = "添加配置文件";
+"profile.add.accessibility" = "添加新配置文件";
+"profile.status.checking" = "检查中…";
+"profile.status.offline" = "离线";
+"profile.status.online" = "在线";
+"profile.sessions.count %lld" = "%lld 个会话";
+
+/* Profile Detail */
+"profile.detail.connection" = "连接";
+"profile.detail.profile.label" = "配置文件";
+"profile.detail.port.label" = "端口";
+"profile.detail.gateway.logs" = "查看网关日志（最近 200 行）";
+"profile.detail.restarting" = "重启中…";
+"profile.detail.gateway.restart" = "重启网关";
+"profile.detail.restart.footer" = "对 SOUL.md 的修改需要重启网关后才能生效。";
+"profile.detail.deleting" = "删除中…";
+"profile.detail.delete.action" = "删除配置文件";
+"profile.detail.delete.footer" = "将从后端完全删除此配置文件（hermes profile delete）。";
+"profile.detail.bridge.soul.required" = "在设置的\"Hermes Bridge\"部分输入 URL 和令牌，即可启用 SOUL.md 编辑和网关重启功能。";
+"profile.detail.soul.header" = "SOUL.md（个性/指令）";
+"profile.detail.soul.save" = "保存 SOUL.md";
+"profile.detail.model.header" = "模型";
+"profile.detail.model.picker" = "模型";
+"profile.detail.model.bridge.required" = "选择模型需要 Hermes Bridge。请在设置中输入 URL 和令牌。";
+"profile.detail.model.catalog.empty" = "模型目录为空。启动一次网关即可生成 cache/model_catalog.json。";
+"profile.detail.model.current" = "当前模型";
+"profile.detail.model.saving" = "保存并重启中…";
+"profile.detail.model.save" = "保存模型（重启网关）";
+"profile.detail.model.footer" = "更新 config.yaml 中的 model.default 并重启网关。（provider·base_url 保持不变）";
+"profile.detail.loading" = "加载中…";
+"profile.detail.load.failed %@" = "加载失败：%@";
+"profile.detail.restart.confirm %@" = "重启 %@ 网关？\n当前响应可能会中断。";
+"profile.detail.delete.confirm %@" = "删除 %@ 配置文件？\n将从后端完全删除且无法恢复。";
+
+/* Skills */
+"skills.empty" = "未安装任何技能";
+"skills.toolsets.empty" = "无工具集";
+"skills.header %lld" = "技能（%lld）";
+"skills.toolsets.header %lld" = "工具集（%lld）";
+"skills.footer %@" = "配置文件：%@。在 Mac mini 的 config.yaml 中启用/禁用。";
+
+/* File Browser */
+"files.bridge.required" = "请在设置中输入 Hermes Bridge URL 和令牌。";
+"files.cannot.open" = "无法打开";
+"files.bridge.not.configured" = "未配置 Bridge";
+
+/* Profile Create */
+"profile.create.bridge.required" = "创建新配置文件需要 Hermes Bridge。\n请在设置的\"Hermes Bridge\"部分输入 URL 和令牌。";
+"profile.create.section.profile" = "配置文件";
+"profile.create.name.placeholder" = "名称（如：work）";
+"profile.create.soul.header" = "SOUL.md（可选）";
+"profile.create.soul.footer" = "配置文件的个性/指令，稍后也可在详情页编辑。";
+"profile.create.creating" = "创建中…（网关启动可能需要数十秒）";
+"profile.create.action" = "创建配置文件";
+"profile.create.action.footer" = "创建目录、.env、SOUL.md 并启动网关。";
+"profile.create.title" = "新建配置文件";
+
+/* Dashboard */
+"dashboard.desktop.label" = "桌面视图（点击切换为移动视图）";
+"dashboard.mobile.label" = "移动视图（点击切换为桌面视图）";
+
+/* Cron Manager */
+"cron.manager.title" = "定时任务管理";
+"cron.manager.new.job" = "新建定时任务";
+"cron.manager.filter.all" = "所有配置文件";
+"cron.manager.jobs.count %lld" = "%lld 个定时任务";
+"cron.manager.empty" = "暂无定时任务";
+"cron.manager.empty.desc" = "尚未注册定时任务。";
+"cron.manager.empty.filtered.desc %@" = "%@ 配置文件中没有定时任务。";
+"cron.manager.delete.confirm" = "确认删除此定时任务？";
+"cron.manager.bridge.required" = "查看定时任务需要 Hermes Bridge。\n请在设置的\"Hermes Bridge\"栏填写 URL 和令牌。";
+"cron.job.last.run %@" = "上次 %@";
+"cron.job.next.run %@" = "下次 %@";
+"cron.job.toggle.pause" = "暂停";
+"cron.job.toggle.resume" = "恢复";
+"cron.job.run" = "立即执行";
+"cron.job.edit" = "编辑";
+
+/* Cron Job Edit */
+"cron.edit.profile" = "配置文件";
+"cron.edit.name" = "名称";
+"cron.edit.enabled" = "启用此定时任务";
+"cron.edit.prompt.footer" = "发送给 AI 的指令。脚本型（no_agent）任务可留空。";
+"cron.edit.schedule.footer" = "分 时 日 月 周。例：`0 8 * * *` = 每天 08:00。";
+"cron.edit.schedule.human %@" = "%@ · 分 时 日 月 周";
+"cron.edit.saving" = "保存中…";
+"cron.edit.creating" = "创建中…";
+"cron.edit.save" = "保存更改";
+"cron.edit.create" = "创建定时任务";
+"cron.edit.title.new" = "新建定时任务";
+"cron.edit.skills.empty" = "暂无可用技能";
+"cron.edit.mode %@" = "模式：%@";
+
+/* Discussion (Deep Think) */
+"discuss.stop.confirm" = "讨论正在进行。确认中断并退出？";
+"discuss.stop.action" = "中断并退出";
+"discuss.continue" = "继续";
+"discuss.setup.topic" = "讨论主题";
+"discuss.setup.topic.placeholder" = "请输入讨论主题";
+"discuss.setup.participants %lld" = "参与者（已选 %lld 人）";
+"discuss.setup.participants.hint" = "聚集不同模型和风格的 AI，相互验证效果更佳。";
+"discuss.setup.mode" = "进行方式";
+"discuss.setup.rounds %lld" = "轮次：%lld";
+"discuss.setup.tools" = "允许工具使用";
+"discuss.setup.tools.hint" = "AI 可通过网络搜索寻找依据，单次发言可能长达数分钟。";
+"discuss.start" = "开始讨论";
+"discuss.start.hint" = "需要主题及至少 2 名参与者。";
+"discuss.past" = "历史讨论";
+"discuss.moderator" = "主持人（撰写结论）";
+"discuss.moderator.first" = "第一位参与者";
+"discuss.room.topic" = "主题";
+"discuss.room.stop" = "停止";
+"discuss.room.copy.conclusion" = "复制结论";
+"discuss.room.share" = "分享";
+"discuss.room.new" = "新讨论";
+"discuss.room.back.setup" = "返回设置";
+"discuss.status.concluding" = "主持人正在整理结论…";
+"discuss.status.speaking %@" = "%@ 发言中…";
+"discuss.status.speaking.count %lld" = "%lld 人发言中…";
+"discuss.status.round %lld %lld" = "第 %lld/%lld 轮进行中…";
+"discuss.status.running" = "进行中…";
+"discuss.conclusion.label %@" = "最终结论 — %@";
+
+/* Message / Chat UI */
+"message.copy" = "复制";
+"message.copy.plain" = "复制纯文本（去除 Markdown）";
+"message.tts.stop" = "停止朗读";
+"message.tts.read" = "朗读";
+"message.thinking" = "思考中";
+"tool.calls.count %lld" = "调用工具 %lld 次";
