@@ -20,12 +20,16 @@
 >   Pin은 서버 미지원이라 로컬(UserDefaults) 보관·목록 맨 위 정렬·행 핀 아이콘. 브랜치
 >   `claude/busy-ritchie-cx2ohx`, `NEEDS-BUILD`(맥 빌드 미검증). 상세는 Phase 20 절.
 >
-> **다음 세션 예정 작업** (사용자 지정):
-> 1. T-116 실기기 확인 — 전송 즉시 말풍선 "생각 중" 표시 → 본문 라이브 스트리밍(재진입 불필요)
-> 2. **Phase 15 빌드 + 실기기 검증** — T-117~120 핸즈프리 음성 대화 (체크리스트는 Phase 15 절 참조, 브랜치 `claude/clever-wozniak-oairxi`)
-> 3. 음성 입출력 실기기 기능 확인 — T-100~102 (받아쓰기, 읽어주기, 에어팟/글라스 라우팅)
-> 4. 사진/파일 입출력 실기기 기능 확인 — T-020~022 첨부 전송, T-105~108 썸네일 (T-105 브리지 재배포 여부 포함)
-> 5. 남은 TODO: T-096(칸반 events 최적화), T-097/T-098(Bridge config + 툴셋 토글)
+> **2026-06-20 현황 (Phase A/B)**:
+> - **Phase A (App Store 컴플라이언스)**: T-A01~A06 DONE. T-A07/A08 NEEDS-BUILD (PR #12 대기).
+> - **Phase B (클라우드 SaaS 인프라)**: T-B01/B03/B05 DONE — `server/` 하위 Docker 인프라·cloud_gateway.py 완성.
+>   브랜치 `claude/hopeful-edison-1p5q91` — 사용자 Docker 빌드 검증 완료. PR 생성 후 main 병합 예정.
+>   T-B02(Supabase 대시보드)·T-B04(클라우드 배포)는 코드 아님.
+>
+> **다음 세션 예정 작업**:
+> 1. **Phase C (iOS SaaS 전환)** — T-C01 `AuthView.swift` (Sign in with Apple + Supabase Auth) 시작
+> 2. **T-B02** Supabase 프로젝트 생성 + users 테이블 + Sign in with Apple OAuth 설정 (대시보드 작업)
+> 3. T-A07/A08 맥 빌드 검증 (PR #12)
 
 ## 즉시 (사람 또는 맥미니 Hermes가 1회 수행)
 
@@ -310,7 +314,7 @@
 | T-B02 | Supabase 프로젝트 생성 + `users(id, email, plan, container_id)` 테이블 + Sign in with Apple OAuth 설정 | Supabase 대시보드 (코드 아님) | TODO |
 | T-B03 | `server/cloud_gateway.py` 신규 — JWT 검증 미들웨어 + 사용자별 컨테이너 라우팅 프록시. 엔드포인트: `POST /auth/login`, `GET /status`, `GET /usage`, `DELETE /account`, `*` 프록시. `server/Dockerfile.cloud-gateway` + docker-compose.yml cloud-gateway 서비스 추가 | `server/cloud_gateway.py`, `server/Dockerfile.cloud-gateway` (신규), `server/docker-compose.yml`, `server/.env.example` | DONE (2026-06-20) |
 | T-B04 | 클라우드 제공자 배포 — Fly.io 또는 Hetzner CCX13. nginx + Let's Encrypt SSL. Docker Compose로 다수 컨테이너 기동 | 인프라 (코드 아님) | TODO |
-| T-B05 | 가격 플랜 (무료/Basic₩9,900/Pro₩29,900) — Supabase `users.plan` 컬럼 + `cloud_gateway.py` 제한 로직 (무료=월 200 메시지, Basic=3 프로필, Pro=10 프로필) | `server/cloud_gateway.py` | NEEDS-BUILD (2026-06-20) |
+| T-B05 | 가격 플랜 (무료/Basic₩9,900/Pro₩29,900) — Supabase `users.plan` 컬럼 + `cloud_gateway.py` 제한 로직 (무료=월 200 메시지, Basic=3 프로필, Pro=10 프로필) | `server/cloud_gateway.py` | DONE (2026-06-20) |
 
 ## Phase C — 앱 SaaS 전환 (Phase B 완료 후)
 
@@ -345,3 +349,4 @@
 | 06-20 | claude/adoring-thompson-pdohly @ daafef5 | BUILD SUCCEEDED | 사용자 빌드 확인 — T-A06 DONE (Sign in with Apple 엔타이틀먼트) |
 | 06-20 | claude/hopeful-edison-1p5q91 @ 8ec3575 | DOCKER BUILD SUCCEEDED | 사용자 확인 — T-B01 DONE (hermes-agent Dockerfile + docker-compose.yml) |
 | 06-20 | claude/hopeful-edison-1p5q91 @ 6ce0852 | DOCKER BUILD SUCCEEDED | 사용자 확인 — T-B03 DONE (cloud_gateway.py Dockerfile + 컨테이너 프록시) |
+| 06-20 | claude/hopeful-edison-1p5q91 @ 767df1e | DOCKER BUILD SUCCEEDED | 사용자 확인 — T-B05 DONE (플랜 제한 + Bridge 프록시 + 메시지 카운팅) |

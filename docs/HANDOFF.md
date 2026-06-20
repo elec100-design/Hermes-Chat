@@ -172,6 +172,64 @@ git push -u origin claude/<topic>   # 작업 중인 피처 브랜치로 동작 �
 
 ---
 
+## 부록 C. Phase B 클라우드 SaaS 인프라 (2026-06-20 완성)
+
+### 구성 파일 (모두 `server/` 하위)
+| 파일 | 역할 |
+|---|---|
+| `Dockerfile` | per-user hermes-agent 이미지 (pipx 설치, entrypoint.sh) |
+| `docker-entrypoint.sh` | ~/.hermes/.env 설정 → gateway 기동 → bridge foreground |
+| `docker-compose.yml` | hermes-agent + cloud-gateway 서비스 정의 |
+| `Dockerfile.cloud-gateway` | cloud_gateway.py 경량 이미지 (python:3.11-slim) |
+| `cloud_gateway.py` | JWT 검증 + 컨테이너 라우팅 + 플랜 제한 + Bridge 프록시 |
+| `.env.example` | 환경변수 템플릿 (실제 .env는 gitignore) |
+
+### 로컬 테스트 절차
+```bash
+cp server/.env.example server/.env  # 값 채우기
+docker compose -f server/docker-compose.yml up --build
+curl http://localhost:8080/health   # {"status":"ok"} 확인
+
+# 테스트용 JWT 생성 (SUPABASE_JWT_SECRET=test-secret 일 때)
+python3 -c "
+import base64, hmac, hashlib, json, time
+secret = 'test-secret'
+payload = {'sub': 'user-test-123', 'email': 'test@test.com', 'exp': int(time.time())+3600, 'role': 'authenticated'}
+h = base64.urlsafe_b64encode(json.dumps({'alg':'HS256','typ':'JWT'}).encode()).rstrip(b'=').decode()
+p = base64.urlsafe_b64encode(json.dumps(payload).encode()).rstrip(b'=').decode()
+sig = base64.urlsafe_b64encode(hmac.new(secret.encode(), f'{h}.{p}'.encode(), hashlib.sha256).digest()).rstrip(b'=').decode()
+print(f'{h}.{p}.{sig}')
+"
+
+curl -X POST http://localhost:8080/auth/login -H "Authorization: Bearer <토큰>"
+curl http://localhost:8080/usage -H "Authorization: Bearer <토큰>"
+```
+
+### 필수 환경변수 (프로덕션)
+- `SUPABASE_JWT_SECRET` — Supabase > Settings > API > JWT Secret
+- `GATEWAY_SECRET` — 64자 랜덤 (`python3 -c "import secrets; print(secrets.token_hex(32))"`)
+- `SUPABASE_URL` — `https://xxx.supabase.co` (플랜 조회용)
+- `SUPABASE_SERVICE_KEY` — Supabase Service Role Key (users 테이블 읽기)
+- `HERMES_IMAGE` — 빌드한 hermes-agent 이미지 태그
+
+### cloud_gateway.py 엔드포인트
+| 메서드/경로 | 인증 | 설명 |
+|---|---|---|
+| `GET /health` | 없음 | 게이트웨이 alive |
+| `POST /auth/login` | JWT | 컨테이너 프로비저닝 (blocking, 최대 90s) |
+| `GET /status` | JWT | 컨테이너 상태 JSON |
+| `GET /usage` | JWT | 이번 달 메시지 사용량 + 플랜 |
+| `DELETE /account` | JWT | 컨테이너+볼륨 완전 삭제 (되돌릴 수 없음) |
+| `/bridge/*` | JWT | 컨테이너 Bridge(:8765) 프록시 |
+| `*` | JWT | 컨테이너 게이트웨이(:8642) 프록시 |
+
+### 플랜 제한 (T-B05)
+- free: 프로필 1개, 월 200 메시지
+- basic (₩9,900): 프로필 3개, 무제한
+- pro (₩29,900): 프로필 10개, 무제한
+
+---
+
 ## 부록 A. 접속 정보 (코드/문서에 비밀값은 절대 커밋 금지)
 
 | 항목 | 값 |
