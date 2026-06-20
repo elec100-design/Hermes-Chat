@@ -12,6 +12,40 @@ final class AppSettings: ObservableObject {
     /// 온보딩 완료 여부 — false면 앱 시작 시 OnboardingView를 표시한다.
     @AppStorage("isFirstLaunchComplete") var isFirstLaunchComplete: Bool = false
 
+    // MARK: - Cloud Auth (T-C01)
+    /// Supabase 프로젝트 URL (예: https://xxx.supabase.co). T-B02 완료 후 설정.
+    @AppStorage("supabaseURL")     var supabaseURL: String = ""
+    /// Supabase anon (public) key — 공개 키라 Keychain 불필요, UserDefaults 저장 허용.
+    @AppStorage("supabaseAnonKey") var supabaseAnonKey: String = ""
+    /// 클라우드 게이트웨이 URL (예: https://gateway.hermeschat.app). T-B04 배포 후 설정.
+    @AppStorage("cloudGatewayURL") var cloudGatewayURL: String = ""
+
+    /// Keychain 기반 cloud auth 상태
+    @Published var supabaseJWT: String = "" {
+        didSet { KeychainHelper.set(supabaseJWT, for: "supabase_jwt") }
+    }
+    @Published var supabaseRefresh: String = "" {
+        didSet { KeychainHelper.set(supabaseRefresh, for: "supabase_refresh") }
+    }
+    @Published var supabaseUserID: String = "" {
+        didSet { KeychainHelper.set(supabaseUserID, for: "supabase_user_id") }
+    }
+    @Published var supabaseEmail: String = "" {
+        didSet { KeychainHelper.set(supabaseEmail, for: "supabase_email") }
+    }
+    /// 로그인 시 cloud_gateway로부터 받은 플랜 ("free"|"basic"|"pro"). 비영속.
+    @Published var cloudPlan: String = ""
+
+    var isCloudAuthenticated: Bool { !supabaseJWT.isEmpty && !supabaseUserID.isEmpty }
+
+    func signOutCloud() {
+        supabaseJWT     = ""
+        supabaseRefresh = ""
+        supabaseUserID  = ""
+        supabaseEmail   = ""
+        cloudPlan       = ""
+    }
+
     /// 비밀값은 Keychain 보관 (T-070). 구버전 UserDefaults 값은 init에서 1회 이관.
     @Published var apiKey: String = "" {
         didSet { KeychainHelper.set(apiKey, for: "apiKey") }
@@ -50,6 +84,10 @@ final class AppSettings: ObservableObject {
         selectedProfileID = (profiles.first { $0.name == storedName } ?? profiles.first)?.id
         apiKey = Self.loadSecret("apiKey")
         bridgeToken = Self.loadSecret("bridgeToken")
+        supabaseJWT     = Self.loadSecret("supabase_jwt")
+        supabaseRefresh = Self.loadSecret("supabase_refresh")
+        supabaseUserID  = Self.loadSecret("supabase_user_id")
+        supabaseEmail   = Self.loadSecret("supabase_email")
         if let ids = UserDefaults.standard.array(forKey: Self.pinnedSessionsKey) as? [String] {
             pinnedSessionIDs = Set(ids)
         }

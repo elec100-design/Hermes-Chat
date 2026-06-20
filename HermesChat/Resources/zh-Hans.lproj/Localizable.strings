@@ -294,3 +294,31 @@
 "message.tts.read" = "朗读";
 "message.thinking" = "思考中";
 "tool.calls.count %lld" = "调用工具 %lld 次";
+
+/* Cloud Auth (T-C01) */
+"auth.title" = "云账号";
+"auth.signin.heading" = "Hermes 云服务";
+"auth.signin.subtitle" = "使用 Apple 账号登录，随时随地访问 Hermes。";
+"auth.signin.loading" = "登录中…";
+"auth.label.signedin" = "已登录";
+"auth.label.signedout" = "登录云服务";
+"auth.sign_out" = "退出登录";
+"auth.delete_account" = "删除账号与数据";
+"auth.delete_account.confirm.title" = "删除账号？";
+"auth.delete_account.confirm.message" = "您的容器和所有数据将被永久删除，无法恢复。";
+"auth.delete_account.confirm.action" = "永久删除";
+"auth.plan.free" = "免费版";
+"auth.plan.basic" = "基础版";
+"auth.plan.pro" = "专业版";
+"auth.supabase_url" = "Supabase URL";
+"auth.supabase_anon_key" = "Supabase Anon Key";
+"auth.cloud_gateway_url" = "云网关 URL";
+"auth.error.no_token" = "无法获取 Apple ID 令牌。";
+"auth.error.supabase_not_configured" = "请先在设置中填写 Supabase URL 和 Anon Key。";
+"auth.error.gateway_not_configured" = "未配置云网关 URL。";
+"auth.error.network" = "请检查网络连接。";
+"auth.error.supabase_failed" = "认证服务器错误：%@";
+"auth.error.gateway_failed" = "云网关错误：%@";
+"settings.cloud_account" = "云账号";
+"settings.cloud_account.footer" = "通过 Apple 登录连接到 Hermes 云服务。";
+"settings.cloud.config" = "Cloud 设置";

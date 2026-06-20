@@ -49,6 +49,7 @@
 		FB2E0FF7697F10D61F2B83B1 /* StreamModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB500D688436AF311932B708 /* StreamModels.swift */; };
 		L10N001A00000000000L10001 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = L10N001A00000000000L10002 /* Localizable.strings */; };
 		L10N001A00000000000L10011 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = L10N001A00000000000L10012 /* InfoPlist.strings */; };
+		AUTH001A00000000000AUTH01 /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AUTH001A00000000000AUTH02 /* AuthView.swift */; };
 		ONBR001A00000000000ONBR01 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ONBR001A00000000000ONBR02 /* OnboardingView.swift */; };
 		PRIV001A00000000000PRIV01 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = PRIV001A00000000000PRIV02 /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
@@ -103,6 +104,7 @@
 		L10N001A00000000000L10013 /* ko */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ko; path = ko.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		L10N001A00000000000L10014 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		L10N001A00000000000L10015 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
+		AUTH001A00000000000AUTH02 /* AuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthView.swift; sourceTree = "<group>"; };
 		ONBR001A00000000000ONBR02 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		PRIV001A00000000000PRIV02 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -186,6 +188,7 @@
 				C0F0000000000000000000D2 /* CreateProfileView.swift */,
 				C0F0000000000000000000C2 /* CronJobEditView.swift */,
 				C0F0000000000000000000B2 /* CronJobsView.swift */,
+				AUTH001A00000000000AUTH02 /* AuthView.swift */,
 				1A6CBD02B8F49E75AD6CCC02 /* DashboardWebView.swift */,
 				DD17000600000000000DEE06 /* DiscussionView.swift */,
 				3C8EDF02DAB66C97CF8EEE02 /* FileBrowserView.swift */,
@@ -347,6 +350,7 @@
 				FB2E0FF7697F10D61F2B83B1 /* StreamModels.swift in Sources */,
 				A048726920A8715530AACBE9 /* ToolModels.swift in Sources */,
 				A9FA080264459EA4F3C7D0AA /* ToolResultView.swift in Sources */,
+				AUTH001A00000000000AUTH01 /* AuthView.swift in Sources */,
 				ONBR001A00000000000ONBR01 /* OnboardingView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

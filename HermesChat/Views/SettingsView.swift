@@ -138,6 +138,54 @@ struct SettingsView: View {
                 Text("settings.profiles.footer")
             }
 
+            // MARK: Cloud 계정 (T-C01)
+            Section {
+                NavigationLink {
+                    AuthView(appSettings: appSettings)
+                } label: {
+                    if appSettings.isCloudAuthenticated {
+                        HStack {
+                            Label(
+                                appSettings.supabaseEmail.isEmpty
+                                    ? String(localized: "auth.label.signedin")
+                                    : appSettings.supabaseEmail,
+                                systemImage: "person.crop.circle.badge.checkmark"
+                            )
+                            Spacer()
+                            if !appSettings.cloudPlan.isEmpty {
+                                Text("auth.plan.\(appSettings.cloudPlan)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    } else {
+                        Label("auth.label.signedout", systemImage: "person.crop.circle.badge.plus")
+                    }
+                }
+            } header: {
+                Text("settings.cloud_account")
+            } footer: {
+                Text("settings.cloud_account.footer")
+            }
+
+            Section {
+                TextField("auth.supabase_url", text: $appSettings.supabaseURL)
+                    .textContentType(.URL)
+                    .keyboardType(.URL)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                SecureField("auth.supabase_anon_key", text: $appSettings.supabaseAnonKey)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                TextField("auth.cloud_gateway_url", text: $appSettings.cloudGatewayURL)
+                    .textContentType(.URL)
+                    .keyboardType(.URL)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+            } header: {
+                Text("settings.cloud.config")
+            }
+
             Section {
                 TextField("settings.bridge.url.placeholder", text: $appSettings.bridgeHost)
                     .textContentType(.URL)

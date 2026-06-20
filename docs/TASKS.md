@@ -311,7 +311,7 @@
 | ID | 작업 | 파일 | 상태 |
 |----|------|------|------|
 | T-B01 | hermes-agent Dockerfile + docker-compose.yml (per-user 컨테이너, ~/.hermes/ 볼륨, default 프로필 자동 생성) | `server/Dockerfile`, `server/docker-compose.yml`, `server/docker-entrypoint.sh`, `server/.env.example` (신규) | DONE (2026-06-20) |
-| T-B02 | Supabase 프로젝트 생성 + `users(id, email, plan, container_id)` 테이블 + Sign in with Apple OAuth 설정 | Supabase 대시보드 (코드 아님) | TODO |
+| T-B02 | Supabase 프로젝트 생성 + `users(id, email, plan, container_id)` 테이블 + Sign in with Apple OAuth 설정 | Supabase 대시보드 (코드 아님) | DOING — 프로젝트·테이블 완료. Apple OAuth: 유료 계정 결제 완료, Apple 심사 대기 중 (2026-06-20) |
 | T-B03 | `server/cloud_gateway.py` 신규 — JWT 검증 미들웨어 + 사용자별 컨테이너 라우팅 프록시. 엔드포인트: `POST /auth/login`, `GET /status`, `GET /usage`, `DELETE /account`, `*` 프록시. `server/Dockerfile.cloud-gateway` + docker-compose.yml cloud-gateway 서비스 추가 | `server/cloud_gateway.py`, `server/Dockerfile.cloud-gateway` (신규), `server/docker-compose.yml`, `server/.env.example` | DONE (2026-06-20) |
 | T-B04 | 클라우드 제공자 배포 — Fly.io 또는 Hetzner CCX13. nginx + Let's Encrypt SSL. Docker Compose로 다수 컨테이너 기동 | 인프라 (코드 아님) | TODO |
 | T-B05 | 가격 플랜 (무료/Basic₩9,900/Pro₩29,900) — Supabase `users.plan` 컬럼 + `cloud_gateway.py` 제한 로직 (무료=월 200 메시지, Basic=3 프로필, Pro=10 프로필) | `server/cloud_gateway.py` | DONE (2026-06-20) |
@@ -322,7 +322,7 @@
 
 | ID | 작업 | 파일 | 상태 |
 |----|------|------|------|
-| T-C01 | `AuthView.swift` 신규 — Sign in with Apple + Supabase Auth. JWT를 `KeychainHelper.swift`에 저장. 로그아웃/계정 삭제 | `Views/AuthView.swift` (신규, **pbxproj 등록**) | TODO |
+| T-C01 | `AuthView.swift` 신규 — Sign in with Apple + Supabase Auth. JWT를 `KeychainHelper.swift`에 저장. 로그아웃/계정 삭제 | `Views/AuthView.swift` (신규, **pbxproj 등록**) | NEEDS-BUILD (2026-06-20) — T-B02 Apple OAuth 심사 통과 후 실기기 로그인 테스트 가능 |
 | T-C02 | 연결 모드 분기 — `AppSettings.connectionMode: .cloud \| .selfHosted`. `HermesAPIClient`에 모드별 baseURL 분기. `.cloud`는 클라우드 게이트웨이 URL 하드코딩 | `Services/AppDefaults.swift`, `Services/HermesAPIClient.swift` | TODO |
 | T-C03 | StoreKit 2 구독 — `SubscriptionService.swift` 신규 (Basic/Pro 제품 로드, 엔타이틀먼트 확인, 업그레이드 시트). `SettingsView.swift`에 "구독 관리" 섹션 추가 | `Services/SubscriptionService.swift` (신규, **pbxproj 등록**), `Views/SettingsView.swift` | TODO |
 | T-C04 | OnboardingView 클라우드 경로 활성화 — 현재 `isEnabled: false`인 클라우드 버튼 → AuthView 연결. 자체 호스팅 경로는 그대로 | `Views/OnboardingView.swift` | TODO (T-C01 뒤) |
