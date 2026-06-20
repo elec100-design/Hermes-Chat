@@ -295,7 +295,7 @@
 | T-A03 | `OnboardingView.swift` 신설 (3단계: 환영→서버연결→완료). `AppDefaults.isFirstLaunchComplete` 추가 + `HermesChatApp.swift`에 `.fullScreenCover` 연결 | `Views/OnboardingView.swift`, `Services/AppDefaults.swift`, `HermesChatApp.swift`, `project.pbxproj` | DONE (2026-06-20) |
 | T-A04 | 다국어 기반 설정: `ko.lproj/`, `en.lproj/`, `zh-Hans.lproj/` + `Localizable.strings`/`InfoPlist.strings` 생성. 탭 레이블 LocalizedStringKey 전환 | `Resources/{ko,en,zh-Hans}.lproj/*`, `HermesChatApp.swift`, `project.pbxproj` | DONE (2026-06-20) |
 | T-A05 | `SettingsView.swift`에 "개인정보 처리방침" 링크 추가 (Privacy Policy URL placeholder) | `Views/SettingsView.swift` | DONE (2026-06-20) |
-| T-A06 | Sign in with Apple 엔타이틀먼트 추가 (Phase 2 계정 시스템 준비용, 코드 미사용) | `HermesChat.entitlements` | DONE (2026-06-20) |
+| T-A06 | Sign in with Apple 엔타이틀먼트 추가 (Phase 2 계정 시스템 준비용, 코드 미사용). **주의:** Personal Team(무료 계정)에서 빌드 오류 발생으로 엔타이틀먼트를 임시 제거. T-C01 구현 + 유료 Apple Developer 계정 등록 시 재추가 필요. | `HermesChat.entitlements` | DONE (2026-06-20) |
 | T-A07 | 전체 Views 한국어 하드코딩 → `LocalizedStringKey` 전환 완료. ProfileDetailView(soulSection·modelSection·confirmDialog), CronJobsView, CronJobEditView, DiscussionView, FileBrowserView, Components(MessageView·ToolResultView) 포함 전체 완료. | 전체 `Views/`, `Resources/{ko,en,zh-Hans}.lproj/Localizable.strings` | NEEDS-BUILD (2026-06-20) |
 | T-A08 | ATS 정리: `Info.plist` NSAllowsArbitraryLoads 유지 + localhost 중복 예외 제거. App Store 심사 노트 템플릿은 `docs/COMMERCIALIZATION.md` 참조. | `HermesChat/Resources/Info.plist` | NEEDS-BUILD (2026-06-20) |
 
