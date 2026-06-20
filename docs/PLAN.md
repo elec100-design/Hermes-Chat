@@ -1,9 +1,9 @@
 # HermesChat iOS — 전체 개발 계획 (Master Plan)
 
-> 최종 수정: 2026-06-11 (Claude Code — Phase 14 완료, **PR #1로 main 병합 — main이 최신 기준선**)
+> 최종 수정: 2026-06-20 (Claude Code — Phase A/B 진행, 브랜치 `claude/hopeful-edison-1p5q91`)
 > 진행 상태는 `docs/TASKS.md`, 에이전트 교대 규칙은 `docs/HANDOFF.md` 참조.
 > **어떤 에이전트든 이 3개 문서만 읽으면 즉시 작업을 이어갈 수 있어야 한다.**
-> 다음 작업: 음성 입출력(T-100~102)·사진/파일 입출력(T-020~022, T-105~108) 실기기 기능 확인 (새 세션).
+> 다음 작업: Phase C (iOS SaaS 전환) — T-C01 `AuthView.swift` (Sign in with Apple + Supabase Auth) 시작.
 
 ---
 
@@ -316,6 +316,58 @@ alert(TextField)로 연결(SettingsView 프로필 rename 패턴 재사용). **�
 정렬하고 행에 `pin.fill` 표시, 앱 재실행 후에도 유지. 그리고 trailing 스와이프의 **풀 스와이프
 자동 삭제를 끔**(`allowsFullSwipe: false`) — 버튼을 확인하려 길게 민 것만으로 세션이 삭제되던
 사고를 막고, 삭제 버튼을 눌러야만 삭제되게 한다. 기존 파일만 수정(pbxproj 무수정).
+
+### Phase A — App Store 컴플라이언스 (2026-06-20, T-A01~A08)
+App Store 제출을 위한 필수 요건 정비. T-A01~A06 DONE, T-A07/A08 NEEDS-BUILD (PR #12 대기).
+
+| 태스크 | 내용 | 상태 |
+|---|---|---|
+| T-A01 | PrivacyInfo.xcprivacy 신설 (API 사용 선언) | DONE |
+| T-A02 | arm64 전용 빌드 + Excluded Arch 정리 | DONE |
+| T-A03 | OnboardingView 3단계 (환영→서버연결→완료) | DONE |
+| T-A04 | 다국어 기반 ko/en/zh-Hans Localizable.strings | DONE |
+| T-A05 | SettingsView 개인정보 처리방침 링크 | DONE |
+| T-A06 | Sign in with Apple 엔타이틀먼트 (Personal Team에서 임시 제거) | DONE |
+| T-A07 | 전체 Views 한국어 하드코딩 → LocalizedStringKey | NEEDS-BUILD |
+| T-A08 | ATS 정리 (NSAllowsArbitraryLoads 유지, localhost 중복 제거) | NEEDS-BUILD |
+
+### Phase B — 클라우드 SaaS 인프라 (2026-06-20, T-B01~B05)
+per-user Docker 컨테이너 + Supabase Auth + cloud_gateway.py.
+
+**아키텍처**:
+```
+iPhone (HermesChat, cloud 모드)
+  ↓ HTTPS (Supabase JWT Bearer)
+cloud_gateway.py (:8080) ← T-B03
+  ├── JWT 검증 (HS256, stdlib)
+  ├── 플랜 제한 (T-B05): free=200msg/월·1프로필, basic=3프로필, pro=10프로필
+  ├── 컨테이너 라우팅: hermes-user-{uid} Docker 컨테이너
+  │     ├── :8642  hermes-agent 게이트웨이 API  (프록시)
+  │     └── :8765  Hermes Bridge               (/bridge/* 프록시)
+  └── SQLite /data/gateway_usage.db — 월별 메시지 카운트
+```
+
+**핵심 파일**:
+- `server/Dockerfile` + `server/docker-entrypoint.sh` — per-user hermes-agent 이미지 (T-B01)
+- `server/docker-compose.yml` — hermes-agent + cloud-gateway 서비스 (T-B01/T-B03)
+- `server/cloud_gateway.py` — JWT 검증·컨테이너 프로비저닝·플랜 제한·Bridge 프록시 (T-B03/T-B05)
+- `server/Dockerfile.cloud-gateway` — cloud_gateway 경량 이미지 (T-B03)
+- `server/.env.example` — 환경변수 템플릿
+
+**플랜 가격**: free (무료), basic ₩9,900/월 (3프로필), pro ₩29,900/월 (10프로필)
+
+**남은 작업**: T-B02 Supabase 대시보드 설정(코드 아님), T-B04 클라우드 배포(코드 아님).
+
+### Phase C — iOS SaaS 전환 (Phase B 완료 후, T-C01~C05)
+자체 호스팅 모드는 그대로 유지, 클라우드 모드를 선택지로 추가.
+
+| 태스크 | 내용 | 의존 |
+|---|---|---|
+| T-C01 | `AuthView.swift` — Sign in with Apple + Supabase Auth, JWT Keychain 저장 | T-B02 |
+| T-C02 | `AppSettings.connectionMode: .cloud|.selfHosted` + HermesAPIClient baseURL 분기 | T-C01 |
+| T-C03 | StoreKit 2 구독 — `SubscriptionService.swift` Basic/Pro 제품 로드·엔타이틀먼트 | T-C01 |
+| T-C04 | OnboardingView 클라우드 경로 활성화 (AuthView 연결) | T-C01 |
+| T-C05 | 사용량 표시 — `GET /usage` 폴링, 잔여 메시지 수 SettingsView 표시 | T-C02 |
 
 ---
 

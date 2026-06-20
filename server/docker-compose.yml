@@ -1,0 +1,109 @@
+# hermes-agent per-user 컨테이너 템플릿 — T-B01 / cloud_gateway — T-B03
+#
+# 로컬 단일 사용자 테스트:
+#   cp server/.env.example server/.env  # 값 채우기
+#   docker compose -f server/docker-compose.yml up --build
+#
+# 프로덕션(T-B03): cloud_gateway.py가 JWT 검증 후 사용자별 컨테이너를 동적으로 생성/라우팅.
+#   컨테이너 이름 패턴: hermes-user-{user_id}
+#   볼륨 이름 패턴:     hermes-user-{user_id}-data
+
+services:
+  # ── 사용자 hermes-agent 컨테이너 ──────────────────────────────────────────
+  hermes-agent:
+    build:
+      context: ..           # 레포 루트 기준 (Dockerfile이 server/hermes_bridge.py를 참조)
+      dockerfile: server/Dockerfile
+    container_name: hermes-user-${USER_ID:-dev}
+    environment:
+      # hermes-agent 게이트웨이 Bearer 토큰 (앱의 apiKey와 동일)
+      - HERMES_API_KEY=${HERMES_API_KEY:?HERMES_API_KEY is required}
+      # Bridge Bearer 토큰 (앱의 bridgeToken과 동일)
+      - HERMES_BRIDGE_TOKEN=${HERMES_BRIDGE_TOKEN:?HERMES_BRIDGE_TOKEN is required}
+      # LLM provider 키 (hermes-agent가 내부적으로 사용)
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      # 선택 설정
+      - MODEL_NAME=${MODEL_NAME:-default}
+      - HERMES_GATEWAY_PORT=8642
+      - HERMES_BRIDGE_PORT=8765
+    volumes:
+      # ~/.hermes/ 영속화: 프로필·세션DB·칸반·크론잡·설정
+      - hermes-user-data:/home/hermes/.hermes
+    # 내부 전용 포트 (cloud_gateway.py가 hermes-internal 네트워크로 접근)
+    expose:
+      - "8642"   # 게이트웨이 API
+      - "8765"   # Bridge API
+    # 로컬 테스트용 포트 매핑 (프로덕션에서는 제거 또는 주석 처리)
+    ports:
+      - "${LOCAL_GATEWAY_PORT:-18642}:8642"
+      - "${LOCAL_BRIDGE_PORT:-18765}:8765"
+    networks:
+      - hermes-internal
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8642/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ── T-B03: cloud_gateway.py (JWT 검증 + 컨테이너 라우팅) ─────────────────
+  cloud-gateway:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile.cloud-gateway
+    ports:
+      - "${CLOUD_GW_PORT:-8080}:8080"
+    environment:
+      # Supabase 프로젝트 > Settings > API > JWT Secret
+      - SUPABASE_JWT_SECRET=${SUPABASE_JWT_SECRET:?SUPABASE_JWT_SECRET is required}
+      # per-user API Key 파생 시드 (64자 랜덤 권장)
+      - GATEWAY_SECRET=${GATEWAY_SECRET:?GATEWAY_SECRET is required}
+      # LLM provider 키 (신규 컨테이너 생성 시 주입)
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - HERMES_IMAGE=${HERMES_IMAGE:-hermes-agent:latest}
+      - DOCKER_NETWORK=hermes-internal
+    volumes:
+      # Docker 소켓: cloud_gateway.py가 사용자 컨테이너를 동적 생성
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - hermes-internal
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ── T-B04: nginx + Let's Encrypt (외부 HTTPS 종단) ───────────────────────
+  # 구현 후 주석 해제
+  #
+  # nginx:
+  #   image: nginx:1.27-alpine
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+  #     - letsencrypt:/etc/letsencrypt
+  #   networks:
+  #     - hermes-internal
+  #   depends_on:
+  #     - cloud-gateway
+  #   restart: unless-stopped
+
+networks:
+  hermes-internal:
+    driver: bridge
+
+volumes:
+  hermes-user-data:
+    # 프로덕션에서는 user_id별 별도 볼륨:
+    #   docker volume create hermes-user-{user_id}-data
+    #   (T-B03 cloud_gateway.py가 자동 생성)
+
+  # T-B04 TLS 인증서 볼륨 (주석 해제 시 추가)
+  # letsencrypt:
