@@ -292,7 +292,7 @@
 | T-A03 | `OnboardingView.swift` 신설 (3단계: 환영→서버연결→완료). `AppDefaults.isFirstLaunchComplete` 추가 + `HermesChatApp.swift`에 `.fullScreenCover` 연결 | `Views/OnboardingView.swift`, `Services/AppDefaults.swift`, `HermesChatApp.swift`, `project.pbxproj` | DONE (2026-06-20) |
 | T-A04 | 다국어 기반 설정: `ko.lproj/`, `en.lproj/`, `zh-Hans.lproj/` + `Localizable.strings`/`InfoPlist.strings` 생성. 탭 레이블 LocalizedStringKey 전환 | `Resources/{ko,en,zh-Hans}.lproj/*`, `HermesChatApp.swift`, `project.pbxproj` | DONE (2026-06-20) |
 | T-A05 | `SettingsView.swift`에 "개인정보 처리방침" 링크 추가 (Privacy Policy URL placeholder) | `Views/SettingsView.swift` | DONE (2026-06-20) |
-| T-A06 | Sign in with Apple 엔타이틀먼트 추가 (Phase 2 계정 시스템 준비용, 코드 미사용) | `HermesChat.entitlements` | NEEDS-BUILD (2026-06-20) |
+| T-A06 | Sign in with Apple 엔타이틀먼트 추가 (Phase 2 계정 시스템 준비용, 코드 미사용) | `HermesChat.entitlements` | DONE (2026-06-20) |
 | T-A07 | 전체 Views 한국어 하드코딩 → `LocalizedStringKey` 전환 (SessionListView, ChatView, SettingsView, KanbanView 우선) | 전체 `Views/` | NEEDS-BUILD (2026-06-20) |
 
 ## 빌드 검증 기록 (검증자가 갱신)
@@ -304,3 +304,4 @@
 | 06-11 | claude/busy-meitner-lhc5os @ 66bdc93 | BUILD SUCCEEDED | Hermes 빌드검증, NEEDS-BUILD 전수 DONE(T-013/T-020~022/040~041/050~051/060~061/070~075) |
 | 06-11 | main @ 879b47e (PR #1 병합) | BUILD SUCCEEDED | 사용자 Xcode 빌드 + 실기기 확인 — Deep think 토론(동시 발언·폴백 회수·결론) 정상 동작. T-090~115 DONE 전환 (음성·사진/파일 기능 확인은 별도 세션 예정) |
 | 06-20 | claude/cool-maxwell-jbo5w1 @ 30328cb | BUILD SUCCEEDED | 사용자 빌드 확인 — T-A01~A05 DONE (PrivacyInfo, arm64, OnboardingView, 다국어 기반, 개인정보방침 링크) |
+| 06-20 | claude/adoring-thompson-pdohly @ daafef5 | BUILD SUCCEEDED | 사용자 빌드 확인 — T-A06 DONE (Sign in with Apple 엔타이틀먼트) |
