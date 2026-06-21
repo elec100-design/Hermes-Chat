@@ -26,10 +26,17 @@
 >   브랜치 `claude/hopeful-edison-1p5q91` — 사용자 Docker 빌드 검증 완료. PR 생성 후 main 병합 예정.
 >   T-B02(Supabase 대시보드)·T-B04(클라우드 배포)는 코드 아님.
 >
+> **2026-06-21 현황 (Phase C)**:
+> - **Phase C (iOS SaaS 전환)**: T-C01~C05 코드 완성. 브랜치 `claude/sleepy-bardeen-x86kpk` (PR #14).
+>   사용자 맥 빌드 성공 + 실기기(iPhone17,4 / iOS 26.5) 설치 완료 (98ad910).
+>   유료 Apple Developer 계정(C4LUZYK8L5) + Supabase Apple OAuth 설정 완료.
+>   런타임 검증 대기: Sign in with Apple 실제 흐름 (T-C01), StoreKit 샌드박스 테스트 (T-C03).
+>
 > **다음 세션 예정 작업**:
-> 1. **Phase C (iOS SaaS 전환)** — T-C01 `AuthView.swift` (Sign in with Apple + Supabase Auth) 시작
-> 2. **T-B02** Supabase 프로젝트 생성 + users 테이블 + Sign in with Apple OAuth 설정 (대시보드 작업)
-> 3. T-A07/A08 맥 빌드 검증 (PR #12)
+> 1. PR #14 (`claude/sleepy-bardeen-x86kpk` → `main`) 병합 후 기준선 갱신
+> 2. T-C01 Sign in with Apple 실기기 런타임 검증 (Supabase id_token 흐름)
+> 3. T-C03 StoreKit 샌드박스 테스트 (App Store Connect 제품 등록 후)
+> 4. T-B02 Supabase Apple OAuth 심사 통과 확인
 
 ## 즉시 (사람 또는 맥미니 Hermes가 1회 수행)
 
@@ -311,7 +318,7 @@
 | ID | 작업 | 파일 | 상태 |
 |----|------|------|------|
 | T-B01 | hermes-agent Dockerfile + docker-compose.yml (per-user 컨테이너, ~/.hermes/ 볼륨, default 프로필 자동 생성) | `server/Dockerfile`, `server/docker-compose.yml`, `server/docker-entrypoint.sh`, `server/.env.example` (신규) | DONE (2026-06-20) |
-| T-B02 | Supabase 프로젝트 생성 + `users(id, email, plan, container_id)` 테이블 + Sign in with Apple OAuth 설정 | Supabase 대시보드 (코드 아님) | TODO |
+| T-B02 | Supabase 프로젝트 생성 + `users(id, email, plan, container_id)` 테이블 + Sign in with Apple OAuth 설정 | Supabase 대시보드 (코드 아님) | DOING — 프로젝트·테이블 완료. Apple OAuth: 유료 계정 결제 완료, Apple 심사 대기 중 (2026-06-20) |
 | T-B03 | `server/cloud_gateway.py` 신규 — JWT 검증 미들웨어 + 사용자별 컨테이너 라우팅 프록시. 엔드포인트: `POST /auth/login`, `GET /status`, `GET /usage`, `DELETE /account`, `*` 프록시. `server/Dockerfile.cloud-gateway` + docker-compose.yml cloud-gateway 서비스 추가 | `server/cloud_gateway.py`, `server/Dockerfile.cloud-gateway` (신규), `server/docker-compose.yml`, `server/.env.example` | DONE (2026-06-20) |
 | T-B04 | 클라우드 제공자 배포 — Fly.io 또는 Hetzner CCX13. nginx + Let's Encrypt SSL. Docker Compose로 다수 컨테이너 기동 | 인프라 (코드 아님) | TODO |
 | T-B05 | 가격 플랜 (무료/Basic₩9,900/Pro₩29,900) — Supabase `users.plan` 컬럼 + `cloud_gateway.py` 제한 로직 (무료=월 200 메시지, Basic=3 프로필, Pro=10 프로필) | `server/cloud_gateway.py` | DONE (2026-06-20) |
@@ -322,11 +329,11 @@
 
 | ID | 작업 | 파일 | 상태 |
 |----|------|------|------|
-| T-C01 | `AuthView.swift` 신규 — Sign in with Apple + Supabase Auth. JWT를 `KeychainHelper.swift`에 저장. 로그아웃/계정 삭제 | `Views/AuthView.swift` (신규, **pbxproj 등록**) | TODO |
-| T-C02 | 연결 모드 분기 — `AppSettings.connectionMode: .cloud \| .selfHosted`. `HermesAPIClient`에 모드별 baseURL 분기. `.cloud`는 클라우드 게이트웨이 URL 하드코딩 | `Services/AppDefaults.swift`, `Services/HermesAPIClient.swift` | TODO |
-| T-C03 | StoreKit 2 구독 — `SubscriptionService.swift` 신규 (Basic/Pro 제품 로드, 엔타이틀먼트 확인, 업그레이드 시트). `SettingsView.swift`에 "구독 관리" 섹션 추가 | `Services/SubscriptionService.swift` (신규, **pbxproj 등록**), `Views/SettingsView.swift` | TODO |
-| T-C04 | OnboardingView 클라우드 경로 활성화 — 현재 `isEnabled: false`인 클라우드 버튼 → AuthView 연결. 자체 호스팅 경로는 그대로 | `Views/OnboardingView.swift` | TODO (T-C01 뒤) |
-| T-C05 | 사용량 표시 — SettingsView 또는 `UsageView.swift`에 무료 플랜 잔여 메시지 수 표시. 클라우드 `GET /usage` 폴링 | `Views/SettingsView.swift` 또는 `Views/UsageView.swift` (신규) | TODO (T-C02 뒤) |
+| T-C01 | `AuthView.swift` 신규 — Sign in with Apple + Supabase Auth. JWT를 `KeychainHelper.swift`에 저장. 로그아웃/계정 삭제 | `Views/AuthView.swift` (신규, **pbxproj 등록**) | NEEDS-BUILD (2026-06-21) — 빌드 성공·실기기 설치 완료. Sign in with Apple 실제 흐름(Supabase id_token) 런타임 검증 대기. T-B02 Apple OAuth 심사 통과 후 가능. |
+| T-C02 | 연결 모드 분기 — `AppSettings.connectionMode: .cloud \| .selfHosted`. `HermesAPIClient`에 모드별 baseURL 분기. `.cloud`는 클라우드 게이트웨이 URL 하드코딩 | `Services/AppDefaults.swift`, `Services/HermesAPIClient.swift` | NEEDS-BUILD (2026-06-21) — 빌드 성공·실기기 설치 완료. 클라우드 모드 엔드-투-엔드 런타임 검증 대기. |
+| T-C03 | StoreKit 2 구독 — `SubscriptionService.swift` 신규 (Basic/Pro 제품 로드, 엔타이틀먼트 확인, 업그레이드 시트). `SettingsView.swift`에 "구독 관리" 섹션 추가 | `Services/SubscriptionService.swift` (신규, **pbxproj 등록**), `Views/SettingsView.swift` | NEEDS-BUILD (2026-06-21) — 빌드 성공·실기기 설치 완료. StoreKit 샌드박스 테스트는 App Store Connect 제품 등록 후 가능. |
+| T-C04 | OnboardingView 클라우드 경로 활성화 — 현재 `isEnabled: false`인 클라우드 버튼 → AuthView 연결. 자체 호스팅 경로는 그대로 | `Views/OnboardingView.swift` | NEEDS-BUILD (2026-06-21) — 빌드 성공·실기기 설치 완료. |
+| T-C05 | 사용량 표시 — SettingsView Cloud Account 섹션에 무료 플랜 잔여 메시지 수 표시. 클라우드 `GET /usage` 폴링 | `Views/SettingsView.swift` | NEEDS-BUILD (2026-06-21) — 빌드 성공·실기기 설치 완료. 클라우드 로그인 후 표시 확인 대기. |
 
 ## Phase D — 출시 및 운영
 
@@ -350,3 +357,4 @@
 | 06-20 | claude/hopeful-edison-1p5q91 @ 8ec3575 | DOCKER BUILD SUCCEEDED | 사용자 확인 — T-B01 DONE (hermes-agent Dockerfile + docker-compose.yml) |
 | 06-20 | claude/hopeful-edison-1p5q91 @ 6ce0852 | DOCKER BUILD SUCCEEDED | 사용자 확인 — T-B03 DONE (cloud_gateway.py Dockerfile + 컨테이너 프록시) |
 | 06-20 | claude/hopeful-edison-1p5q91 @ 767df1e | DOCKER BUILD SUCCEEDED | 사용자 확인 — T-B05 DONE (플랜 제한 + Bridge 프록시 + 메시지 카운팅) |
+| 06-21 | claude/sleepy-bardeen-x86kpk @ 98ad910 | BUILD SUCCEEDED + 실기기 설치 완료 | 사용자 Xcode 빌드 + iPhone17,4(iOS 26.5) 설치 확인 — T-C01~C05 Phase C 전체 (유료 Apple Developer C4LUZYK8L5, 빌드 오류 5개 수정 포함). 런타임 검증은 Sign in with Apple(T-C01)·StoreKit(T-C03) 대기. |

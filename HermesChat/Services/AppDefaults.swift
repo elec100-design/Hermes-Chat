@@ -1,6 +1,12 @@
 import Foundation
 import SwiftUI
 
+// MARK: - Connection Mode (T-C02)
+enum ConnectionMode: String {
+    case selfHosted = "selfHosted"
+    case cloud      = "cloud"
+}
+
 @MainActor
 final class AppSettings: ObservableObject {
     /// 게이트웨이 호스트. 포트가 포함되어 있어도 프로필 포트로 대체된다.
@@ -11,6 +17,73 @@ final class AppSettings: ObservableObject {
     @AppStorage("dashboardPort") var dashboardPort: Int = 8000
     /// 온보딩 완료 여부 — false면 앱 시작 시 OnboardingView를 표시한다.
     @AppStorage("isFirstLaunchComplete") var isFirstLaunchComplete: Bool = false
+
+    // MARK: - Cloud Auth (T-C01)
+    /// Supabase 프로젝트 URL (예: https://xxx.supabase.co). T-B02 완료 후 설정.
+    @AppStorage("supabaseURL")     var supabaseURL: String = ""
+    /// Supabase anon (public) key — 공개 키라 Keychain 불필요, UserDefaults 저장 허용.
+    @AppStorage("supabaseAnonKey") var supabaseAnonKey: String = ""
+    /// 클라우드 게이트웨이 URL (예: https://gateway.hermeschat.app). T-B04 배포 후 설정.
+    @AppStorage("cloudGatewayURL") var cloudGatewayURL: String = ""
+
+    /// Keychain 기반 cloud auth 상태
+    @Published var supabaseJWT: String = "" {
+        didSet { KeychainHelper.set(supabaseJWT, for: "supabase_jwt") }
+    }
+    @Published var supabaseRefresh: String = "" {
+        didSet { KeychainHelper.set(supabaseRefresh, for: "supabase_refresh") }
+    }
+    @Published var supabaseUserID: String = "" {
+        didSet { KeychainHelper.set(supabaseUserID, for: "supabase_user_id") }
+    }
+    @Published var supabaseEmail: String = "" {
+        didSet { KeychainHelper.set(supabaseEmail, for: "supabase_email") }
+    }
+    /// 로그인 시 cloud_gateway로부터 받은 플랜 ("free"|"basic"|"pro"). 비영속.
+    @Published var cloudPlan: String = ""
+
+    var isCloudAuthenticated: Bool { !supabaseJWT.isEmpty && !supabaseUserID.isEmpty }
+
+    /// .cloud 모드에서는 cloudGatewayURL + supabaseJWT 사용
+    @AppStorage("connectionMode") var connectionMode: ConnectionMode = .selfHosted
+
+    // MARK: - Usage (T-C05)
+    /// 이번 달 메시지 사용 수. GET /usage 폴링으로 갱신.
+    @Published var usageCount: Int = 0
+    /// 월 메시지 한도. nil = 무제한 (유료 플랜).
+    @Published var usageLimit: Int? = nil
+
+    func fetchUsage() async {
+        guard isCloudAuthenticated,
+              connectionMode == .cloud,
+              !cloudGatewayURL.isEmpty,
+              let url = URL(string: "\(cloudGatewayURL.trimmingCharacters(in: .whitespaces))/usage")
+        else { return }
+        var request = URLRequest(url: url, timeoutInterval: 10)
+        request.setValue("Bearer \(supabaseJWT)", forHTTPHeaderField: "Authorization")
+        guard let (data, response) = try? await URLSession.shared.data(for: request),
+              let http = response as? HTTPURLResponse, http.statusCode == 200 else { return }
+        struct UsageResponse: Decodable {
+            struct Limits: Decodable { let monthly_messages: Int? }
+            struct ThisMonth: Decodable { let messages: Int }
+            let limits: Limits
+            let this_month: ThisMonth
+        }
+        if let parsed = try? JSONDecoder().decode(UsageResponse.self, from: data) {
+            usageCount = parsed.this_month.messages
+            usageLimit = parsed.limits.monthly_messages
+        }
+    }
+
+    func signOutCloud() {
+        supabaseJWT     = ""
+        supabaseRefresh = ""
+        supabaseUserID  = ""
+        supabaseEmail   = ""
+        cloudPlan       = ""
+        usageCount      = 0
+        usageLimit      = nil
+    }
 
     /// 비밀값은 Keychain 보관 (T-070). 구버전 UserDefaults 값은 init에서 1회 이관.
     @Published var apiKey: String = "" {
@@ -50,6 +123,10 @@ final class AppSettings: ObservableObject {
         selectedProfileID = (profiles.first { $0.name == storedName } ?? profiles.first)?.id
         apiKey = Self.loadSecret("apiKey")
         bridgeToken = Self.loadSecret("bridgeToken")
+        supabaseJWT     = Self.loadSecret("supabase_jwt")
+        supabaseRefresh = Self.loadSecret("supabase_refresh")
+        supabaseUserID  = Self.loadSecret("supabase_user_id")
+        supabaseEmail   = Self.loadSecret("supabase_email")
         if let ids = UserDefaults.standard.array(forKey: Self.pinnedSessionsKey) as? [String] {
             pinnedSessionIDs = Set(ids)
         }
@@ -86,11 +163,19 @@ final class AppSettings: ObservableObject {
     }
 
     var hermesClient: HermesAPIClient {
-        let profile = selectedProfile
-        return HermesAPIClient(
-            baseURL: baseURL(for: profile),
-            apiKey: profile.apiKey.isEmpty ? apiKey : profile.apiKey
-        )
+        switch connectionMode {
+        case .cloud:
+            let raw = cloudGatewayURL.trimmingCharacters(in: .whitespaces)
+            let url = URL(string: raw.isEmpty ? "http://localhost:8642" : raw)
+                      ?? URL(string: "http://localhost:8642")!
+            return HermesAPIClient(baseURL: url, apiKey: supabaseJWT)
+        case .selfHosted:
+            let profile = selectedProfile
+            return HermesAPIClient(
+                baseURL: baseURL(for: profile),
+                apiKey: profile.apiKey.isEmpty ? apiKey : profile.apiKey
+            )
+        }
     }
 
     /// 대시보드(:8000) URL — serverHost의 스킴/호스트에 dashboardPort 결합

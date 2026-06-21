@@ -294,3 +294,49 @@
 "message.tts.read" = "읽어주기";
 "message.thinking" = "생각 중";
 "tool.calls.count %lld" = "도구 %lld회 실행";
+
+/* Cloud Auth (T-C01) */
+"auth.title" = "Cloud 계정";
+"auth.signin.heading" = "Hermes 클라우드";
+"auth.signin.subtitle" = "Apple 계정으로 로그인하면 어디서나 Hermes에 접속할 수 있습니다.";
+"auth.signin.loading" = "로그인 중…";
+"auth.label.signedin" = "로그인됨";
+"auth.label.signedout" = "클라우드 로그인";
+"auth.sign_out" = "로그아웃";
+"auth.delete_account" = "계정 및 데이터 삭제";
+"auth.delete_account.confirm.title" = "계정을 삭제하시겠습니까?";
+"auth.delete_account.confirm.message" = "컨테이너와 모든 데이터가 영구 삭제됩니다. 되돌릴 수 없습니다.";
+"auth.delete_account.confirm.action" = "영구 삭제";
+"auth.plan.free" = "무료 플랜";
+"auth.plan.basic" = "Basic 플랜";
+"auth.plan.pro" = "Pro 플랜";
+"auth.supabase_url" = "Supabase URL";
+"auth.supabase_anon_key" = "Supabase Anon Key";
+"auth.cloud_gateway_url" = "클라우드 게이트웨이 URL";
+"auth.error.no_token" = "Apple ID 토큰을 받지 못했습니다.";
+"auth.error.supabase_not_configured" = "설정에서 Supabase URL과 Anon Key를 먼저 입력하세요.";
+"auth.error.gateway_not_configured" = "클라우드 게이트웨이 URL이 설정되지 않았습니다.";
+"auth.error.network" = "네트워크 연결을 확인하세요.";
+"auth.error.supabase_failed" = "인증 서버 오류: %@";
+"auth.error.gateway_failed" = "클라우드 게이트웨이 오류: %@";
+"settings.cloud_account" = "Cloud 계정";
+"settings.cloud_account.footer" = "Sign in with Apple로 Hermes 클라우드 서비스에 접속합니다.";
+"settings.cloud.config" = "Cloud 설정";
+
+/* Subscription (T-C03) */
+"settings.subscription" = "구독";
+"settings.subscription.footer" = "구독을 관리하거나 플랜을 업그레이드합니다.";
+"subscription.loading" = "플랜 정보 로드 중…";
+"subscription.unavailable" = "현재 구독 플랜을 불러올 수 없습니다.";
+"subscription.upgrade" = "플랜 업그레이드";
+"subscription.manage" = "구독 관리";
+"subscription.restore" = "구매 복원";
+"subscription.sheet.title" = "Hermes 플랜";
+"subscription.sheet.subtitle" = "언제든지 취소할 수 있습니다.";
+"subscription.error.verification_failed" = "구매 검증에 실패했습니다.";
+"common.done" = "완료";
+
+/* Usage (T-C05) */
+"settings.usage" = "이달 사용량";
+"settings.usage.count" = "%d / %d 메시지";
+"settings.usage.unlimited" = "무제한";

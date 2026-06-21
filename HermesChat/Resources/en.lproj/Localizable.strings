@@ -294,3 +294,49 @@
 "message.tts.read" = "Read Aloud";
 "message.thinking" = "Thinking";
 "tool.calls.count %lld" = "%lld tool calls";
+
+/* Cloud Auth (T-C01) */
+"auth.title" = "Cloud Account";
+"auth.signin.heading" = "Hermes Cloud";
+"auth.signin.subtitle" = "Sign in with your Apple account to access Hermes from anywhere.";
+"auth.signin.loading" = "Signing in…";
+"auth.label.signedin" = "Signed In";
+"auth.label.signedout" = "Sign In to Cloud";
+"auth.sign_out" = "Sign Out";
+"auth.delete_account" = "Delete Account & Data";
+"auth.delete_account.confirm.title" = "Delete Account?";
+"auth.delete_account.confirm.message" = "Your container and all data will be permanently deleted. This cannot be undone.";
+"auth.delete_account.confirm.action" = "Delete Permanently";
+"auth.plan.free" = "Free Plan";
+"auth.plan.basic" = "Basic Plan";
+"auth.plan.pro" = "Pro Plan";
+"auth.supabase_url" = "Supabase URL";
+"auth.supabase_anon_key" = "Supabase Anon Key";
+"auth.cloud_gateway_url" = "Cloud Gateway URL";
+"auth.error.no_token" = "Could not obtain Apple ID token.";
+"auth.error.supabase_not_configured" = "Enter Supabase URL and Anon Key in Settings first.";
+"auth.error.gateway_not_configured" = "Cloud Gateway URL is not configured.";
+"auth.error.network" = "Check your network connection.";
+"auth.error.supabase_failed" = "Auth server error: %@";
+"auth.error.gateway_failed" = "Cloud gateway error: %@";
+"settings.cloud_account" = "Cloud Account";
+"settings.cloud_account.footer" = "Connect to Hermes cloud via Sign in with Apple.";
+"settings.cloud.config" = "Cloud Settings";
+
+/* Subscription (T-C03) */
+"settings.subscription" = "Subscription";
+"settings.subscription.footer" = "Manage your subscription or upgrade your plan.";
+"subscription.loading" = "Loading plan info…";
+"subscription.unavailable" = "Subscription plans are currently unavailable.";
+"subscription.upgrade" = "Upgrade Plan";
+"subscription.manage" = "Manage Subscription";
+"subscription.restore" = "Restore Purchases";
+"subscription.sheet.title" = "Hermes Plans";
+"subscription.sheet.subtitle" = "Cancel anytime.";
+"subscription.error.verification_failed" = "Purchase verification failed.";
+"common.done" = "Done";
+
+/* Usage (T-C05) */
+"settings.usage" = "Usage This Month";
+"settings.usage.count" = "%d / %d messages";
+"settings.usage.unlimited" = "Unlimited";
