@@ -1,9 +1,9 @@
 # HermesChat iOS — 전체 개발 계획 (Master Plan)
 
-> 최종 수정: 2026-06-20 (Claude Code — Phase A/B 진행, 브랜치 `claude/hopeful-edison-1p5q91`)
+> 최종 수정: 2026-06-21 (Claude Code — Phase C 코드 완성, 브랜치 `claude/sleepy-bardeen-x86kpk` PR #14)
 > 진행 상태는 `docs/TASKS.md`, 에이전트 교대 규칙은 `docs/HANDOFF.md` 참조.
 > **어떤 에이전트든 이 3개 문서만 읽으면 즉시 작업을 이어갈 수 있어야 한다.**
-> 다음 작업: Phase C (iOS SaaS 전환) — T-C01 `AuthView.swift` (Sign in with Apple + Supabase Auth) 시작.
+> 다음 작업: PR #14 main 병합 → T-C01 Sign in with Apple 런타임 검증 → T-C03 StoreKit 샌드박스 테스트 (App Store Connect 제품 등록 필요).
 
 ---
 
