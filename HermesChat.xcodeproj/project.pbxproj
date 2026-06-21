@@ -50,6 +50,7 @@
 		L10N001A00000000000L10001 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = L10N001A00000000000L10002 /* Localizable.strings */; };
 		L10N001A00000000000L10011 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = L10N001A00000000000L10012 /* InfoPlist.strings */; };
 		AUTH001A00000000000AUTH01 /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AUTH001A00000000000AUTH02 /* AuthView.swift */; };
+		SUBS001A00000000000SUBS01 /* SubscriptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = SUBS001A00000000000SUBS02 /* SubscriptionService.swift */; };
 		ONBR001A00000000000ONBR01 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ONBR001A00000000000ONBR02 /* OnboardingView.swift */; };
 		PRIV001A00000000000PRIV01 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = PRIV001A00000000000PRIV02 /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
@@ -105,6 +106,7 @@
 		L10N001A00000000000L10014 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		L10N001A00000000000L10015 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
 		AUTH001A00000000000AUTH02 /* AuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthView.swift; sourceTree = "<group>"; };
+		SUBS001A00000000000SUBS02 /* SubscriptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionService.swift; sourceTree = "<group>"; };
 		ONBR001A00000000000ONBR02 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		PRIV001A00000000000PRIV02 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -157,6 +159,7 @@
 				8ACDEF02CEF11ADBFD3CCC02 /* VoiceConversationController.swift */,
 				9BCDEF02AEF22BECFE4DDD02 /* PhotoImportWatcher.swift */,
 				A1B2C3D4E5F6010203040502 /* VoiceEntryCoordinator.swift */,
+				SUBS001A00000000000SUBS02 /* SubscriptionService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -338,6 +341,7 @@
 				D37A2F7854931324D14E852F /* MessageView.swift in Sources */,
 				5EABCD01FCD88EB9EB1AAA01 /* NotificationService.swift in Sources */,
 				6FBCDE01ADE99FCAFC2BBB01 /* SpeechService.swift in Sources */,
+				SUBS001A00000000000SUBS01 /* SubscriptionService.swift in Sources */,
 				8ACDEF01CEF11ADBFD3CCC01 /* VoiceConversationController.swift in Sources */,
 				9BCDEF01AEF22BECFE4DDD01 /* PhotoImportWatcher.swift in Sources */,
 				A1B2C3D4E5F6010203040501 /* VoiceEntryCoordinator.swift in Sources */,

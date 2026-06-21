@@ -3,11 +3,13 @@ import Security
 
 struct SettingsView: View {
     @ObservedObject var appSettings: AppSettings
+    @StateObject private var subscriptionService = SubscriptionService.shared
     @Environment(\.openURL) private var openURL
     @State private var testResult: ConnectionTestResult? = nil
     @State private var isTesting = false
     @State private var showApiKeyInput = false
     @State private var showBridgeTokenInput = false
+    @State private var showSubscriptionSheet = false
     @State private var newProfileName = ""
     @State private var newProfilePort = ""
     @State private var discoveryResult: String? = nil
@@ -168,6 +170,52 @@ struct SettingsView: View {
                 Text("settings.cloud_account.footer")
             }
 
+            // MARK: - Subscription (T-C03)
+            if appSettings.isCloudAuthenticated {
+                Section {
+                    if subscriptionService.isLoading {
+                        HStack(spacing: 8) {
+                            ProgressView().scaleEffect(0.8)
+                            Text("subscription.loading")
+                                .foregroundStyle(.secondary)
+                        }
+                    } else if subscriptionService.products.isEmpty {
+                        Text("subscription.unavailable")
+                            .foregroundStyle(.secondary)
+                            .font(.footnote)
+                    } else if let active = subscriptionService.activeSubscription {
+                        HStack {
+                            Label(active.displayName, systemImage: "checkmark.seal.fill")
+                                .foregroundStyle(.tint)
+                            Spacer()
+                            Text(active.displayPrice)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Button("subscription.manage") {
+                            showSubscriptionSheet = true
+                        }
+                    } else {
+                        Button {
+                            showSubscriptionSheet = true
+                        } label: {
+                            Label("subscription.upgrade", systemImage: "arrow.up.circle")
+                        }
+                        Button("subscription.restore") {
+                            Task { await subscriptionService.restorePurchases() }
+                        }
+                        .foregroundStyle(.secondary)
+                    }
+                } header: {
+                    Text("settings.subscription")
+                } footer: {
+                    Text("settings.subscription.footer")
+                }
+                .sheet(isPresented: $showSubscriptionSheet) {
+                    SubscriptionSheetView(subscriptionService: subscriptionService)
+                }
+            }
+
             Section {
                 TextField("auth.supabase_url", text: $appSettings.supabaseURL)
                     .textContentType(.URL)
@@ -296,6 +344,115 @@ struct SettingsView: View {
                 testResult = .failure(String(format: NSLocalizedString("settings.connection.test.failed", comment: ""), error.localizedDescription))
             }
             isTesting = false
+        }
+    }
+}
+
+// MARK: - SubscriptionSheetView
+
+private struct SubscriptionSheetView: View {
+    @ObservedObject var subscriptionService: SubscriptionService
+    @Environment(\.dismiss) private var dismiss
+    @State private var errorMessage: String?
+    @State private var isPurchasing = false
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 24) {
+                    VStack(spacing: 8) {
+                        Image(systemName: "star.circle.fill")
+                            .font(.system(size: 56))
+                            .foregroundStyle(.tint)
+                            .padding(.top, 16)
+                        Text("subscription.sheet.title")
+                            .font(.title2.bold())
+                        Text("subscription.sheet.subtitle")
+                            .font(.body)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(.horizontal, 24)
+
+                    VStack(spacing: 12) {
+                        ForEach(subscriptionService.products, id: \.id) { product in
+                            let isPurchased = subscriptionService.purchasedProductIDs.contains(product.id)
+                            Button {
+                                guard !isPurchased else { return }
+                                Task {
+                                    isPurchasing = true
+                                    errorMessage = nil
+                                    defer { isPurchasing = false }
+                                    do {
+                                        _ = try await subscriptionService.purchase(product)
+                                    } catch {
+                                        errorMessage = error.localizedDescription
+                                    }
+                                }
+                            } label: {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(product.displayName)
+                                            .font(.headline)
+                                            .foregroundStyle(.primary)
+                                        Text(product.description)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                            .multilineTextAlignment(.leading)
+                                    }
+                                    Spacer()
+                                    if isPurchased {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundStyle(.tint)
+                                    } else {
+                                        Text(product.displayPrice)
+                                            .font(.subheadline.weight(.semibold))
+                                            .foregroundStyle(.tint)
+                                    }
+                                }
+                                .padding(16)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(Color(.secondarySystemGroupedBackground))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 12)
+                                                .stroke(isPurchased ? Color.accentColor : .clear, lineWidth: 2)
+                                        )
+                                )
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(isPurchased || isPurchasing)
+                        }
+                    }
+                    .padding(.horizontal, 24)
+
+                    if isPurchasing {
+                        ProgressView()
+                    }
+
+                    if let error = errorMessage {
+                        Text(error)
+                            .font(.footnote)
+                            .foregroundStyle(.red)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 24)
+                    }
+
+                    Button("subscription.restore") {
+                        Task { await subscriptionService.restorePurchases() }
+                    }
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                }
+                .padding(.bottom, 24)
+            }
+            .navigationTitle("subscription.sheet.title")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("common.done") { dismiss() }
+                }
+            }
         }
     }
 }

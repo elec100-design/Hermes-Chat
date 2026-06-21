@@ -322,3 +322,16 @@
 "settings.cloud_account" = "Cloud Account";
 "settings.cloud_account.footer" = "Connect to Hermes cloud via Sign in with Apple.";
 "settings.cloud.config" = "Cloud Settings";
+
+/* Subscription (T-C03) */
+"settings.subscription" = "Subscription";
+"settings.subscription.footer" = "Manage your subscription or upgrade your plan.";
+"subscription.loading" = "Loading plan info…";
+"subscription.unavailable" = "Subscription plans are currently unavailable.";
+"subscription.upgrade" = "Upgrade Plan";
+"subscription.manage" = "Manage Subscription";
+"subscription.restore" = "Restore Purchases";
+"subscription.sheet.title" = "Hermes Plans";
+"subscription.sheet.subtitle" = "Cancel anytime.";
+"subscription.error.verification_failed" = "Purchase verification failed.";
+"common.done" = "Done";

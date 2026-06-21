@@ -322,3 +322,16 @@
 "settings.cloud_account" = "云账号";
 "settings.cloud_account.footer" = "通过 Apple 登录连接到 Hermes 云服务。";
 "settings.cloud.config" = "Cloud 设置";
+
+/* Subscription (T-C03) */
+"settings.subscription" = "订阅";
+"settings.subscription.footer" = "管理订阅或升级套餐。";
+"subscription.loading" = "正在加载套餐信息…";
+"subscription.unavailable" = "当前无法加载订阅套餐。";
+"subscription.upgrade" = "升级套餐";
+"subscription.manage" = "管理订阅";
+"subscription.restore" = "恢复购买";
+"subscription.sheet.title" = "Hermes 套餐";
+"subscription.sheet.subtitle" = "随时可取消。";
+"subscription.error.verification_failed" = "购买验证失败。";
+"common.done" = "完成";

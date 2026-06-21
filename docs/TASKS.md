@@ -324,7 +324,7 @@
 |----|------|------|------|
 | T-C01 | `AuthView.swift` 신규 — Sign in with Apple + Supabase Auth. JWT를 `KeychainHelper.swift`에 저장. 로그아웃/계정 삭제 | `Views/AuthView.swift` (신규, **pbxproj 등록**) | NEEDS-BUILD (2026-06-20) — **주의:** `com.apple.developer.applesignin` 엔타이틀먼트는 Personal Team 빌드 오류로 재제거(T-A06와 동일). 유료 계정 전환 확정 후 재추가 필요. T-B02 Apple OAuth 심사 통과 + 유료 계정 활성화 후 실기기 테스트 가능. |
 | T-C02 | 연결 모드 분기 — `AppSettings.connectionMode: .cloud \| .selfHosted`. `HermesAPIClient`에 모드별 baseURL 분기. `.cloud`는 클라우드 게이트웨이 URL 하드코딩 | `Services/AppDefaults.swift`, `Services/HermesAPIClient.swift` | NEEDS-BUILD (2026-06-20) |
-| T-C03 | StoreKit 2 구독 — `SubscriptionService.swift` 신규 (Basic/Pro 제품 로드, 엔타이틀먼트 확인, 업그레이드 시트). `SettingsView.swift`에 "구독 관리" 섹션 추가 | `Services/SubscriptionService.swift` (신규, **pbxproj 등록**), `Views/SettingsView.swift` | TODO |
+| T-C03 | StoreKit 2 구독 — `SubscriptionService.swift` 신규 (Basic/Pro 제품 로드, 엔타이틀먼트 확인, 업그레이드 시트). `SettingsView.swift`에 "구독 관리" 섹션 추가 | `Services/SubscriptionService.swift` (신규, **pbxproj 등록**), `Views/SettingsView.swift` | NEEDS-BUILD (2026-06-21) — StoreKit sandbox 테스트는 Xcode Organizer + App Store Connect 제품 등록 후 가능 |
 | T-C04 | OnboardingView 클라우드 경로 활성화 — 현재 `isEnabled: false`인 클라우드 버튼 → AuthView 연결. 자체 호스팅 경로는 그대로 | `Views/OnboardingView.swift` | NEEDS-BUILD (2026-06-20) |
 | T-C05 | 사용량 표시 — SettingsView 또는 `UsageView.swift`에 무료 플랜 잔여 메시지 수 표시. 클라우드 `GET /usage` 폴링 | `Views/SettingsView.swift` 또는 `Views/UsageView.swift` (신규) | TODO (T-C02 뒤) |
 
