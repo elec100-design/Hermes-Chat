@@ -163,6 +163,7 @@ struct SettingsView: View {
                     } else {
                         Label("auth.label.signedout", systemImage: "person.crop.circle.badge.plus")
                     }
+                }
                 // Usage row (T-C05)
                 if appSettings.isCloudAuthenticated && appSettings.connectionMode == .cloud {
                     HStack {
