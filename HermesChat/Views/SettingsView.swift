@@ -163,11 +163,36 @@ struct SettingsView: View {
                     } else {
                         Label("auth.label.signedout", systemImage: "person.crop.circle.badge.plus")
                     }
+                // Usage row (T-C05)
+                if appSettings.isCloudAuthenticated && appSettings.connectionMode == .cloud {
+                    HStack {
+                        Label("settings.usage", systemImage: "chart.bar.fill")
+                        Spacer()
+                        if let limit = appSettings.usageLimit {
+                            Text(String(format: NSLocalizedString("settings.usage.count", comment: ""),
+                                        appSettings.usageCount, limit))
+                                .font(.caption)
+                                .foregroundStyle(
+                                    appSettings.usageCount >= limit ? .red
+                                    : appSettings.usageCount >= Int(Double(limit) * 0.8) ? .orange
+                                    : .secondary
+                                )
+                        } else if appSettings.usageCount > 0 || !appSettings.cloudPlan.isEmpty {
+                            Text("settings.usage.unlimited")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
                 }
             } header: {
                 Text("settings.cloud_account")
             } footer: {
                 Text("settings.cloud_account.footer")
+            }
+            .task {
+                if appSettings.isCloudAuthenticated && appSettings.connectionMode == .cloud {
+                    await appSettings.fetchUsage()
+                }
             }
 
             // MARK: - Subscription (T-C03)

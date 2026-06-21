@@ -335,3 +335,8 @@
 "subscription.sheet.subtitle" = "随时可取消。";
 "subscription.error.verification_failed" = "购买验证失败。";
 "common.done" = "完成";
+
+/* Usage (T-C05) */
+"settings.usage" = "本月用量";
+"settings.usage.count" = "%d / %d 条消息";
+"settings.usage.unlimited" = "无限制";

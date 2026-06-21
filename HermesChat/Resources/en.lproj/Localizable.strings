@@ -335,3 +335,8 @@
 "subscription.sheet.subtitle" = "Cancel anytime.";
 "subscription.error.verification_failed" = "Purchase verification failed.";
 "common.done" = "Done";
+
+/* Usage (T-C05) */
+"settings.usage" = "Usage This Month";
+"settings.usage.count" = "%d / %d messages";
+"settings.usage.unlimited" = "Unlimited";

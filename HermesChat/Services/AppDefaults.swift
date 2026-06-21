@@ -47,12 +47,42 @@ final class AppSettings: ObservableObject {
     /// .cloud 모드에서는 cloudGatewayURL + supabaseJWT 사용
     @AppStorage("connectionMode") var connectionMode: ConnectionMode = .selfHosted
 
+    // MARK: - Usage (T-C05)
+    /// 이번 달 메시지 사용 수. GET /usage 폴링으로 갱신.
+    @Published var usageCount: Int = 0
+    /// 월 메시지 한도. nil = 무제한 (유료 플랜).
+    @Published var usageLimit: Int? = nil
+
+    func fetchUsage() async {
+        guard isCloudAuthenticated,
+              connectionMode == .cloud,
+              !cloudGatewayURL.isEmpty,
+              let url = URL(string: "\(cloudGatewayURL.trimmingCharacters(in: .whitespaces))/usage")
+        else { return }
+        var request = URLRequest(url: url, timeoutInterval: 10)
+        request.setValue("Bearer \(supabaseJWT)", forHTTPHeaderField: "Authorization")
+        guard let (data, response) = try? await URLSession.shared.data(for: request),
+              let http = response as? HTTPURLResponse, http.statusCode == 200 else { return }
+        struct UsageResponse: Decodable {
+            struct Limits: Decodable { let monthly_messages: Int? }
+            struct ThisMonth: Decodable { let messages: Int }
+            let limits: Limits
+            let this_month: ThisMonth
+        }
+        if let parsed = try? JSONDecoder().decode(UsageResponse.self, from: data) {
+            usageCount = parsed.this_month.messages
+            usageLimit = parsed.limits.monthly_messages
+        }
+    }
+
     func signOutCloud() {
         supabaseJWT     = ""
         supabaseRefresh = ""
         supabaseUserID  = ""
         supabaseEmail   = ""
         cloudPlan       = ""
+        usageCount      = 0
+        usageLimit      = nil
     }
 
     /// 비밀값은 Keychain 보관 (T-070). 구버전 UserDefaults 값은 init에서 1회 이관.

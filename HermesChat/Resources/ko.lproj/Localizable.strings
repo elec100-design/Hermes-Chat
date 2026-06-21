@@ -335,3 +335,8 @@
 "subscription.sheet.subtitle" = "언제든지 취소할 수 있습니다.";
 "subscription.error.verification_failed" = "구매 검증에 실패했습니다.";
 "common.done" = "완료";
+
+/* Usage (T-C05) */
+"settings.usage" = "이달 사용량";
+"settings.usage.count" = "%d / %d 메시지";
+"settings.usage.unlimited" = "무제한";
