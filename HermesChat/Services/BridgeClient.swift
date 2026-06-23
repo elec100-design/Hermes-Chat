@@ -242,6 +242,19 @@ final class BridgeClient {
 
     // MARK: - Private
 
+    // MARK: - Push (APNs 디바이스 토큰 등록, T-151)
+
+    /// APNs 디바이스 토큰을 Bridge에 등록한다. Bridge가 칸반 변경을 감시해 이 토큰으로
+    /// 푸시를 보낸다(앱이 꺼져 있어도). 페이로드는 최소만 — 본문은 앱이 열릴 때 fetch.
+    func registerPushToken(_ token: String, profile: String) async throws {
+        let body = try JSONSerialization.data(withJSONObject: [
+            "token": token,
+            "profile": profile,
+            "platform": "ios",
+        ])
+        _ = try await request("POST", "push/register", body: body)
+    }
+
     private func request(
         _ method: String,
         _ path: String,

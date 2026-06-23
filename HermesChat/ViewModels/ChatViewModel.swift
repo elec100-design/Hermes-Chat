@@ -177,6 +177,13 @@ final class ChatViewModel: ObservableObject {
         inputText = ""
         messages.append(ChatMessage(role: .user, content: outgoing, toolCalls: nil, createdAt: .now))
 
+        // 응답 생성 상태를 잠금화면/다이내믹 아일랜드에 라이브 표시 (T-150 C-1).
+        // 위젯 익스텐션 타깃이 없으면 매니저가 조용히 no-op 한다.
+        LiveActivityManager.shared.start(
+            profileName: appSettings.selectedProfile.name,
+            sessionTitle: liveSessionTitle
+        )
+
         let startedAt = Date.now
         let stream = appSettings.hermesClient.streamChat(sessionId: sessionId, message: outgoing)
 
@@ -191,6 +198,7 @@ final class ChatViewModel: ObservableObject {
                 case .content(let chunk):
                     assistant.content += chunk
                     voiceStreamHandler?(assistant.content, false)
+                    LiveActivityManager.shared.updateStreaming(rawContent: assistant.content)
                 case .toolCallUpdate(let id, let name, let argumentsDelta):
                     if let existing = toolDictionary[id] {
                         let merged = (existing.arguments ?? [:])
@@ -208,24 +216,26 @@ final class ChatViewModel: ObservableObject {
             messages[assistantIndex].content = assistant.content
             messages[assistantIndex].toolCalls = Array(toolDictionary.values)
 
-            // 스트림이 빈(또는 think-only) 채 끝나면 세션 기록을 폴링해 답을 회수한다 (T-116).
-            // 게이트웨이가 응답을 세션에는 쓰지만 SSE로는 안 보내는 실기기 버그 대응 — 토론룸의
-            // T-114와 동종. 이 폴백이 없으면 화면엔 답이 안 뜨고, 세션을 나갔다 다시 들어와야
-            // (loadHistory 재호출) 비로소 답이 보였다.
+            // 스트림 종료 후 세션 기록과 항상 한 번 대조한다 (T-149 A1). 게이트웨이가 응답을
+            // 세션에는 쓰지만 SSE로는 일부만/전혀 안 보내는 실기기 버그(T-114/116) 대응 —
+            // 부분 전송(streamedVisible가 비어있지 않은데 본문이 잘린 경우)이 기존 폴백을
+            // 빠져나가 "나갔다 와야" 보이던 회귀의 한 원인이었다. 회수분은 그때그때 말풍선에
+            // 반영해(라이브 충전, A2) 답이 차오르게 한다. 더 짧은 세션 스냅샷으로 긴 스트림
+            // 본문을 덮지는 않는다(가드는 livePollMissedReply 안).
             let streamedVisible = MarkdownLite.strippingThink(assistant.content)
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             let hasTool = !(messages[assistantIndex].toolCalls?.isEmpty ?? true)
-            if streamedVisible.isEmpty && !hasTool {
-                // 내용이 아예 안 왔으면 게이트웨이가 생성 중일 수 있어 길게(300초), 내용은 왔지만
-                // think 제거 후 비면 세션 기록도 think-only일 확률이 높아 짧게(6초)만 시도.
-                let deadline: TimeInterval = assistant.content.isEmpty ? 300 : 6
-                if let recovered = await pollForMissedReply(deadline: deadline) {
-                    messages[assistantIndex].content = recovered
-                    assistant.content = recovered
-                }
+            // 본문이 비거나 think-only면 게이트웨이가 아직 생성 중일 수 있어 길게,
+            // 이미 본문이 있으면 누락분만 짧게 대조한다 (A4: think-only 6→45초로 정상화).
+            let deadline: TimeInterval = streamedVisible.isEmpty && !hasTool
+                ? (assistant.content.isEmpty ? 300 : 45)
+                : 6
+            if let recovered = await livePollMissedReply(assistantIndex: assistantIndex, deadline: deadline) {
+                assistant.content = recovered
             }
             // 음성 낭독은 회수분까지 확정된 최종 본문으로 마무리 알림 (T-118)
             voiceStreamHandler?(assistant.content, true)
+            LiveActivityManager.shared.end(preview: MarkdownLite.plainText(from: assistant.content)) // (T-150)
 
             if messages[assistantIndex].content.isEmpty && (messages[assistantIndex].toolCalls?.isEmpty ?? true) {
                 messages.remove(at: assistantIndex)
@@ -245,28 +255,66 @@ final class ChatViewModel: ObservableObject {
             ))
             // 음성 루프가 에러 후에도 재청취/종료로 자연 복귀하도록 완료를 알린다 (T-118)
             voiceStreamHandler?("", true)
+            LiveActivityManager.shared.end(preview: "") // 에러 시 활동 정리 (T-150)
         }
     }
 
-    /// 스트림이 빈 채 끝났을 때(SSE 미전송 실기기 버그) 세션 기록을 2초 간격으로 폴링해
-    /// 마지막 user 메시지 뒤의 "보이는" assistant 답을 회수한다 (T-116).
-    /// 판정은 토론룸 폴백과 동일한 `DiscussionViewModel.missedReply`를 재사용한다 — 직전 턴
-    /// 답을 오인하지 않도록 지금까지 보낸 user 메시지 수로 앵커링한다. 타임아웃/취소 시 nil.
-    private func pollForMissedReply(deadline: TimeInterval) async -> String? {
+    /// 현재 세션 제목 (Live Activity 표시용, 없으면 빈 문자열)
+    private var liveSessionTitle: String {
+        appSettings.sessions.first(where: { $0.id == sessionId })?.title ?? ""
+    }
+
+    /// 스트림 종료 후 세션 기록을 2초 간격으로 폴링해 누락분을 회수한다 (T-149, 구
+    /// pollForMissedReply 대체). 발견한 답의 "보이는 길이"가 현재 말풍선보다 길면 즉시
+    /// 반영해(라이브 충전, A2) 답이 차오르는 느낌을 주고, 같은 길이가 두 번(≈4초) 연속이면
+    /// 완성으로 보고 종료한다. 판정은 토론룸 폴백과 동일한 `DiscussionViewModel.missedReply`를
+    /// 재사용하고 — 직전 턴 답을 오인하지 않도록 지금까지 보낸 user 메시지 수로 앵커링한다.
+    /// 더 짧은 스냅샷으로 긴 스트림 본문을 덮어쓰지 않으며(길이 가드), 실제로 더 길어졌을
+    /// 때만 최종 본문을 돌려준다. 타임아웃/취소 시 nil.
+    @discardableResult
+    private func livePollMissedReply(assistantIndex: Int, deadline: TimeInterval) async -> String? {
         let expectedUserCount = messages.filter { $0.role == .user }.count
         let limit = Date.now.addingTimeInterval(deadline)
+        func visibleLength(_ text: String) -> Int {
+            MarkdownLite.strippingThink(text).trimmingCharacters(in: .whitespacesAndNewlines).count
+        }
+        var best = messages[assistantIndex].content
+        var bestLength = visibleLength(best)
+        var changed = false
+        var stableCount = 0
         while Date.now < limit {
             if let server = try? await appSettings.hermesClient.fetchMessages(sessionId: sessionId),
                let reply = DiscussionViewModel.missedReply(in: server, expectedUserCount: expectedUserCount) {
-                return reply
+                let length = visibleLength(reply)
+                if length > bestLength {
+                    best = reply
+                    bestLength = length
+                    if assistantIndex < messages.count {
+                        messages[assistantIndex].content = reply // 라이브 충전 (A2)
+                    }
+                    changed = true
+                    stableCount = 0
+                } else if bestLength > 0 {
+                    stableCount += 1
+                    if stableCount >= 2 { break } // ≈4초간 변화 없음 → 완성
+                }
             }
             do {
                 try await Task.sleep(nanoseconds: 2_000_000_000)
             } catch {
-                return nil // 취소
+                break // 취소
             }
         }
-        return nil
+        return changed ? best : nil
+    }
+
+    /// 화면 진입/포그라운드 복귀 시 세션 기록과 동기화한다 (T-149 A3).
+    /// 스트리밍·로딩 중이 아닐 때만 동작하며, 서버 기록이 다르면 교체해 백그라운드에서
+    /// 완료돼 "나갔다 와야" 보이던 응답을 즉시 반영한다. 네트워크 실패는 조용히 무시.
+    func reconcile() async {
+        guard !isWorking, !isLoadingHistory else { return }
+        guard let server = try? await appSettings.hermesClient.fetchMessages(sessionId: sessionId) else { return }
+        if server != messages { messages = server }
     }
 
     /// 첨부를 Bridge로 업로드하고 맥미니 절대경로를 메시지 앞에 붙인다.

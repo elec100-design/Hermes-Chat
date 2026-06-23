@@ -16,6 +16,7 @@ struct ChatView: View {
     @ObservedObject private var speech = SpeechService.shared
     @ObservedObject private var voice = VoiceConversationController.shared
     @ObservedObject private var coordinator = VoiceEntryCoordinator.shared
+    @Environment(\.scenePhase) private var scenePhase
     /// 외부 진입(Siri·위젯·URL·글라스)의 arm을 보이는 뷰에서만 소비하기 위한 가시성 추적 (T-131)
     @State private var isVisible = false
     /// 글라스 사진 자동 전송 감시자 (Phase 16) — 세션 화면 수명 동안만 산다
@@ -116,6 +117,9 @@ struct ChatView: View {
         }
         .onAppear {
             isVisible = true
+            // 화면 진입 시 세션 기록과 동기화 — 백그라운드/다른 화면에서 완료된 응답을
+            // "나갔다 와야" 보이던 회귀 없이 즉시 반영 (T-149 A3)
+            Task { await viewModel.reconcile() }
             // 외부 진입으로 arm된 경우 — 실제 viewModel이 준비된 지금 음성 모드 시작 (T-131)
             startVoiceIfArmed()
             // idle이어도 글라스 더블탭(AVRCP)으로 음성을 바로 켤 수 있도록 리모트 커맨드 무장 (T-134)
@@ -133,6 +137,10 @@ struct ChatView: View {
         // 음성 세션이 끝나 idle로 돌아와도 화면이 떠 있으면 다시 무장 — 더블탭 재시작 보장 (T-134)
         .onChange(of: voice.state) { _, state in
             if state == .idle, isVisible { voice.armRemoteControl(viewModel: viewModel) }
+        }
+        // 포그라운드 복귀 시 세션 기록 동기화 — 백그라운드 동안 완료된 응답 즉시 반영 (T-149 A3)
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active, isVisible { Task { await viewModel.reconcile() } }
         }
         .onDisappear {
             isVisible = false

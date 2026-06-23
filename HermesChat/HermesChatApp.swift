@@ -13,6 +13,7 @@ enum AppTab: Hashable {
 struct HermesChatApp: App {
     @StateObject private var appSettings = AppSettings()
     @StateObject private var coordinator = VoiceEntryCoordinator.shared
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var selectedTab: AppTab = .board
     @Environment(\.scenePhase) private var scenePhase
 
@@ -51,7 +52,10 @@ struct HermesChatApp: App {
                 OnboardingView(appSettings: appSettings)
             }
             .task {
-                await NotificationService.shared.requestAuthorization()
+                let granted = await NotificationService.shared.requestAuthorization()
+                // APNs 원격 푸시 등록 — 권한이 있을 때만 (T-151)
+                PushService.shared.configure(appSettings: appSettings)
+                if granted { PushService.shared.start() }
                 // 콜드 런치(Siri·위젯·URL)로 진입 요청이 이미 들어와 있을 수 있다 (T-131)
                 await routeVoiceEntryIfNeeded()
             }
@@ -65,6 +69,8 @@ struct HermesChatApp: App {
                 // 칸반 전이(done/blocked) 감지 폴링 — 포그라운드에서만 (T-093)
                 if phase == .active {
                     NotificationService.shared.startPolling(appSettings: appSettings)
+                    // 포그라운드 복귀 시 푸시 토큰 재등록(프로필 전환 대비) (T-151)
+                    Task { await PushService.shared.uploadToken() }
                 } else {
                     NotificationService.shared.stopPolling()
                 }

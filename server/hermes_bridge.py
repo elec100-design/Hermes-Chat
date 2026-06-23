@@ -17,6 +17,7 @@
 (/health 제외). 공인망에 직접 노출하지 말 것.
 """
 
+import base64
 import json
 import mimetypes
 import os
@@ -25,6 +26,7 @@ import shutil
 import sqlite3
 import subprocess
 import sys
+import threading
 import time
 import urllib.request
 from datetime import datetime, timezone
@@ -455,6 +457,157 @@ def run_kanban_cli(board, args, timeout=60):
     return proc.stdout, None
 
 
+# ── APNs 푸시 (Phase B / T-151) ──────────────────────────────────
+# 앱이 꺼져 있어도 칸반 done/blocked를 즉시 알리기 위한 서버측 푸시.
+# 프라이버시: 페이로드는 최소("작업 완료" 등 제목/한 줄)만 — 본문은 앱이 열릴 때 fetch.
+#
+# 전부 환경변수로 게이트된다. 아래가 모두 설정되고 `cryptography`가 임포트될 때만
+# 워처 스레드가 돈다. 미설정이면 푸시는 비활성이고 브리지는 기존과 100% 동일하게 동작한다:
+#   APNS_KEY_PATH   — AuthKey_XXXX.p8 경로 (ES256 프라이빗 키)
+#   APNS_KEY_ID     — 키 ID (10자)
+#   APNS_TEAM_ID    — Apple 팀 ID (10자)
+#   APNS_TOPIC      — 앱 번들 ID (예: com.hermes.chatios)
+#   APNS_ENV        — "production" 또는 "sandbox"(기본). dev 빌드 토큰은 sandbox.
+# HTTP/2는 stdlib에 없어 시스템 `curl --http2`로 보낸다(맥 기본 제공, pip 의존성 0).
+APNS_KEY_PATH = os.environ.get("APNS_KEY_PATH", "")
+APNS_KEY_ID = os.environ.get("APNS_KEY_ID", "")
+APNS_TEAM_ID = os.environ.get("APNS_TEAM_ID", "")
+APNS_TOPIC = os.environ.get("APNS_TOPIC", "")
+APNS_ENV = os.environ.get("APNS_ENV", "sandbox").lower()
+PUSH_TOKENS_FILE = HERMES_HOME / "push_tokens.json"
+PUSH_POLL_SECONDS = int(os.environ.get("PUSH_POLL_SECONDS", "60"))
+
+_push_lock = threading.Lock()
+_apns_jwt_cache = {"token": None, "iat": 0}
+
+
+def push_configured():
+    return bool(APNS_KEY_PATH and APNS_KEY_ID and APNS_TEAM_ID and APNS_TOPIC
+                and Path(APNS_KEY_PATH).is_file())
+
+
+def load_push_tokens():
+    try:
+        data = json.loads(PUSH_TOKENS_FILE.read_text())
+        toks = data.get("tokens", {})
+        return toks if isinstance(toks, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def save_push_token(token, profile, platform):
+    with _push_lock:
+        tokens = load_push_tokens()
+        tokens[token] = {"profile": profile, "platform": platform, "ts": int(time.time())}
+        tmp = PUSH_TOKENS_FILE.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps({"tokens": tokens}, ensure_ascii=False, indent=2))
+        os.replace(str(tmp), str(PUSH_TOKENS_FILE))
+
+
+def _b64url(raw):
+    return base64.urlsafe_b64encode(raw).rstrip(b"=").decode()
+
+
+def apns_provider_jwt():
+    """APNs provider 토큰(JWT, ES256). ~50분 캐시 — Apple은 ≥20분, ≤60분 재사용 요구."""
+    now = int(time.time())
+    if _apns_jwt_cache["token"] and now - _apns_jwt_cache["iat"] < 50 * 60:
+        return _apns_jwt_cache["token"]
+    # ES256 서명은 stdlib에 없어 cryptography를 쓴다(푸시 기능 한정 선택적 의존성).
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import ec, utils as asym_utils
+
+    key_bytes = Path(APNS_KEY_PATH).read_bytes()
+    private_key = serialization.load_pem_private_key(key_bytes, password=None)
+    header = _b64url(json.dumps({"alg": "ES256", "kid": APNS_KEY_ID}).encode())
+    claims = _b64url(json.dumps({"iss": APNS_TEAM_ID, "iat": now}).encode())
+    signing_input = f"{header}.{claims}".encode()
+    der_sig = private_key.sign(signing_input, ec.ECDSA(hashes.SHA256()))
+    r, s = asym_utils.decode_dss_signature(der_sig)
+    raw_sig = r.to_bytes(32, "big") + s.to_bytes(32, "big")  # JOSE는 raw(r||s)
+    jwt = f"{header}.{claims}.{_b64url(raw_sig)}"
+    _apns_jwt_cache.update({"token": jwt, "iat": now})
+    return jwt
+
+
+def send_apns(token, title, body, collapse_id=None):
+    """단일 디바이스에 alert 푸시. 성공 True. curl --http2로 HTTP/2 전송."""
+    host = "api.push.apple.com" if APNS_ENV == "production" else "api.sandbox.push.apple.com"
+    payload = json.dumps({"aps": {
+        "alert": {"title": title, "body": body},
+        "sound": "default",
+    }})
+    cmd = [
+        "curl", "-s", "--http2", "-X", "POST",
+        "-H", f"authorization: bearer {apns_provider_jwt()}",
+        "-H", f"apns-topic: {APNS_TOPIC}",
+        "-H", "apns-push-type: alert",
+        "-H", "apns-priority: 10",
+        "-d", payload,
+        f"https://{host}/3/device/{token}",
+        "-o", "/dev/null", "-w", "%{http_code}",
+    ]
+    if collapse_id:
+        cmd[2:2] = ["-H", f"apns-collapse-id: {collapse_id[:64]}"]
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+    except (subprocess.TimeoutExpired, OSError) as e:
+        sys.stderr.write(f"[bridge] apns send error: {e}\n")
+        return False
+    code = (proc.stdout or "").strip()
+    if code == "410":  # 토큰 폐기됨 — 정리
+        with _push_lock:
+            tokens = load_push_tokens()
+            tokens.pop(token, None)
+            tmp = PUSH_TOKENS_FILE.with_suffix(".json.tmp")
+            tmp.write_text(json.dumps({"tokens": tokens}, ensure_ascii=False, indent=2))
+            os.replace(str(tmp), str(PUSH_TOKENS_FILE))
+        return False
+    if code != "200":
+        sys.stderr.write(f"[bridge] apns http {code} for token …{token[-6:]}\n")
+    return code == "200"
+
+
+def push_to_all(title, body, collapse_id=None):
+    tokens = load_push_tokens()
+    for token in list(tokens.keys()):
+        send_apns(token, title, body, collapse_id=collapse_id)
+
+
+def kanban_push_watcher():
+    """칸반 done/blocked 전이를 감지해 APNs로 발사한다(앱이 꺼져 있어도). 앱의
+    NotificationService와 동종 로직을 서버측에 둬 백그라운드 신뢰성을 확보한다.
+    첫 스냅샷은 알리지 않는다(기동 직후 폭주 방지)."""
+    snapshot = {}  # {board: {task_id: status}}
+    first = True
+    while True:
+        try:
+            for board in list_kanban_boards():
+                data = kanban_read(board)
+                if not data:
+                    continue
+                prev = snapshot.get(board, {})
+                current = {}
+                for task in data["tasks"]:
+                    tid, status = task["id"], task["status"]
+                    current[tid] = status
+                    if first:
+                        continue
+                    if prev.get(tid) == status:
+                        continue
+                    if status == "done":
+                        push_to_all("칸반 작업 완료", f"[{data['name']}] {task['title']}",
+                                    collapse_id=f"kanban-done-{board}-{tid}")
+                    elif status == "blocked":
+                        push_to_all("칸반 작업 보류됨", f"[{data['name']}] {task['title']}",
+                                    collapse_id=f"kanban-blocked-{board}-{tid}")
+                snapshot[board] = current
+            first = False
+        except Exception as e:  # 워처는 절대 죽지 않는다 — 다음 주기에 재시도
+            sys.stderr.write(f"[bridge] push watcher error: {e}\n")
+        time.sleep(max(15, PUSH_POLL_SECONDS))
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "HermesBridge/1.0"
 
@@ -653,6 +806,23 @@ class Handler(BaseHTTPRequestHandler):
         parts = [p for p in self.path.split("?")[0].split("/") if p]
         if not self.authorized():
             return self.fail(401, "unauthorized")
+
+        # POST /push/register  {"token", "profile"?, "platform"?} — APNs 디바이스 토큰 등록 (T-151)
+        if parts == ["push", "register"]:
+            raw = self.read_body(64 * 1024)
+            if raw is None:
+                return self.fail(400, "empty body")
+            try:
+                payload = json.loads(raw)
+                token = str(payload.get("token") or "").strip().lower()
+            except (ValueError, TypeError):
+                return self.fail(400, 'expected JSON {"token": ...}')
+            if not re.fullmatch(r"[0-9a-f]{16,200}", token):
+                return self.fail(400, "invalid apns token")
+            profile = str(payload.get("profile") or "default")
+            platform = str(payload.get("platform") or "ios")
+            save_push_token(token, profile, platform)
+            return self.send_json({"ok": True, "push_enabled": push_configured()})
 
         # POST /profiles  {"name", "port"?, "api_key"?, "soul"?, "model"?} — 프로필 완전 생성
         # `hermes profile create <name> --clone-from default`로 default를 복제(config.yaml/.env/
@@ -1145,6 +1315,12 @@ def main():
             host = args[i + 1]
     if not TOKEN:
         print("경고: HERMES_BRIDGE_TOKEN 미설정 — 인증 없이 동작합니다.", file=sys.stderr)
+    # APNs 푸시(T-151)는 설정됐을 때만 워처를 띄운다. 미설정이면 기존과 동일하게 동작.
+    if push_configured():
+        threading.Thread(target=kanban_push_watcher, daemon=True).start()
+        print(f"APNs 푸시 워처 시작 (env={APNS_ENV}, topic={APNS_TOPIC})", file=sys.stderr)
+    else:
+        print("APNs 푸시 비활성 (APNS_* 환경변수 미설정) — 등록 엔드포인트만 동작", file=sys.stderr)
     print(f"Hermes Bridge listening on {host}:{port} (HERMES_HOME={HERMES_HOME})")
     ThreadingHTTPServer((host, port), Handler).serve_forever()
 

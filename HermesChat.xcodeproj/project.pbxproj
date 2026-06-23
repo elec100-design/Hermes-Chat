@@ -37,6 +37,9 @@
 		AUTH001A00000000000AUTH01 /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AUTH001A00000000000AUTH02 /* AuthView.swift */; };
 		B5B4BF8255A8DF60FFE1604F /* ChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEC3DC1D7345FE8A30F5F63E /* ChatViewModel.swift */; };
 		B681A38C220609922E6F32B6 /* ChatModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F3BB2D079331A3B8BEBB359 /* ChatModels.swift */; };
+		AAAA0149AAAA0149AAAA0149 /* HermesChatActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBB0149BBBB0149BBBB0149 /* HermesChatActivityAttributes.swift */; };
+		AAAA0149AAAA0149AAAA014A /* LiveActivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBB0149BBBB0149BBBB014A /* LiveActivityManager.swift */; };
+		AAAA0150AAAA0150AAAA0150 /* PushService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBB0150BBBB0150BBBB0150 /* PushService.swift */; };
 		C0F0000000000000000000A1 /* CronModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0F0000000000000000000A2 /* CronModels.swift */; };
 		C0F0000000000000000000B1 /* CronJobsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0F0000000000000000000B2 /* CronJobsView.swift */; };
 		C0F0000000000000000000C1 /* CronJobEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0F0000000000000000000C2 /* CronJobEditView.swift */; };
@@ -66,6 +69,9 @@
 		0F5BAC02A7E38D64FC5BBB02 /* KanbanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KanbanView.swift; sourceTree = "<group>"; };
 		1A6CBD02B8F49E75AD6CCC02 /* DashboardWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardWebView.swift; sourceTree = "<group>"; };
 		1F3BB2D079331A3B8BEBB359 /* ChatModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatModels.swift; sourceTree = "<group>"; };
+		BBBB0149BBBB0149BBBB0149 /* HermesChatActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HermesChatActivityAttributes.swift; sourceTree = "<group>"; };
+		BBBB0149BBBB0149BBBB014A /* LiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityManager.swift; sourceTree = "<group>"; };
+		BBBB0150BBBB0150BBBB0150 /* PushService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushService.swift; sourceTree = "<group>"; };
 		1FB3343782720464725EB49B /* DashboardModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardModels.swift; sourceTree = "<group>"; };
 		23245B6E8F2A9A7A394852E9 /* HermesChat.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HermesChat.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2B7DCE02C9A55B86BE7DDD02 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
@@ -155,6 +161,8 @@
 				7E785976044540D5051D9A8C /* HermesAPIClient.swift */,
 				2B7DCE02C9A55B86BE7DDD02 /* KeychainHelper.swift */,
 				5EABCD02FCD88EB9EB1AAA02 /* NotificationService.swift */,
+				BBBB0149BBBB0149BBBB014A /* LiveActivityManager.swift */,
+				BBBB0150BBBB0150BBBB0150 /* PushService.swift */,
 				6FBCDE02ADE99FCAFC2BBB02 /* SpeechService.swift */,
 				8ACDEF02CEF11ADBFD3CCC02 /* VoiceConversationController.swift */,
 				9BCDEF02AEF22BECFE4DDD02 /* PhotoImportWatcher.swift */,
@@ -228,6 +236,7 @@
 			isa = PBXGroup;
 			children = (
 				1F3BB2D079331A3B8BEBB359 /* ChatModels.swift */,
+				BBBB0149BBBB0149BBBB0149 /* HermesChatActivityAttributes.swift */,
 				C0F0000000000000000000A2 /* CronModels.swift */,
 				1FB3343782720464725EB49B /* DashboardModels.swift */,
 				DD17000200000000000DEE02 /* DiscussionModels.swift */,
@@ -322,6 +331,9 @@
 				C0F0000000000000000000C1 /* CronJobEditView.swift in Sources */,
 				C0F0000000000000000000D1 /* CreateProfileView.swift in Sources */,
 				B681A38C220609922E6F32B6 /* ChatModels.swift in Sources */,
+				AAAA0149AAAA0149AAAA0149 /* HermesChatActivityAttributes.swift in Sources */,
+				AAAA0149AAAA0149AAAA014A /* LiveActivityManager.swift in Sources */,
+				AAAA0150AAAA0150AAAA0150 /* PushService.swift in Sources */,
 				776B66DF2FD8387E001190A1 /* ProfileModels.swift in Sources */,
 				CC0372ECAE6E122E1C4FAA13 /* ChatView.swift in Sources */,
 				B5B4BF8255A8DF60FFE1604F /* ChatViewModel.swift in Sources */,

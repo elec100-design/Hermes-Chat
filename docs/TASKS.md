@@ -294,6 +294,22 @@
 |----|------|------|------|
 | T-148 | 대시보드 탭에 **두 손가락 핀치 줌**과 **데스크톱 모드 토글** 추가(사용자 요청 — 모바일 화면에서 작아서 안 눌리거나 레이아웃에 숨겨져 접근 안 되는 버튼 대응). 대시보드 페이지(:8000)는 맥미니가 서빙해 HTML 직접 수정 불가 → 앱에서 보조. **핀치 줌**: 페이지의 `<meta viewport>`가 보통 `user-scalable=no`라 막혀 있어, `WKUserScript`(.atDocumentEnd) + 네비 완료 시 `evaluateJavaScript`로 viewport를 `user-scalable=yes, maximum-scale=10`으로 덮어씀. **데스크톱 모드**: 우상단 툴바 토글(iphone/desktopcomputer 아이콘) → `customUserAgent`를 macOS Safari로 바꾸고 viewport `width=1024`로 전체 데스크톱 레이아웃을 불러옴(숨겨진 버튼 노출) + 핀치 줌으로 탐색. 상태는 `@AppStorage("dashboardDesktopMode")`로 영속화. 모드 전환 시 UA 교체 후 `reload()`, 기존 host/port 변경 재로드 로직 보존. 기존 파일만 수정 → **pbxproj 무수정**. **빌드 검증 필요(맥)** | `Views/DashboardWebView.swift` | NEEDS-BUILD |
 
+## Phase 22 — 실시간 채팅 갱신 + Live Activity + APNs 푸시 (브랜치 `claude/realtime-chat-liveactivity-apns`)
+
+> 근거: `docs/PRODUCT_REVIEW.md` §3.1(실시간성 한계)·§5.1(Live Activity)·§5.6(APNs). "응답이
+> 나갔다 와야 보인다"는 사용자 증상의 근본원인(폴백 커버리지 부분적)을 코드 경로에서 확정해
+> 클라이언트 보정(A)부터 잡고, 모바일 차별화(Live Activity, C)와 백그라운드 신뢰성(APNs, B)을 적층.
+> **기존 구성 최소 영향 원칙**: A는 기존 파일만 수정(pbxproj 무관), C/B의 신규 앱 파일만 pbxproj 등록.
+> Live Activity UI(위젯)와 APNs 발송은 Xcode 위젯 타깃 생성·.p8 비밀값·브리지 재배포가 있어야
+> 런타임 동작 — 코드는 빌드되며 그 수동 단계는 아래에 명시.
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-149 | **Phase A — 클라이언트 실시간 갱신 보정**(백엔드 무관). ① 스트림 종료 후 **항상 1회 세션 대조**(부분 전송 누락 회수, 더 짧은 스냅샷으로 긴 본문 안 덮음). ② **대기 중 라이브 폴링**(`livePollMissedReply` — 회수분을 2초마다 말풍선에 즉시 반영, 같은 길이 ≈4초 연속이면 완성으로 종료). ③ **onAppear + scenePhase 복귀 시 `reconcile()`**(스트리밍 아닐 때만 세션 머지 — "나갔다 와야" 증상 직접 해결). ④ think-only 데드라인 **6→45초** 정상화. 기존 파일만 수정 → **pbxproj 무수정, 브리지 무관** | `ViewModels/ChatViewModel.swift`, `Views/ChatView.swift` | NEEDS-BUILD — 맥 빌드 SUCCEEDED, 실기기 체감(부분전송 회수·라이브 충전·복귀 갱신) 검증 대기 |
+| T-150 | **Phase C-1 — Live Activity(포그라운드 구동)**. 채팅 응답 생성 상태(사고중/생성중/완료 · 경과 타이머 · 프로필명 · 본문 미리보기)를 잠금화면/다이내믹 아일랜드에 표시. `HermesChatActivityAttributes`(앱+위젯 공유 타입), `LiveActivityManager`(start/update/end, 미지원·미설정 시 조용히 no-op), `send()` 후킹. `Info.plist NSSupportsLiveActivities=YES`. **위젯 UI는 위젯 익스텐션 타깃 필요** → `HermesWidgets/HermesChatLiveActivity.swift`는 디스크에만(앱 빌드엔 미포함), **HermesWidgets/SETUP.md 절차로 Xcode에서 위젯 타깃 생성 + 두 타입 멤버십 추가 후 동작**. 앱측 2파일은 pbxproj 등록 완료 | `Models/HermesChatActivityAttributes.swift`(신규·등록), `Services/LiveActivityManager.swift`(신규·등록), `HermesWidgets/HermesChatLiveActivity.swift`(신규·**미등록, Xcode 위젯 타깃 대기**), `ViewModels/ChatViewModel.swift`, `Resources/Info.plist` | NEEDS-BUILD — 앱 빌드 SUCCEEDED. **Xcode 위젯 타깃 생성** + 실기기 표시 검증 대기 |
+| T-151 | **Phase B — APNs 푸시 인프라**(백그라운드/종료 상태 신뢰성). 앱: 알림 권한 시 `registerForRemoteNotifications`→AppDelegate 토큰 수신→Bridge `POST /push/register`로 업로드(포그라운드 복귀 시 재등록). `aps-environment` 엔타이틀먼트 + `UIBackgroundModes: remote-notification`. Bridge: `/push/register`(토큰 stdlib 영속), **칸반 done/blocked 워처**가 APNs 발사(curl --http2 + ES256 JWT). **APNS_* 환경변수 미설정이면 완전 비활성**(기존 동작 100% 보존, py_compile OK). 페이로드 최소("작업 완료")만 — 본문은 앱이 fetch | `Services/PushService.swift`(신규·등록), `Services/BridgeClient.swift`, `HermesChatApp.swift`, `HermesChat.entitlements`, `Resources/Info.plist`, `server/hermes_bridge.py`, `server/.env.example` | NEEDS-BUILD(앱 빌드 SUCCEEDED) + **NEEDS-DEPLOY(브리지 재배포)** + **NEEDS-SECRETS(.p8 키·APNS_* 설정)** — 실기기 푸시 수신 검증 대기 |
+| T-152 | **Phase C-2 — Live Activity 푸시 갱신 + 토론 Live Activity**(T-151 위 적층). 백그라운드에서도 Live Activity를 갱신하려면 ActivityKit 푸시 토큰을 APNs로 보내야 함. Deep think 토론 진행("라운드 2/3 · 3명 발언 중")도 Live Activity로. | (미착수) | TODO — T-150·T-151 런타임 검증 후 |
+
 ## Phase A — 앱스토어 상품화 Phase 0: 컴플라이언스 + 다국어 기반
 
 > 상업화 전체 계획은 `docs/COMMERCIALIZATION.md` 참조. Phase B~D 태스크는 이 파일 하단에 추가됨.
@@ -358,3 +374,4 @@
 | 06-20 | claude/hopeful-edison-1p5q91 @ 6ce0852 | DOCKER BUILD SUCCEEDED | 사용자 확인 — T-B03 DONE (cloud_gateway.py Dockerfile + 컨테이너 프록시) |
 | 06-20 | claude/hopeful-edison-1p5q91 @ 767df1e | DOCKER BUILD SUCCEEDED | 사용자 확인 — T-B05 DONE (플랜 제한 + Bridge 프록시 + 메시지 카운팅) |
 | 06-21 | claude/sleepy-bardeen-x86kpk @ 98ad910 | BUILD SUCCEEDED + 실기기 설치 완료 | 사용자 Xcode 빌드 + iPhone17,4(iOS 26.5) 설치 확인 — T-C01~C05 Phase C 전체 (유료 Apple Developer C4LUZYK8L5, 빌드 오류 5개 수정 포함). 런타임 검증은 Sign in with Apple(T-C01)·StoreKit(T-C03) 대기. |
+| 06-24 | claude/realtime-chat-liveactivity-apns @ d56fd8c | BUILD SUCCEEDED | Claude Code 빌드 (Xcode 26.5, generic/iOS Simulator) — T-149/150/151 Phase 22. 앱측 전 코드 컴파일 확인. 실기기 체감(T-149)·Xcode 위젯 타깃+표시(T-150)·.p8/브리지 재배포 후 푸시 수신(T-151) 검증 대기. |
