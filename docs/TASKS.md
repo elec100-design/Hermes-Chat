@@ -374,4 +374,4 @@
 | 06-20 | claude/hopeful-edison-1p5q91 @ 6ce0852 | DOCKER BUILD SUCCEEDED | 사용자 확인 — T-B03 DONE (cloud_gateway.py Dockerfile + 컨테이너 프록시) |
 | 06-20 | claude/hopeful-edison-1p5q91 @ 767df1e | DOCKER BUILD SUCCEEDED | 사용자 확인 — T-B05 DONE (플랜 제한 + Bridge 프록시 + 메시지 카운팅) |
 | 06-21 | claude/sleepy-bardeen-x86kpk @ 98ad910 | BUILD SUCCEEDED + 실기기 설치 완료 | 사용자 Xcode 빌드 + iPhone17,4(iOS 26.5) 설치 확인 — T-C01~C05 Phase C 전체 (유료 Apple Developer C4LUZYK8L5, 빌드 오류 5개 수정 포함). 런타임 검증은 Sign in with Apple(T-C01)·StoreKit(T-C03) 대기. |
-| 06-24 | claude/realtime-chat-liveactivity-apns @ d56fd8c | BUILD SUCCEEDED | Claude Code 빌드 (Xcode 26.5, generic/iOS Simulator) — T-149/150/151 Phase 22. 앱측 전 코드 컴파일 확인. 실기기 체감(T-149)·Xcode 위젯 타깃+표시(T-150)·.p8/브리지 재배포 후 푸시 수신(T-151) 검증 대기. |
+| 06-24 | claude/realtime-chat-liveactivity-apns @ 72e23fb | BUILD SUCCEEDED | Claude Code 빌드 (Xcode 26.5, generic/iOS Simulator) — T-149/150/151 Phase 22. 앱측 전 코드 컴파일 확인. 실기기 체감(T-149)·Xcode 위젯 타깃+표시(T-150)·.p8/브리지 재배포 후 푸시 수신(T-151) 검증 대기. |
