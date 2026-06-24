@@ -310,6 +310,29 @@
 | T-151 | **Phase B — APNs 푸시 인프라**(백그라운드/종료 상태 신뢰성). 앱: 알림 권한 시 `registerForRemoteNotifications`→AppDelegate 토큰 수신→Bridge `POST /push/register`로 업로드(포그라운드 복귀 시 재등록). `aps-environment` 엔타이틀먼트 + `UIBackgroundModes: remote-notification`. Bridge: `/push/register`(토큰 stdlib 영속), **칸반 done/blocked 워처**가 APNs 발사(curl --http2 + ES256 JWT). **APNS_* 환경변수 미설정이면 완전 비활성**(기존 동작 100% 보존, py_compile OK). 페이로드 최소("작업 완료")만 — 본문은 앱이 fetch | `Services/PushService.swift`(신규·등록), `Services/BridgeClient.swift`, `HermesChatApp.swift`, `HermesChat.entitlements`, `Resources/Info.plist`, `server/hermes_bridge.py`, `server/.env.example` | NEEDS-BUILD(앱 빌드 SUCCEEDED) + **NEEDS-DEPLOY(브리지 재배포)** + **NEEDS-SECRETS(.p8 키·APNS_* 설정)** — 실기기 푸시 수신 검증 대기 |
 | T-152 | **Phase C-2 — Live Activity 푸시 갱신 + 토론 Live Activity**(T-151 위 적층). 백그라운드에서도 Live Activity를 갱신하려면 ActivityKit 푸시 토큰을 APNs로 보내야 함. Deep think 토론 진행("라운드 2/3 · 3명 발언 중")도 Live Activity로. | (미착수) | TODO — T-150·T-151 런타임 검증 후 |
 
+## Phase 23 — 음성 대화 개선: 세션 TTS 로컬 최적화 + Gemini Live 탭 (브랜치 `claude/eager-allen-pjbdce`)
+
+> 근거: 세션 음성의 출력 TTS가 답답하다는 사용자 보고. 원인은 `AVSpeechSynthesizer` cold-start +
+> 기본 ko-KR 보이스 + 첫 문장 종결부호 대기. 두 갈래로 해결 —
+> **(A) 세션 탭**은 로컬 AVSpeech 최적화(외부 전송 0, Tailscale 원칙 유지),
+> **(B) 신규 Live 탭**은 Iris(`elec100-design/Iris`)의 `GeminiLiveService`를 이식한 Pure Gemini
+> Live(speech-to-speech). 대화는 챗 버블로 보이고 **로컬 세션으로 저장·재개·검색**한다.
+> **프라이버시 예외는 Live 탭 한정** — Gemini Live는 오디오/자막을 Google로 전송(사용자 승인,
+> 키는 Keychain). 자막 저장은 온디바이스.
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-153 | **Part A — 세션 TTS 로컬 최적화**. ① `prewarmTTS()`(무음 발화로 cold-start 제거, 앱 시작 시 1회) ② 고품질 ko-KR 보이스 자동 선택(premium>enhanced>기본, 설정 식별자 우선) ③ `utterance.rate`(설정 슬라이더)·pre/postUtteranceDelay=0 ④ `StreamingSentenceSplitter` 턴 첫 문장 **조기 플러시**(종결부호 없어도 쉼표/공백 경계서 첫 소리). 기존 파일만 수정 → **pbxproj 무수정, 외부 전송 0** | `Services/SpeechService.swift`, `Services/VoiceConversationController.swift`, `Services/AppDefaults.swift`, `Views/SettingsView.swift`, `HermesChatApp.swift` | NEEDS-BUILD — 실기기 체감(첫 소리 지연·자연스러움) 검증 대기 |
+| T-154 | **Part B — GeminiLiveService 이식**. `URLSessionWebSocketTask` → BidiGenerateContent(wss). setup: response_modalities=AUDIO, voice_config, system_instruction, **input/output audio transcription**(양측 자막). 입력 16kHz PCM16(AVAudioConverter), 출력 24kHz PCM(별도 AVAudioEngine+AVAudioPlayerNode), `interrupted` barge-in, 재생 중 마이크 흡수 차단. 보이스 enum/연결상태 모델 포함 | `Models/GeminiLiveModels.swift`(신규·등록), `Services/GeminiLiveService.swift`(신규·등록) | NEEDS-BUILD — Gemini 키 입력 후 실기기 음성 대화·barge-in 검증 대기 |
+| T-155 | **Part B — Live 탭 UI/VM + 탭 등록**. `LiveViewModel`(상태머신, 자막→ChatMessage 버블 누적, 연결 시 `VoiceConversationController.stop()`), `LiveView`(저장 대화 목록+검색+새 대화 / `LiveConversationView` 챗 버블=MessageBubble 재사용+통화 제어+보이스 선택), `AppTab.live` 6번째 탭 | `ViewModels/LiveViewModel.swift`(신규·등록), `Views/LiveView.swift`(신규·등록), `HermesChatApp.swift` | NEEDS-BUILD |
+| T-156 | **Part C — Live 대화 로컬 저장/재개/검색**. `LiveSession`(ChatMessage 재사용, 온디바이스), `LiveSessionStore`(Documents JSON, upsert/삭제/검색, 자동 제목). 재개 시 최근 12턴을 `clientContent`로 컨텍스트 시드 | `Models/LiveSessionModels.swift`(신규·등록), `Services/LiveSessionStore.swift`(신규·등록), `ViewModels/LiveViewModel.swift` | NEEDS-BUILD |
+| T-157 | **설정 — Gemini 키/보이스/모델/프롬프트 + TTS 슬라이더 + 프라이버시 안내**. `geminiAPIKey`(Keychain), `geminiLiveVoice/Model/SystemPrompt`(AppStorage), `ttsRate/ttsVoiceIdentifier` | `Services/AppDefaults.swift`, `Views/SettingsView.swift` | NEEDS-BUILD |
+
+> 검증 순서(실기기): ① 세션 음성 답변 첫 소리 즉시·자연스러움(T-153) → ② 설정에 Gemini 키 입력 →
+> ③ Live 탭 "새 대화" 통화 시작 → 말하면 저지연 음성 응답 + 내 말/응답 **버블 표시**, barge-in →
+> ④ 종료 시 목록에 저장 → 다시 열어 **이어가기**·**검색**. 키 미설정 시 Live 탭은 안내만(크래시·외부요청 0).
+> **브리지 변경 없음 → 재배포 불필요.** Gemini Live 모델명은 preview 계열이라 설정에서 교체 가능.
+
 ## Phase A — 앱스토어 상품화 Phase 0: 컴플라이언스 + 다국어 기반
 
 > 상업화 전체 계획은 `docs/COMMERCIALIZATION.md` 참조. Phase B~D 태스크는 이 파일 하단에 추가됨.

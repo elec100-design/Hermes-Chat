@@ -18,6 +18,21 @@ final class AppSettings: ObservableObject {
     /// 온보딩 완료 여부 — false면 앱 시작 시 OnboardingView를 표시한다.
     @AppStorage("isFirstLaunchComplete") var isFirstLaunchComplete: Bool = false
 
+    // MARK: - 음성/TTS (T-153) — 로컬 AVSpeech 최적화. 외부 전송 없음.
+    /// AVSpeechUtterance.rate (0.0~1.0, 기본 0.5). 0.52로 약간 빠르게.
+    @AppStorage("ttsRate") var ttsRate: Double = 0.52
+    /// 사용자가 고른 보이스 식별자. 비어 있으면 고품질 ko-KR 자동 선택.
+    @AppStorage("ttsVoiceIdentifier") var ttsVoiceIdentifier: String = ""
+
+    // MARK: - Gemini Live (T-154~157) — Live 탭 전용. 오디오가 Google로 전송됨.
+    /// Gemini 음성 이름 (Aoede/Charon/Fenrir/Kore/Puck).
+    @AppStorage("geminiLiveVoice") var geminiLiveVoice: String = "Aoede"
+    /// Live 모델명. preview 계열이라 변동 가능 — 설정에서 교체 가능.
+    @AppStorage("geminiLiveModel") var geminiLiveModel: String = "gemini-3.1-flash-live-preview"
+    /// Live 시스템 프롬프트.
+    @AppStorage("geminiLiveSystemPrompt") var geminiLiveSystemPrompt: String =
+        "당신은 Hermes의 음성 비서입니다. 한국어로 자연스럽고 간결하게 대화하세요."
+
     // MARK: - Cloud Auth (T-C01)
     /// Supabase 프로젝트 URL (예: https://xxx.supabase.co). T-B02 완료 후 설정.
     @AppStorage("supabaseURL")     var supabaseURL: String = ""
@@ -92,6 +107,10 @@ final class AppSettings: ObservableObject {
     @Published var bridgeToken: String = "" {
         didSet { KeychainHelper.set(bridgeToken, for: "bridgeToken") }
     }
+    /// Gemini Live API 키 (Google AI Studio). Keychain 보관 — 저장소 커밋 금지 (T-157).
+    @Published var geminiAPIKey: String = "" {
+        didSet { KeychainHelper.set(geminiAPIKey, for: "geminiAPIKey") }
+    }
 
     @Published var profiles: [HermesProfile] = []
     @Published var selectedProfileID: UUID?
@@ -123,6 +142,7 @@ final class AppSettings: ObservableObject {
         selectedProfileID = (profiles.first { $0.name == storedName } ?? profiles.first)?.id
         apiKey = Self.loadSecret("apiKey")
         bridgeToken = Self.loadSecret("bridgeToken")
+        geminiAPIKey = Self.loadSecret("geminiAPIKey")
         supabaseJWT     = Self.loadSecret("supabase_jwt")
         supabaseRefresh = Self.loadSecret("supabase_refresh")
         supabaseUserID  = Self.loadSecret("supabase_user_id")

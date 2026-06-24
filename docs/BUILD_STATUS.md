@@ -4,6 +4,19 @@
 
 ## 현재 대기 (2026-06-24)
 
+브랜치 `claude/eager-allen-pjbdce` — 음성 대화 개선 (T-153~157, Phase 23):
+
+- **맥 빌드 미검증(NEEDS-BUILD)** — Linux 웹 세션에서 작성. 신규 6파일은 pbxproj 4곳 등록 완료
+  (선행 작성분에서 **Sources build phase 누락을 발견·보정** — 6개 모두 재추가).
+- **T-153 (세션 TTS 로컬 최적화)** 기존 파일만 수정. 실기기 체감 검증: ① 첫 소리 즉시(긴 답에서도),
+  ② 고품질 ko-KR 보이스 다운로드 시 더 자연스러움, ③ 문장 간 끊김 없음.
+- **T-154~156 (Live 탭, Pure Gemini Live)** 신규 파일 6개. **Gemini API 키 입력 필요**(설정 > Gemini Live,
+  Google AI Studio 종량제). 실기기: Live 탭 통화 → 저지연 speech-to-speech + 챗 버블 표시 + barge-in,
+  대화 로컬 저장 → 재개·검색. 키 미설정이면 안내만(외부요청 0).
+- **프라이버시**: Live 탭은 오디오/자막을 Google로 전송(사용자 승인). 자막은 온디바이스 저장.
+  세션 탭은 로컬 유지(외부 전송 0). **브리지 변경 없음 → 재배포 불필요.**
+- ⚠️ Gemini Live 모델명(`gemini-3.1-flash-live-preview`)은 preview 계열 — 실패 시 설정에서 최신으로 교체.
+
 브랜치 `claude/realtime-chat-liveactivity-apns` — 실시간 갱신 + Live Activity + APNs (T-149/150/151, Phase 22):
 
 - **맥 빌드 SUCCEEDED**(이 세션, generic/iOS Simulator). 아래는 빌드 외 검증/수동 단계.

@@ -4,6 +4,7 @@ import SwiftUI
 enum AppTab: Hashable {
     case board
     case sessions
+    case live
     case kanban
     case dashboard
     case settings
@@ -31,6 +32,10 @@ struct HermesChatApp: App {
                     .tabItem { Label("tab.sessions", systemImage: "bubble.left.and.bubble.right") }
                     .tag(AppTab.sessions)
 
+                LiveView(appSettings: appSettings)
+                    .tabItem { Label("Live", systemImage: "waveform") }
+                    .tag(AppTab.live)
+
                 KanbanView(appSettings: appSettings)
                     .tabItem { Label("tab.kanban", systemImage: "rectangle.split.3x1") }
                     .tag(AppTab.kanban)
@@ -52,6 +57,8 @@ struct HermesChatApp: App {
                 OnboardingView(appSettings: appSettings)
             }
             .task {
+                // TTS cold-start 제거 — 첫 음성 답변의 첫 소리 지연 단축 (T-153)
+                SpeechService.shared.prewarmTTS()
                 let granted = await NotificationService.shared.requestAuthorization()
                 // APNs 원격 푸시 등록 — 권한이 있을 때만 (T-151)
                 PushService.shared.configure(appSettings: appSettings)
