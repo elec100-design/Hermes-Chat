@@ -20,6 +20,10 @@ final class SpeechService: NSObject, ObservableObject {
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
     private let synthesizer = AVSpeechSynthesizer()
+    /// 선택된 ko-KR 보이스 1회 캐시 (T-153)
+    private var cachedVoice: AVSpeechSynthesisVoice?
+    private var voiceResolved = false
+    private var didPrewarm = false
 
     /// 음성 대화 모드(T-118) 동안 true — 세션·엔진을 모드 수명 내내 유지한다
     private(set) var voiceModeActive = false
@@ -231,9 +235,7 @@ final class SpeechService: NSObject, ObservableObject {
     /// 완성된 문장 하나를 합성 큐에 추가한다 — 세션 재구성 없음
     func enqueueSentence(_ text: String) {
         guard isReadingSentences else { return }
-        let utterance = AVSpeechUtterance(string: text)
-        utterance.voice = AVSpeechSynthesisVoice(language: "ko-KR")
-        synthesizer.speak(utterance)
+        synthesizer.speak(makeUtterance(text))
     }
 
     /// 낭독 종료 — cancel이면 현재 문장과 큐를 즉시 비운다
@@ -249,6 +251,56 @@ final class SpeechService: NSObject, ObservableObject {
     func flushSentenceQueue() {
         guard isReadingSentences else { return }
         synthesizer.stopSpeaking(at: .immediate)
+    }
+
+    // MARK: - 발화 구성 / Prewarm (T-153)
+
+    /// ko-KR 보이스를 1회 선택해 캐시한다. 우선순위:
+    /// ① 설정에서 고른 보이스(`ttsVoiceIdentifier`) → ② 프리미엄/향상 품질 ko-KR → ③ 기본 ko-KR.
+    private func selectedVoice() -> AVSpeechSynthesisVoice? {
+        if voiceResolved { return cachedVoice }
+        cachedVoice = Self.resolveVoice()
+        voiceResolved = true
+        return cachedVoice
+    }
+
+    /// 설정에서 보이스를 바꾸면 다음 발화부터 반영되도록 캐시를 비운다.
+    func invalidateVoiceCache() { voiceResolved = false }
+
+    private static func resolveVoice() -> AVSpeechSynthesisVoice? {
+        let defaults = UserDefaults.standard
+        if let id = defaults.string(forKey: "ttsVoiceIdentifier"), !id.isEmpty,
+           let v = AVSpeechSynthesisVoice(identifier: id) {
+            return v
+        }
+        // 사용자가 기기에 내려받은 고품질(프리미엄 > 향상) 한국어 보이스를 우선 사용한다.
+        let korean = AVSpeechSynthesisVoice.speechVoices().filter { $0.language.hasPrefix("ko") }
+        if let premium = korean.first(where: { $0.quality == .premium }) { return premium }
+        if let enhanced = korean.first(where: { $0.quality == .enhanced }) { return enhanced }
+        return AVSpeechSynthesisVoice(language: "ko-KR")
+    }
+
+    /// 공통 utterance 구성 — 보이스/속도/문장 간 지연을 일원화해 cold-start·공백 체감을 줄인다.
+    private func makeUtterance(_ text: String) -> AVSpeechUtterance {
+        let utterance = AVSpeechUtterance(string: text)
+        utterance.voice = selectedVoice()
+        let stored = UserDefaults.standard.object(forKey: "ttsRate") as? Double
+        utterance.rate = stored.map { Float($0) } ?? 0.52
+        utterance.preUtteranceDelay = 0
+        utterance.postUtteranceDelay = 0
+        return utterance
+    }
+
+    /// 합성기 cold-start 제거 — 무음 발화 1회로 보이스 자산을 미리 로드한다(Iris TTSService.prewarm 차용).
+    /// volume 0이라 들리지 않으며, 첫 실제 발화의 첫 소리까지 지연을 줄인다.
+    func prewarmTTS() {
+        guard !didPrewarm else { return }
+        didPrewarm = true
+        let warm = AVSpeechUtterance(string: " ")
+        warm.voice = selectedVoice()
+        warm.volume = 0
+        warm.rate = AVSpeechUtteranceMaximumSpeechRate
+        synthesizer.speak(warm)
     }
 
     // MARK: - 읽어주기 (TTS)
@@ -269,10 +321,8 @@ final class SpeechService: NSObject, ObservableObject {
             return
         }
 
-        let utterance = AVSpeechUtterance(string: plain)
-        utterance.voice = AVSpeechSynthesisVoice(language: "ko-KR")
         speakingMessageID = messageID
-        synthesizer.speak(utterance)
+        synthesizer.speak(makeUtterance(plain))
     }
 
     func stopSpeaking() {

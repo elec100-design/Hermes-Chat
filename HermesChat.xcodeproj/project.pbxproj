@@ -40,6 +40,12 @@
 		AAAA0149AAAA0149AAAA0149 /* HermesChatActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBB0149BBBB0149BBBB0149 /* HermesChatActivityAttributes.swift */; };
 		AAAA0149AAAA0149AAAA014A /* LiveActivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBB0149BBBB0149BBBB014A /* LiveActivityManager.swift */; };
 		AAAA0150AAAA0150AAAA0150 /* PushService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBB0150BBBB0150BBBB0150 /* PushService.swift */; };
+		AAAA0154AAAA0154AAAA0154 /* GeminiLiveModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBB0154BBBB0154BBBB0154 /* GeminiLiveModels.swift */; };
+		AAAA0155AAAA0155AAAA0155 /* GeminiLiveService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBB0155BBBB0155BBBB0155 /* GeminiLiveService.swift */; };
+		AAAA0156AAAA0156AAAA0156 /* LiveViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBB0156BBBB0156BBBB0156 /* LiveViewModel.swift */; };
+		AAAA0157AAAA0157AAAA0157 /* LiveSessionModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBB0157BBBB0157BBBB0157 /* LiveSessionModels.swift */; };
+		AAAA0158AAAA0158AAAA0158 /* LiveSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBB0158BBBB0158BBBB0158 /* LiveSessionStore.swift */; };
+		AAAA0159AAAA0159AAAA0159 /* LiveView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBB0159BBBB0159BBBB0159 /* LiveView.swift */; };
 		C0F0000000000000000000A1 /* CronModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0F0000000000000000000A2 /* CronModels.swift */; };
 		C0F0000000000000000000B1 /* CronJobsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0F0000000000000000000B2 /* CronJobsView.swift */; };
 		C0F0000000000000000000C1 /* CronJobEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0F0000000000000000000C2 /* CronJobEditView.swift */; };
@@ -72,6 +78,12 @@
 		BBBB0149BBBB0149BBBB0149 /* HermesChatActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HermesChatActivityAttributes.swift; sourceTree = "<group>"; };
 		BBBB0149BBBB0149BBBB014A /* LiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityManager.swift; sourceTree = "<group>"; };
 		BBBB0150BBBB0150BBBB0150 /* PushService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushService.swift; sourceTree = "<group>"; };
+		BBBB0154BBBB0154BBBB0154 /* GeminiLiveModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiLiveModels.swift; sourceTree = "<group>"; };
+		BBBB0155BBBB0155BBBB0155 /* GeminiLiveService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiLiveService.swift; sourceTree = "<group>"; };
+		BBBB0156BBBB0156BBBB0156 /* LiveViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveViewModel.swift; sourceTree = "<group>"; };
+		BBBB0157BBBB0157BBBB0157 /* LiveSessionModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSessionModels.swift; sourceTree = "<group>"; };
+		BBBB0158BBBB0158BBBB0158 /* LiveSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSessionStore.swift; sourceTree = "<group>"; };
+		BBBB0159BBBB0159BBBB0159 /* LiveView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveView.swift; sourceTree = "<group>"; };
 		1FB3343782720464725EB49B /* DashboardModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardModels.swift; sourceTree = "<group>"; };
 		23245B6E8F2A9A7A394852E9 /* HermesChat.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HermesChat.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2B7DCE02C9A55B86BE7DDD02 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
@@ -164,6 +176,8 @@
 				BBBB0149BBBB0149BBBB014A /* LiveActivityManager.swift */,
 				BBBB0150BBBB0150BBBB0150 /* PushService.swift */,
 				6FBCDE02ADE99FCAFC2BBB02 /* SpeechService.swift */,
+				BBBB0155BBBB0155BBBB0155 /* GeminiLiveService.swift */,
+				BBBB0158BBBB0158BBBB0158 /* LiveSessionStore.swift */,
 				8ACDEF02CEF11ADBFD3CCC02 /* VoiceConversationController.swift */,
 				9BCDEF02AEF22BECFE4DDD02 /* PhotoImportWatcher.swift */,
 				A1B2C3D4E5F6010203040502 /* VoiceEntryCoordinator.swift */,
@@ -208,6 +222,7 @@
 				0D3F8A02E5C16B42DA3FFF02 /* ProfileBoardView.swift */,
 				000000000000000000009001 /* ProfileDetailView.swift */,
 				D485E391BB3FBF773D0C6778 /* SessionListView.swift */,
+				BBBB0159BBBB0159BBBB0159 /* LiveView.swift */,
 				0C2E7F02D4B05A31C92EEF02 /* SkillsView.swift */,
 				F8DCB2A4C45DFD8E5CA9F032 /* SettingsView.swift */,
 				2DBCD9AC0F176525E1C50AB6 /* Components */,
@@ -220,6 +235,7 @@
 			children = (
 				DEC3DC1D7345FE8A30F5F63E /* ChatViewModel.swift */,
 				DD17000400000000000DEE04 /* DiscussionViewModel.swift */,
+				BBBB0156BBBB0156BBBB0156 /* LiveViewModel.swift */,
 			);
 			path = ViewModels;
 			sourceTree = "<group>";
@@ -236,6 +252,8 @@
 			isa = PBXGroup;
 			children = (
 				1F3BB2D079331A3B8BEBB359 /* ChatModels.swift */,
+				BBBB0154BBBB0154BBBB0154 /* GeminiLiveModels.swift */,
+				BBBB0157BBBB0157BBBB0157 /* LiveSessionModels.swift */,
 				BBBB0149BBBB0149BBBB0149 /* HermesChatActivityAttributes.swift */,
 				C0F0000000000000000000A2 /* CronModels.swift */,
 				1FB3343782720464725EB49B /* DashboardModels.swift */,
@@ -368,6 +386,12 @@
 				A9FA080264459EA4F3C7D0AA /* ToolResultView.swift in Sources */,
 				AUTH001A00000000000AUTH01 /* AuthView.swift in Sources */,
 				ONBR001A00000000000ONBR01 /* OnboardingView.swift in Sources */,
+				AAAA0154AAAA0154AAAA0154 /* GeminiLiveModels.swift in Sources */,
+				AAAA0155AAAA0155AAAA0155 /* GeminiLiveService.swift in Sources */,
+				AAAA0156AAAA0156AAAA0156 /* LiveViewModel.swift in Sources */,
+				AAAA0157AAAA0157AAAA0157 /* LiveSessionModels.swift in Sources */,
+				AAAA0158AAAA0158AAAA0158 /* LiveSessionStore.swift in Sources */,
+				AAAA0159AAAA0159AAAA0159 /* LiveView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

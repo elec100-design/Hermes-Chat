@@ -8,6 +8,7 @@ struct SettingsView: View {
     @State private var testResult: ConnectionTestResult? = nil
     @State private var isTesting = false
     @State private var showApiKeyInput = false
+    @State private var showGeminiKeyInput = false
     @State private var showBridgeTokenInput = false
     @State private var showSubscriptionSheet = false
     @State private var newProfileName = ""
@@ -287,6 +288,61 @@ struct SettingsView: View {
 
             Section("settings.model.default") {
                 TextField("Model", text: $appSettings.selectedModel)
+            }
+
+            // MARK: - 음성 읽어주기 (T-153) — 로컬 전용
+            Section {
+                VStack(alignment: .leading) {
+                    Text("말하기 속도")
+                    Slider(value: $appSettings.ttsRate, in: 0.4...0.7, step: 0.01) {
+                        Text("말하기 속도")
+                    } minimumValueLabel: {
+                        Image(systemName: "tortoise")
+                    } maximumValueLabel: {
+                        Image(systemName: "hare")
+                    }
+                    .onChange(of: appSettings.ttsRate) { _, _ in
+                        SpeechService.shared.invalidateVoiceCache()
+                    }
+                }
+            } header: {
+                Text("음성 읽어주기")
+            } footer: {
+                Text("세션 음성 답변은 기기에서만 합성됩니다(외부 전송 없음). 더 자연스러운 목소리는 설정 > 손쉬운 사용 > 음성 콘텐츠에서 고품질 한국어 음성을 내려받으면 자동 적용됩니다.")
+            }
+
+            // MARK: - Gemini Live (T-157) — Live 탭 전용. 오디오가 Google로 전송됨.
+            Section {
+                HStack {
+                    if showGeminiKeyInput {
+                        TextField("Gemini API Key", text: $appSettings.geminiAPIKey)
+                    } else {
+                        SecureField("Gemini API Key", text: $appSettings.geminiAPIKey)
+                    }
+                    Button {
+                        showGeminiKeyInput.toggle()
+                    } label: {
+                        Image(systemName: showGeminiKeyInput ? "eye" : "eye.slash")
+                    }
+                    .buttonStyle(.plain)
+                }
+                Picker("음성", selection: $appSettings.geminiLiveVoice) {
+                    ForEach(GeminiVoice.allCases) { v in
+                        Text("\(v.rawValue) · \(v.subtitle)").tag(v.rawValue)
+                    }
+                }
+                TextField("모델", text: $appSettings.geminiLiveModel)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("시스템 프롬프트").font(.caption).foregroundStyle(.secondary)
+                    TextField("시스템 프롬프트", text: $appSettings.geminiLiveSystemPrompt, axis: .vertical)
+                        .lineLimit(2...5)
+                }
+            } header: {
+                Text("Gemini Live")
+            } footer: {
+                Text("Live 탭의 실시간 음성 대화에 사용됩니다. 마이크 오디오와 자막이 Google로 전송되며, 비용은 본인 Google AI Studio 키로 종량 과금됩니다. 키는 기기 Keychain에만 저장됩니다.")
             }
 
             Section {
