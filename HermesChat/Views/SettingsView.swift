@@ -140,125 +140,125 @@ struct SettingsView: View {
                 Text("settings.profiles.footer")
             }
 
-            // MARK: Cloud 계정 (T-C01)
-            Section {
-                NavigationLink {
-                    AuthView(appSettings: appSettings)
-                } label: {
-                    if appSettings.isCloudAuthenticated {
+            // MARK: Cloud 계정 / 구독 / 클라우드 설정 — 1.1에서 cloudFeaturesEnabled = true 로 복구
+            if AppSettings.cloudFeaturesEnabled {
+                Section {
+                    NavigationLink {
+                        AuthView(appSettings: appSettings)
+                    } label: {
+                        if appSettings.isCloudAuthenticated {
+                            HStack {
+                                Label(
+                                    appSettings.supabaseEmail.isEmpty
+                                        ? String(localized: "auth.label.signedin")
+                                        : appSettings.supabaseEmail,
+                                    systemImage: "person.crop.circle.badge.checkmark"
+                                )
+                                Spacer()
+                                if !appSettings.cloudPlan.isEmpty {
+                                    Text("auth.plan.\(appSettings.cloudPlan)")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        } else {
+                            Label("auth.label.signedout", systemImage: "person.crop.circle.badge.plus")
+                        }
+                    }
+                    if appSettings.isCloudAuthenticated && appSettings.connectionMode == .cloud {
                         HStack {
-                            Label(
-                                appSettings.supabaseEmail.isEmpty
-                                    ? String(localized: "auth.label.signedin")
-                                    : appSettings.supabaseEmail,
-                                systemImage: "person.crop.circle.badge.checkmark"
-                            )
+                            Label("settings.usage", systemImage: "chart.bar.fill")
                             Spacer()
-                            if !appSettings.cloudPlan.isEmpty {
-                                Text("auth.plan.\(appSettings.cloudPlan)")
+                            if let limit = appSettings.usageLimit {
+                                Text(String(format: NSLocalizedString("settings.usage.count", comment: ""),
+                                            appSettings.usageCount, limit))
+                                    .font(.caption)
+                                    .foregroundStyle(
+                                        appSettings.usageCount >= limit ? .red
+                                        : appSettings.usageCount >= Int(Double(limit) * 0.8) ? .orange
+                                        : .secondary
+                                    )
+                            } else if appSettings.usageCount > 0 || !appSettings.cloudPlan.isEmpty {
+                                Text("settings.usage.unlimited")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
                         }
-                    } else {
-                        Label("auth.label.signedout", systemImage: "person.crop.circle.badge.plus")
-                    }
-                }
-                // Usage row (T-C05)
-                if appSettings.isCloudAuthenticated && appSettings.connectionMode == .cloud {
-                    HStack {
-                        Label("settings.usage", systemImage: "chart.bar.fill")
-                        Spacer()
-                        if let limit = appSettings.usageLimit {
-                            Text(String(format: NSLocalizedString("settings.usage.count", comment: ""),
-                                        appSettings.usageCount, limit))
-                                .font(.caption)
-                                .foregroundStyle(
-                                    appSettings.usageCount >= limit ? .red
-                                    : appSettings.usageCount >= Int(Double(limit) * 0.8) ? .orange
-                                    : .secondary
-                                )
-                        } else if appSettings.usageCount > 0 || !appSettings.cloudPlan.isEmpty {
-                            Text("settings.usage.unlimited")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-            } header: {
-                Text("settings.cloud_account")
-            } footer: {
-                Text("settings.cloud_account.footer")
-            }
-            .task {
-                if appSettings.isCloudAuthenticated && appSettings.connectionMode == .cloud {
-                    await appSettings.fetchUsage()
-                }
-            }
-
-            // MARK: - Subscription (T-C03)
-            if appSettings.isCloudAuthenticated {
-                Section {
-                    if subscriptionService.isLoading {
-                        HStack(spacing: 8) {
-                            ProgressView().scaleEffect(0.8)
-                            Text("subscription.loading")
-                                .foregroundStyle(.secondary)
-                        }
-                    } else if subscriptionService.products.isEmpty {
-                        Text("subscription.unavailable")
-                            .foregroundStyle(.secondary)
-                            .font(.footnote)
-                    } else if let active = subscriptionService.activeSubscription {
-                        HStack {
-                            Label(active.displayName, systemImage: "checkmark.seal.fill")
-                                .foregroundStyle(.tint)
-                            Spacer()
-                            Text(active.displayPrice)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        Button("subscription.manage") {
-                            showSubscriptionSheet = true
-                        }
-                    } else {
-                        Button {
-                            showSubscriptionSheet = true
-                        } label: {
-                            Label("subscription.upgrade", systemImage: "arrow.up.circle")
-                        }
-                        Button("subscription.restore") {
-                            Task { await subscriptionService.restorePurchases() }
-                        }
-                        .foregroundStyle(.secondary)
                     }
                 } header: {
-                    Text("settings.subscription")
+                    Text("settings.cloud_account")
                 } footer: {
-                    Text("settings.subscription.footer")
+                    Text("settings.cloud_account.footer")
                 }
-                .sheet(isPresented: $showSubscriptionSheet) {
-                    SubscriptionSheetView(subscriptionService: subscriptionService)
+                .task {
+                    if appSettings.isCloudAuthenticated && appSettings.connectionMode == .cloud {
+                        await appSettings.fetchUsage()
+                    }
                 }
-            }
 
-            Section {
-                TextField("auth.supabase_url", text: $appSettings.supabaseURL)
-                    .textContentType(.URL)
-                    .keyboardType(.URL)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                SecureField("auth.supabase_anon_key", text: $appSettings.supabaseAnonKey)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                TextField("auth.cloud_gateway_url", text: $appSettings.cloudGatewayURL)
-                    .textContentType(.URL)
-                    .keyboardType(.URL)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-            } header: {
-                Text("settings.cloud.config")
-            }
+                if appSettings.isCloudAuthenticated {
+                    Section {
+                        if subscriptionService.isLoading {
+                            HStack(spacing: 8) {
+                                ProgressView().scaleEffect(0.8)
+                                Text("subscription.loading")
+                                    .foregroundStyle(.secondary)
+                            }
+                        } else if subscriptionService.products.isEmpty {
+                            Text("subscription.unavailable")
+                                .foregroundStyle(.secondary)
+                                .font(.footnote)
+                        } else if let active = subscriptionService.activeSubscription {
+                            HStack {
+                                Label(active.displayName, systemImage: "checkmark.seal.fill")
+                                    .foregroundStyle(.tint)
+                                Spacer()
+                                Text(active.displayPrice)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Button("subscription.manage") {
+                                showSubscriptionSheet = true
+                            }
+                        } else {
+                            Button {
+                                showSubscriptionSheet = true
+                            } label: {
+                                Label("subscription.upgrade", systemImage: "arrow.up.circle")
+                            }
+                            Button("subscription.restore") {
+                                Task { await subscriptionService.restorePurchases() }
+                            }
+                            .foregroundStyle(.secondary)
+                        }
+                    } header: {
+                        Text("settings.subscription")
+                    } footer: {
+                        Text("settings.subscription.footer")
+                    }
+                    .sheet(isPresented: $showSubscriptionSheet) {
+                        SubscriptionSheetView(subscriptionService: subscriptionService)
+                    }
+                }
+
+                Section {
+                    TextField("auth.supabase_url", text: $appSettings.supabaseURL)
+                        .textContentType(.URL)
+                        .keyboardType(.URL)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                    SecureField("auth.supabase_anon_key", text: $appSettings.supabaseAnonKey)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                    TextField("auth.cloud_gateway_url", text: $appSettings.cloudGatewayURL)
+                        .textContentType(.URL)
+                        .keyboardType(.URL)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                } header: {
+                    Text("settings.cloud.config")
+                }
+            } // cloudFeaturesEnabled
 
             Section {
                 TextField("settings.bridge.url.placeholder", text: $appSettings.bridgeHost)

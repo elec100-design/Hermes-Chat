@@ -89,14 +89,16 @@ struct OnboardingView: View {
                     withAnimation { step = 1 }
                 }
 
-                connectionOptionButton(
-                    icon: "icloud.fill",
-                    titleKey: "onboarding.welcome.cloud",
-                    descKey: "onboarding.welcome.cloud.desc",
-                    isEnabled: true
-                ) {
-                    appSettings.connectionMode = .cloud
-                    goToCloudAuth = true
+                if AppSettings.cloudFeaturesEnabled {
+                    connectionOptionButton(
+                        icon: "icloud.fill",
+                        titleKey: "onboarding.welcome.cloud",
+                        descKey: "onboarding.welcome.cloud.desc",
+                        isEnabled: true
+                    ) {
+                        appSettings.connectionMode = .cloud
+                        goToCloudAuth = true
+                    }
                 }
 
                 connectionOptionButton(

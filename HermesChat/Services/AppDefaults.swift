@@ -20,6 +20,12 @@ final class AppSettings: ObservableObject {
     /// App Review 데모 모드 — 서버/계정 없이 앱의 모든 기능을 체험할 수 있다.
     @AppStorage("isDemoMode") var isDemoMode: Bool = false
 
+    /// 클라우드 SaaS(로그인·구독) 기능 노출 여부.
+    /// 1.0은 데모+셀프호스트만 심사 제출하므로 false — 클라우드 게이트웨이/Supabase가
+    /// 실제 배포·검증된 1.1에서 true로 전환해 로그인·구독 UI를 다시 노출한다.
+    /// (코드는 그대로 두고 진입점만 가린다 → 되돌리기 1줄.)
+    static let cloudFeaturesEnabled = false
+
     // MARK: - Cloud Auth (T-C01)
     /// Supabase 프로젝트 URL (예: https://xxx.supabase.co). T-B02 완료 후 설정.
     @AppStorage("supabaseURL")     var supabaseURL: String = ""
