@@ -98,6 +98,16 @@ struct OnboardingView: View {
                     appSettings.connectionMode = .cloud
                     goToCloudAuth = true
                 }
+
+                connectionOptionButton(
+                    icon: "play.circle.fill",
+                    titleKey: "onboarding.welcome.demo",
+                    descKey: "onboarding.welcome.demo.desc",
+                    isEnabled: true
+                ) {
+                    appSettings.isDemoMode = true
+                    appSettings.isFirstLaunchComplete = true
+                }
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 48)

@@ -78,6 +78,10 @@ final class ChatViewModel: ObservableObject {
     }
 
     private func loadHistory() async {
+        if appSettings.isDemoMode {
+            messages = DemoData.messages(for: sessionId)
+            return
+        }
         isLoadingHistory = true
         do {
             messages = try await appSettings.hermesClient.fetchMessages(sessionId: sessionId)
@@ -149,8 +153,12 @@ final class ChatViewModel: ObservableObject {
     func send() async {
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty || !attachments.isEmpty, !isWorking else {
-            // 음성 루프가 응답을 기다리다 멈추지 않도록 즉시 완료를 알린다 (T-118)
             voiceStreamHandler?("", true)
+            return
+        }
+
+        if appSettings.isDemoMode {
+            await sendDemoResponse(userText: text.isEmpty ? "(첨부 파일)" : text)
             return
         }
 
@@ -317,5 +325,32 @@ final class ChatViewModel: ObservableObject {
             session.title = title
             appSettings.updateSession(session)
         }
+    }
+
+    // MARK: - Demo Mode
+
+    @MainActor
+    private func sendDemoResponse(userText: String) async {
+        isWorking = true
+        defer { isWorking = false }
+
+        inputText = ""
+        attachments = []
+        messages.append(ChatMessage(role: .user, content: userText, createdAt: .now))
+
+        var assistant = ChatMessage(role: .assistant, content: "", createdAt: .now)
+        let assistantIndex = messages.count
+        messages.append(assistant)
+
+        let response = await DemoData.nextResponse()
+        // 스트리밍처럼 보이게 단어 단위로 삽입
+        let words = response.split(separator: " ", omittingEmptySubsequences: false).map(String.init)
+        for word in words {
+            try? await Task.sleep(for: .milliseconds(30))
+            assistant.content += (assistant.content.isEmpty ? "" : " ") + word
+            messages[assistantIndex] = assistant
+            voiceStreamHandler?(assistant.content, false)
+        }
+        voiceStreamHandler?(assistant.content, true)
     }
 }

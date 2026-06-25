@@ -30,6 +30,12 @@ final class KanbanViewModel: ObservableObject {
     }
 
     func start() async {
+        if appSettings.isDemoMode {
+            boards = DemoData.kanbanBoardSummaries
+            board = DemoData.kanbanBoard
+            selectedSlug = DemoData.kanbanBoard.board
+            return
+        }
         guard board == nil, bridgeConfigured else { return }
         await loadBoards()
         if selectedSlug == nil, let first = boards.first {
@@ -38,6 +44,10 @@ final class KanbanViewModel: ObservableObject {
     }
 
     func loadBoards() async {
+        if appSettings.isDemoMode {
+            boards = DemoData.kanbanBoardSummaries
+            return
+        }
         guard let bridge = appSettings.bridgeClient else { return }
         do {
             boards = try await bridge.fetchKanbanBoards()
@@ -181,7 +191,7 @@ struct KanbanView: View {
 
     @ViewBuilder
     private var content: some View {
-        if !viewModel.bridgeConfigured {
+        if !viewModel.bridgeConfigured && !appSettings.isDemoMode {
             ContentUnavailableView(
                 "kanban.bridge_required.title",
                 systemImage: "antenna.radiowaves.left.and.right.slash",

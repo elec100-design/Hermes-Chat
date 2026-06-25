@@ -17,6 +17,8 @@ final class AppSettings: ObservableObject {
     @AppStorage("dashboardPort") var dashboardPort: Int = 8000
     /// 온보딩 완료 여부 — false면 앱 시작 시 OnboardingView를 표시한다.
     @AppStorage("isFirstLaunchComplete") var isFirstLaunchComplete: Bool = false
+    /// App Review 데모 모드 — 서버/계정 없이 앱의 모든 기능을 체험할 수 있다.
+    @AppStorage("isDemoMode") var isDemoMode: Bool = false
 
     // MARK: - Cloud Auth (T-C01)
     /// Supabase 프로젝트 URL (예: https://xxx.supabase.co). T-B02 완료 후 설정.

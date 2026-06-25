@@ -23,14 +23,18 @@ struct ProfileBoardView: View {
         GridItem(.adaptive(minimum: 160), spacing: 12),
     ]
 
+    private var displayedProfiles: [HermesProfile] {
+        appSettings.isDemoMode ? DemoData.profiles : appSettings.profiles
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 LazyVGrid(columns: columns, spacing: 12) {
-                    ForEach(appSettings.profiles) { profile in
+                    ForEach(displayedProfiles) { profile in
                         card(profile)
                     }
-                    addCard
+                    if !appSettings.isDemoMode { addCard }
                 }
                 .padding()
             }
@@ -52,7 +56,7 @@ struct ProfileBoardView: View {
                     }
                     if isProbing {
                         ProgressView().scaleEffect(0.8)
-                    } else {
+                    } else if !appSettings.isDemoMode {
                         Button {
                             Task { await probeAll() }
                         } label: {
@@ -70,8 +74,18 @@ struct ProfileBoardView: View {
             .sheet(isPresented: $showCreateProfile) {
                 CreateProfileView(appSettings: appSettings)
             }
-            .refreshable { await probeAll() }
-            .task { await probeAll() }
+            .refreshable {
+                if !appSettings.isDemoMode { await probeAll() }
+            }
+            .task {
+                if appSettings.isDemoMode {
+                    for profile in DemoData.profiles {
+                        status[profile.id] = ProfileStatus(online: true, sessionCount: 3)
+                    }
+                } else {
+                    await probeAll()
+                }
+            }
         }
     }
 
