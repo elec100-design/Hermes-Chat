@@ -28,7 +28,7 @@ final class AppSettings: ObservableObject {
     /// Gemini 음성 이름 (Aoede/Charon/Fenrir/Kore/Puck).
     @AppStorage("geminiLiveVoice") var geminiLiveVoice: String = "Aoede"
     /// Live 모델명. preview 계열이라 변동 가능 — 설정에서 교체 가능.
-    @AppStorage("geminiLiveModel") var geminiLiveModel: String = "gemini-3.1-flash-live-preview"
+    @AppStorage("geminiLiveModel") var geminiLiveModel: String = "gemini-2.0-flash-live-001"
     /// Live 시스템 프롬프트.
     @AppStorage("geminiLiveSystemPrompt") var geminiLiveSystemPrompt: String =
         "당신은 Hermes의 음성 비서입니다. 한국어로 자연스럽고 간결하게 대화하세요."

@@ -118,7 +118,7 @@ final class GeminiLiveService: NSObject {
     // MARK: - 연결
 
     func connect() {
-        let base = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent"
+        let base = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent"
         guard let url = URL(string: "\(base)?key=\(apiKey)") else {
             onError?("잘못된 URL")
             return
