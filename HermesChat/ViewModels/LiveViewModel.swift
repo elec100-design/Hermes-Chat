@@ -1,3 +1,4 @@
+import AVFoundation
 import Foundation
 import SwiftUI
 
@@ -51,12 +52,28 @@ final class LiveViewModel: ObservableObject {
         }
         guard case .disconnected = state else { return }
 
+        state = .connecting
+        Task {
+            // 마이크 권한을 실제로 요청해야 iOS 설정 > 개인정보 보호에 앱이 등록된다.
+            // 기존엔 GeminiLiveService.startRecording()에서 권한 상태만 확인하고 요청은
+            // 한 번도 하지 않아 .undetermined 상태로 남아 설정 목록에 안 보이는 문제가 있었다.
+            guard await AVAudioApplication.requestRecordPermission() else {
+                self.errorBanner = "마이크 권한이 필요합니다. 설정 > 개인정보 보호 및 보안 > 마이크에서 허용해주세요."
+                self.state = .disconnected
+                return
+            }
+            self.startConnection(apiKey: key)
+        }
+    }
+
+    private func startConnection(apiKey: String) {
+        guard case .connecting = state else { return }
+
         // 세션 음성(Hermes TTS/받아쓰기)이 오디오 세션을 잡고 있으면 먼저 정리
         VoiceConversationController.shared.stop()
 
-        state = .connecting
         let svc = GeminiLiveService(
-            apiKey: key,
+            apiKey: apiKey,
             model: appSettings.geminiLiveModel,
             voice: session.voice,
             systemPrompt: appSettings.geminiLiveSystemPrompt,
