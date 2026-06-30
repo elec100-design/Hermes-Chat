@@ -41,3 +41,21 @@ xcodebuild -project HermesChat.xcodeproj -scheme HermesChat \
 
 실기기: 홈 화면에 "Hermes 음성 입력" 위젯 추가 → 탭 → 앱이 뜨고 음성 대기 진입.
 잠금화면 accessory 위젯, iOS 18 제어센터 컨트롤도 동일 동작 확인.
+
+## 5. Live Activity (T-150, Phase C-1)
+
+채팅 응답 생성 상태를 잠금화면/다이내믹 아일랜드에 라이브로 띄우는 Live Activity가 추가됐다.
+앱측 코드(`HermesChat/Models/HermesChatActivityAttributes.swift`, `HermesChat/Services/LiveActivityManager.swift`)는
+앱 타깃에 등록돼 **빌드에 포함**되고, `ChatViewModel.send()`가 start/update/end를 호출한다.
+위젯이 없으면 매니저가 조용히 no-op 하므로 앱은 정상 동작한다.
+
+**실제 표시되게 하려면** (위 1번에서 위젯 익스텐션 타깃을 만든 뒤):
+1. `HermesWidgets/HermesChatLiveActivity.swift`를 **위젯 익스텐션 타깃**에 추가.
+2. `HermesChat/Models/HermesChatActivityAttributes.swift`를 **앱 타깃 + 위젯 타깃 양쪽 멤버십**에 추가
+   (2번 절의 StartVoiceInputIntent와 동일 — 앱은 `Activity.request`, 위젯은 `ActivityConfiguration`에 사용).
+3. `HermesWidgetBundle`의 `body`에 `HermesChatLiveActivity()`를 추가.
+4. 앱 `Info.plist`에 `NSSupportsLiveActivities = YES`가 이미 들어가 있다(등록 완료).
+5. 빌드 후 실기기에서 채팅 전송 → 잠금화면/다이내믹 아일랜드에 "생성 중 · 경과 · 미리보기" 확인.
+
+백그라운드(앱 종료 시)에서도 Live Activity를 갱신하려면 ActivityKit 푸시 토큰 → APNs(T-151/T-152)가
+필요하다. C-1은 앱이 떠 있는 동안의 직접 갱신만 담당한다.

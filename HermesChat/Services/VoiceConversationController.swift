@@ -525,13 +525,18 @@ final class VoiceConversationController: ObservableObject {
 /// 소비한 문자 수(consumed) 추적이 안전하다.
 struct StreamingSentenceSplitter {
     private var consumed = 0
+    /// 턴에서 첫 문장을 이미 내보냈는지 — 첫 발화 조기 플러시(T-153)에 사용
+    private var hasEmittedFirst = false
 
     /// 즉시 분할하는 종결 문자
     private static let hardTerminators: Set<Character> = ["。", "？", "！", "…", "\n"]
     /// 다음 문자가 공백일 때만 분할 — "1.8", "v2.0" 같은 토큰 보호
     private static let softTerminators: Set<Character> = [".", "?", "!"]
+    /// 첫 발화 조기 플러시 윈도우 (T-153)
+    private static let firstChunkMinChars = 10
+    private static let firstChunkMaxChars = 28
 
-    mutating func reset() { consumed = 0 }
+    mutating func reset() { consumed = 0; hasEmittedFirst = false }
 
     /// - Parameters:
     ///   - raw: 지금까지 누적된 원문 전체 (think 블록 포함 가능)
@@ -547,6 +552,31 @@ struct StreamingSentenceSplitter {
         var sentences: [String] = []
         var start = consumed
         var i = consumed
+
+        // 턴 첫 발화 조기 플러시 (T-153): 종결부호가 아직 없어도 자연스러운 경계(쉼표/공백)에서
+        // 한 번 끊어 첫 소리를 빨리 낸다. 첫 문장 한정 — 이후 문장은 기존 규칙으로 자연스러움 유지.
+        if !hasEmittedFirst, !isFinal, visible.count - start >= Self.firstChunkMinChars {
+            let windowEnd = min(start + Self.firstChunkMaxChars, visible.count)
+            let hasTerminator = (start..<windowEnd).contains { idx in
+                Self.hardTerminators.contains(visible[idx]) || Self.softTerminators.contains(visible[idx])
+            }
+            if !hasTerminator {
+                var breakAt = -1
+                var j = windowEnd - 1
+                while j >= start + Self.firstChunkMinChars {
+                    let ch = visible[j]
+                    if ch == "," || ch == "，" || ch == "、" || ch.isWhitespace { breakAt = j; break }
+                    j -= 1
+                }
+                if breakAt >= start {
+                    appendPlain(String(visible[start...breakAt]), to: &sentences)
+                    start = breakAt + 1
+                    i = start
+                    hasEmittedFirst = true
+                }
+            }
+        }
+
         while i < visible.count {
             let ch = visible[i]
             var isBoundary = Self.hardTerminators.contains(ch)
@@ -575,6 +605,7 @@ struct StreamingSentenceSplitter {
             appendPlain(String(visible[start...]), to: &sentences)
             consumed = visible.count
         }
+        if !sentences.isEmpty { hasEmittedFirst = true }
         return sentences
     }
 
