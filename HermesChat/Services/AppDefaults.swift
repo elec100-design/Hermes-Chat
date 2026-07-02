@@ -26,6 +26,13 @@ final class AppSettings: ObservableObject {
     /// (코드는 그대로 두고 진입점만 가린다 → 되돌리기 1줄.)
     static let cloudFeaturesEnabled = false
 
+    /// Live 음성(핸즈프리 대화) 기능 노출 여부 (T-REV03, 앱심사 2.5.4).
+    /// 1.0은 UIBackgroundModes `audio` 제거와 함께 Live 기능을 통째로 제외하고 출시 —
+    /// 유료 요금제와 함께 도입하는 이후 버전에서 true로 전환해 waveform 버튼·
+    /// hermes://voice·Siri/위젯 진입·리모트 커맨드 무장을 다시 노출한다.
+    /// (코드는 그대로 두고 진입점만 가린다 → 되돌리기 1줄 + Info.plist audio 복구.)
+    static let liveVoiceEnabled = false
+
     // MARK: - Cloud Auth (T-C01)
     /// Supabase 프로젝트 URL (예: https://xxx.supabase.co). T-B02 완료 후 설정.
     @AppStorage("supabaseURL")     var supabaseURL: String = ""

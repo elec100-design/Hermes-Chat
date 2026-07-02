@@ -92,6 +92,7 @@ final class VoiceConversationController: ObservableObject {
     /// - now-playing 지위는 앱이 한 번이라도 오디오를 재생한 뒤 유지되므로, 여기서
     ///   커맨드 등록 + now-playing 정보를 세워 두면 탭이 앱으로 라우팅된다.
     func armRemoteControl(viewModel: ChatViewModel) {
+        guard AppSettings.liveVoiceEnabled else { return }  // 1.0 심사: Live 음성 제외 (T-REV03)
         guard state == .idle else { return }
         self.viewModel = viewModel
         enableRemoteCommands()
@@ -109,6 +110,7 @@ final class VoiceConversationController: ObservableObject {
 
     /// 핸즈프리 대화 모드 시작 — 진입 멘트 후 청취 루프로 들어간다
     func start(viewModel: ChatViewModel) async {
+        guard AppSettings.liveVoiceEnabled else { return }  // 1.0 심사: Live 음성 제외 (T-REV03)
         if state != .idle { stop() }
         guard await speech.ensureVoicePermissions() else {
             speech.errorMessage = "설정 > 개인정보 보호에서 마이크와 음성 인식 권한을 허용해주세요."
@@ -171,6 +173,11 @@ final class VoiceConversationController: ObservableObject {
     }
 
     private func announcePhotoArrivalAsync(viewModel: ChatViewModel) async {
+        // Live 음성이 꺼진 빌드(1.0 심사)에서는 음성 안내·청취 없이 사진만 전송 (T-REV03)
+        guard AppSettings.liveVoiceEnabled else {
+            await sendPhotoFallback(viewModel: viewModel)
+            return
+        }
         switch state {
         case .idle:
             // 음성 세션을 새로 시작한다 — start()와 같은 준비 절차
