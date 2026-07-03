@@ -17,6 +17,21 @@ final class AppSettings: ObservableObject {
     @AppStorage("dashboardPort") var dashboardPort: Int = 8000
     /// 온보딩 완료 여부 — false면 앱 시작 시 OnboardingView를 표시한다.
     @AppStorage("isFirstLaunchComplete") var isFirstLaunchComplete: Bool = false
+    /// App Review 데모 모드 — 서버/계정 없이 앱의 모든 기능을 체험할 수 있다.
+    @AppStorage("isDemoMode") var isDemoMode: Bool = false
+
+    /// 클라우드 SaaS(로그인·구독) 기능 노출 여부.
+    /// 1.0은 데모+셀프호스트만 심사 제출하므로 false — 클라우드 게이트웨이/Supabase가
+    /// 실제 배포·검증된 1.1에서 true로 전환해 로그인·구독 UI를 다시 노출한다.
+    /// (코드는 그대로 두고 진입점만 가린다 → 되돌리기 1줄.)
+    static let cloudFeaturesEnabled = false
+
+    /// Live 음성(핸즈프리 대화) 기능 노출 여부 (T-REV03, 앱심사 2.5.4).
+    /// 1.0은 UIBackgroundModes `audio` 제거와 함께 Live 기능을 통째로 제외하고 출시 —
+    /// 유료 요금제와 함께 도입하는 이후 버전에서 true로 전환해 waveform 버튼·
+    /// hermes://voice·Siri/위젯 진입·리모트 커맨드 무장을 다시 노출한다.
+    /// (코드는 그대로 두고 진입점만 가린다 → 되돌리기 1줄 + Info.plist audio 복구.)
+    static let liveVoiceEnabled = false
 
     // MARK: - 음성/TTS (T-153) — 로컬 AVSpeech 최적화. 외부 전송 없음.
     /// AVSpeechUtterance.rate (0.0~1.0, 기본 0.5). 0.52로 약간 빠르게.

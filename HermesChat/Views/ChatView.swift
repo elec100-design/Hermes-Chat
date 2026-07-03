@@ -390,19 +390,22 @@ struct ChatView: View {
                 .disabled(viewModel.isWorking)
                 .accessibilityLabel("chat.attach.add")
 
-                Button {
-                    if voice.handsFree {
-                        voice.stop()
-                    } else {
-                        isInputFocused = false
-                        Task { await voice.start(viewModel: viewModel) }
+                // Live 음성(핸즈프리) 진입 — 1.0 심사 제출에서는 숨김 (T-REV03)
+                if AppSettings.liveVoiceEnabled {
+                    Button {
+                        if voice.handsFree {
+                            voice.stop()
+                        } else {
+                            isInputFocused = false
+                            Task { await voice.start(viewModel: viewModel) }
+                        }
+                    } label: {
+                        Image(systemName: voice.handsFree ? "waveform.slash" : "waveform")
+                            .font(.system(size: 20))
+                            .foregroundStyle(voice.handsFree ? Color.red : Color.accentColor)
                     }
-                } label: {
-                    Image(systemName: voice.handsFree ? "waveform.slash" : "waveform")
-                        .font(.system(size: 20))
-                        .foregroundStyle(voice.handsFree ? Color.red : Color.accentColor)
+                    .accessibilityLabel(voice.handsFree ? String(localized: "chat.voice.stop") : String(localized: "chat.voice.start"))
                 }
-                .accessibilityLabel(voice.handsFree ? String(localized: "chat.voice.stop") : String(localized: "chat.voice.start"))
 
                 Button {
                     toggleGlassesCapture()

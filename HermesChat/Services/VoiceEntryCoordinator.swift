@@ -28,7 +28,9 @@ final class VoiceEntryCoordinator: ObservableObject {
     private init() {}
 
     /// 모든 트리거의 단일 진입점.
+    /// Live 음성이 꺼진 빌드(1.0 심사)에서는 hermes://voice·Siri·위젯 진입을 조용히 무시한다 (T-REV03).
     func requestVoiceEntry(sessionId: String? = nil) {
+        guard AppSettings.liveVoiceEnabled else { return }
         targetSessionId = sessionId
         pendingVoiceEntry = true
     }

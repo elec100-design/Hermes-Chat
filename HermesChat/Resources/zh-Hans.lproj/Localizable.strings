@@ -27,6 +27,8 @@
 "onboarding.next" = "下一步";
 "onboarding.back" = "返回";
 "onboarding.skip" = "跳过";
+"onboarding.welcome.demo" = "试用演示（App 审核）";
+"onboarding.welcome.demo.desc" = "无需服务器或账号，即可体验全部功能";
 
 /* Settings */
 "settings.title" = "设置";
@@ -315,6 +317,7 @@
 "auth.cloud_gateway_url" = "云网关 URL";
 "auth.error.no_token" = "无法获取 Apple ID 令牌。";
 "auth.error.supabase_not_configured" = "请先在设置中填写 Supabase URL 和 Anon Key。";
+"auth.error.supabase_demo_hint" = "或在欢迎页面点击「试用演示」，无需服务器即可体验应用。";
 "auth.error.gateway_not_configured" = "未配置云网关 URL。";
 "auth.error.network" = "请检查网络连接。";
 "auth.error.supabase_failed" = "认证服务器错误：%@";

@@ -24,6 +24,7 @@ final class SubscriptionService: ObservableObject {
     private var transactionListener: Task<Void, Never>?
 
     init() {
+        guard AppSettings.cloudFeaturesEnabled else { return }
         transactionListener = listenForTransactions()
         Task { await loadProducts() }
     }
