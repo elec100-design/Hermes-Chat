@@ -337,6 +337,8 @@
 "subscription.sheet.title" = "Hermes 套餐";
 "subscription.sheet.subtitle" = "随时可取消。";
 "subscription.error.verification_failed" = "购买验证失败。";
+"subscription.lifetime.badge" = "一次性购买 · 终身使用";
+"subscription.lifetime.active" = "终身会员已激活";
 "common.done" = "完成";
 
 /* Usage (T-C05) */

@@ -414,7 +414,7 @@
 | ID | 작업 | 파일 | 상태 |
 |----|------|------|------|
 | T-158 | 1.0 심사 브랜치 병합 후 **클라우드·Live 음성 재활성화** — `cloudFeaturesEnabled = true`, `liveVoiceEnabled = true`, Info.plist `UIBackgroundModes`에 `audio` 복구, `CFBundleVersion` 5. 데모 모드·심사 수정은 코드에 보존(재심사 시 플래그만 되돌림). 다음 제출 전 T-120 비고(백그라운드 시연 녹화) 확인 | `Services/AppDefaults.swift`, `Resources/Info.plist` | NEEDS-BUILD (2026-07-03) |
-| T-159 | **평생 이용권(비소모성) IAP** — `app.hermeschat.lifetime`을 `SubscriptionService.productIDs`에 추가, `hasLifetime`/`lifetimeProduct`, `activeSubscription`은 autoRenewable 한정, `planName`은 lifetime→"pro". SettingsView 평생 이용권 행 + 구매 시트 비소모성 배지. **갭**: lifetime 엔타이틀먼트는 앱 측 한정 — cloud_gateway 플랜 제한(Supabase users.plan)과의 서버 영수증 동기화는 후속 과제. **사용자 조치**: ASC에 비소모성 상품 등록(3개 언어) + 샌드박스 테스트 | `Services/SubscriptionService.swift`, `Views/SettingsView.swift`, `Resources/*.lproj/Localizable.strings` | TODO |
+| T-159 | **평생 이용권(비소모성) IAP** — `app.hermeschat.lifetime`을 `SubscriptionService.productIDs`에 추가, `hasLifetime`/`lifetimeProduct`, `activeSubscription`은 autoRenewable 한정, `planName`은 lifetime→"pro". SettingsView 평생 이용권 행 + 구매 시트 비소모성 배지. **갭**: lifetime 엔타이틀먼트는 앱 측 한정 — cloud_gateway 플랜 제한(Supabase users.plan)과의 서버 영수증 동기화는 후속 과제. **사용자 조치**: ASC에 비소모성 상품 등록(3개 언어) + 샌드박스 테스트 | `Services/SubscriptionService.swift`, `Views/SettingsView.swift`, `Resources/*.lproj/Localizable.strings` | NEEDS-BUILD (2026-07-03) |
 
 ## 빌드 검증 기록 (검증자가 갱신)
 

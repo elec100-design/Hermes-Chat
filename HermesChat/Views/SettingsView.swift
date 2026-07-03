@@ -209,6 +209,14 @@ struct SettingsView: View {
                             Text("subscription.unavailable")
                                 .foregroundStyle(.secondary)
                                 .font(.footnote)
+                        } else if subscriptionService.hasLifetime {
+                            // 평생 이용권 보유 — 업그레이드 불필요, 복원만 유지 (T-159)
+                            Label("subscription.lifetime.active", systemImage: "infinity.circle.fill")
+                                .foregroundStyle(.tint)
+                            Button("subscription.restore") {
+                                Task { await subscriptionService.restorePurchases() }
+                            }
+                            .foregroundStyle(.secondary)
                         } else if let active = subscriptionService.activeSubscription {
                             HStack {
                                 Label(active.displayName, systemImage: "checkmark.seal.fill")
@@ -481,6 +489,11 @@ private struct SubscriptionSheetView: View {
                                             .font(.caption)
                                             .foregroundStyle(.secondary)
                                             .multilineTextAlignment(.leading)
+                                        if product.type == .nonConsumable {
+                                            Label("subscription.lifetime.badge", systemImage: "infinity")
+                                                .font(.caption2.weight(.semibold))
+                                                .foregroundStyle(.tint)
+                                        }
                                     }
                                     Spacer()
                                     if isPurchased {

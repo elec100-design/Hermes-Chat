@@ -337,6 +337,8 @@
 "subscription.sheet.title" = "Hermes 플랜";
 "subscription.sheet.subtitle" = "언제든지 취소할 수 있습니다.";
 "subscription.error.verification_failed" = "구매 검증에 실패했습니다.";
+"subscription.lifetime.badge" = "한 번 결제 · 평생 이용";
+"subscription.lifetime.active" = "평생 이용권 사용 중";
 "common.done" = "완료";
 
 /* Usage (T-C05) */

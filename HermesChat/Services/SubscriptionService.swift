@@ -4,15 +4,18 @@ import SwiftUI
 // MARK: - Product IDs
 
 extension SubscriptionService {
+    /// 평생 이용권 — 비소모성(non-consumable), 한 번 결제로 유료 기능 영구 해제 (T-159)
+    static let lifetimeProductID = "app.hermeschat.lifetime"
     static let productIDs: Set<String> = [
         "app.hermeschat.basic.monthly",
         "app.hermeschat.pro.monthly",
+        lifetimeProductID,
     ]
 }
 
-// MARK: - SubscriptionService (T-C03)
+// MARK: - SubscriptionService (T-C03, T-159)
 
-/// StoreKit 2 기반 구독 서비스. Basic / Pro 월정기 구독 제품 로드 및 엔타이틀먼트 확인.
+/// StoreKit 2 기반 구독 서비스. Basic / Pro 월정기 구독 + 평생 이용권(비소모성) 로드 및 엔타이틀먼트 확인.
 @MainActor
 final class SubscriptionService: ObservableObject {
     static let shared = SubscriptionService()
@@ -33,11 +36,24 @@ final class SubscriptionService: ObservableObject {
         transactionListener?.cancel()
     }
 
+    /// 활성 월정기 구독 (자동 갱신 상품만 — 평생 이용권은 hasLifetime으로 별도 판단)
     var activeSubscription: Product? {
-        products.first { purchasedProductIDs.contains($0.id) }
+        products.first { $0.type == .autoRenewable && purchasedProductIDs.contains($0.id) }
     }
 
+    /// 평생 이용권 보유 여부 (T-159)
+    var hasLifetime: Bool {
+        purchasedProductIDs.contains(Self.lifetimeProductID)
+    }
+
+    var lifetimeProduct: Product? {
+        products.first { $0.id == Self.lifetimeProductID }
+    }
+
+    /// 서버 플랜 매핑용 — 평생 이용권은 최고 플랜(pro)으로 취급.
+    /// cloud_gateway 플랜 제한(Supabase users.plan)과의 영수증 동기화는 후속 과제(T-159 비고).
     var planName: String {
+        if hasLifetime { return "pro" }
         guard let product = activeSubscription else { return "free" }
         return product.id.contains("pro") ? "pro" : "basic"
     }

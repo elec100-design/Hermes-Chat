@@ -337,6 +337,8 @@
 "subscription.sheet.title" = "Hermes Plans";
 "subscription.sheet.subtitle" = "Cancel anytime.";
 "subscription.error.verification_failed" = "Purchase verification failed.";
+"subscription.lifetime.badge" = "One-time purchase · Lifetime access";
+"subscription.lifetime.active" = "Lifetime access active";
 "common.done" = "Done";
 
 /* Usage (T-C05) */
