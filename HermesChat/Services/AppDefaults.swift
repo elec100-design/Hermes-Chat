@@ -7,6 +7,15 @@ enum ConnectionMode: String {
     case cloud      = "cloud"
 }
 
+/// Live 탭 Hermes 백엔드의 TTS 방식 (T-160).
+/// - local: 기기 내장 AVSpeechSynthesizer (검증된 기본값)
+/// - server: 게이트웨이 경유 OpenAI TTS — 엔드포인트는 맥미니에서 검증 후 설정에 입력,
+///   실패 시 자동으로 local로 강등된다.
+enum HermesLiveTTSMode: String {
+    case local
+    case server
+}
+
 @MainActor
 final class AppSettings: ObservableObject {
     /// 게이트웨이 호스트. 포트가 포함되어 있어도 프로필 포트로 대체된다.
@@ -45,6 +54,20 @@ final class AppSettings: ObservableObject {
     /// Live 시스템 프롬프트.
     @AppStorage("geminiLiveSystemPrompt") var geminiLiveSystemPrompt: String =
         "당신은 Hermes의 음성 비서입니다. 한국어로 자연스럽고 간결하게 대화하세요."
+
+    // MARK: - Live 음성 백엔드 (T-160) — Gemini Live vs Hermes Agent 선택.
+    /// 새 Live 대화의 기본 백엔드. 대화 화면에서 연결 전에 개별 변경 가능.
+    @AppStorage("liveVoiceBackend") var liveVoiceBackend: LiveVoiceBackend = .gemini
+    /// Hermes 백엔드 TTS 방식 (기본: 기기 내장).
+    @AppStorage("hermesLiveTTSMode") var hermesLiveTTSMode: HermesLiveTTSMode = .local
+    /// 서버 TTS 절대 URL — hermes-agent 게이트웨이의 실제 TTS 엔드포인트를 맥미니에서
+    /// 확인한 뒤 입력한다 (경로 추측 하드코딩 금지 — CLAUDE.md). 비어 있으면 local 폴백.
+    @AppStorage("hermesLiveTTSEndpoint") var hermesLiveTTSEndpoint: String = ""
+    /// 서버 TTS 보이스명 (OpenAI 보이스, 예: alloy). 자유 입력 — 미검증.
+    @AppStorage("hermesLiveTTSVoice") var hermesLiveTTSVoice: String = ""
+    /// Hermes Live 대화용 시스템 프롬프트 — 음성 낭독에 맞게 마크다운 없는 구어체 유도.
+    @AppStorage("hermesLiveSystemPrompt") var hermesLiveSystemPrompt: String =
+        "당신은 Hermes 음성 비서입니다. 짧고 자연스러운 한국어 구어체로 답하세요. 목록·마크다운·코드 블록 없이 문장으로만 말하세요."
 
     // MARK: - Cloud Auth (T-C01)
     /// Supabase 프로젝트 URL (예: https://xxx.supabase.co). T-B02 완료 후 설정.

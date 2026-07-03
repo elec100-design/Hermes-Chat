@@ -17,6 +17,11 @@ struct LiveView: View {
         appSettings.geminiAPIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    /// Gemini 키가 없어도 Hermes 백엔드가 기본이면 탭을 막지 않는다 (T-160).
+    private var blockedByMissingKey: Bool {
+        keyMissing && appSettings.liveVoiceBackend == .gemini
+    }
+
     private var filtered: [LiveSession] {
         guard !search.isEmpty else { return store.sessions }
         return store.sessions.filter { s in
@@ -28,7 +33,7 @@ struct LiveView: View {
     var body: some View {
         NavigationStack(path: $path) {
             Group {
-                if keyMissing {
+                if blockedByMissingKey && store.sessions.isEmpty {
                     keyMissingView
                 } else if store.sessions.isEmpty {
                     emptyView
@@ -42,7 +47,7 @@ struct LiveView: View {
                     Button { path.append(LiveRoute.new) } label: {
                         Image(systemName: "plus")
                     }
-                    .disabled(keyMissing)
+                    .disabled(blockedByMissingKey)
                     .accessibilityLabel("새 대화")
                 }
             }
@@ -96,7 +101,7 @@ struct LiveView: View {
         ContentUnavailableView {
             Label("Gemini 키가 필요합니다", systemImage: "key.slash")
         } description: {
-            Text("설정 > Gemini Live에서 Google AI API 키를 입력하면 Live 음성 대화를 쓸 수 있습니다.\n오디오는 Google로 전송됩니다.")
+            Text("설정 > Gemini Live에서 Google AI API 키를 입력하면 Live 음성 대화를 쓸 수 있습니다.\n오디오는 Google로 전송됩니다.\n\n키 없이 쓰려면 설정 > Live 음성에서 기본 백엔드를 Hermes Agent로 바꾸세요.")
         }
     }
 }
@@ -107,12 +112,14 @@ struct LiveConversationView: View {
     let existingID: UUID?
     @StateObject private var vm: LiveViewModel
     @State private var selectedVoice: GeminiVoice
+    @State private var selectedBackend: LiveVoiceBackend
 
     init(appSettings: AppSettings, existingID: UUID?) {
         self.appSettings = appSettings
         self.existingID = existingID
         _vm = StateObject(wrappedValue: LiveViewModel(appSettings: appSettings))
         _selectedVoice = State(initialValue: GeminiVoice(rawValue: appSettings.geminiLiveVoice) ?? .aoede)
+        _selectedBackend = State(initialValue: appSettings.liveVoiceBackend)
     }
 
     var body: some View {
@@ -127,6 +134,7 @@ struct LiveConversationView: View {
             if let id = existingID, let s = LiveSessionStore.shared.session(for: id) {
                 vm.load(s)
                 selectedVoice = GeminiVoice(rawValue: s.voice) ?? .aoede
+                selectedBackend = s.backend  // 기존 대화는 만들 때의 백엔드를 따른다
             }
         }
         .onDisappear { vm.disconnect() }
@@ -168,12 +176,23 @@ struct LiveConversationView: View {
             }
 
             if case .disconnected = vm.state {
-                Picker("음성", selection: $selectedVoice) {
-                    ForEach(GeminiVoice.allCases) { v in
-                        Text("\(v.rawValue) · \(v.subtitle)").tag(v)
+                // 백엔드는 대화 단위 — 이어가기(기존 대화)에서는 바꿀 수 없다 (T-160)
+                if existingID == nil {
+                    Picker("백엔드", selection: $selectedBackend) {
+                        ForEach(LiveVoiceBackend.allCases) { b in
+                            Text(b.displayName).tag(b)
+                        }
                     }
+                    .pickerStyle(.segmented)
                 }
-                .pickerStyle(.menu)
+                if selectedBackend == .gemini {
+                    Picker("음성", selection: $selectedVoice) {
+                        ForEach(GeminiVoice.allCases) { v in
+                            Text("\(v.rawValue) · \(v.subtitle)").tag(v)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                }
             }
 
             HStack(spacing: 12) {
@@ -226,8 +245,11 @@ struct LiveConversationView: View {
             .tint(.red)
         } else {
             Button {
-                appSettings.geminiLiveVoice = selectedVoice.rawValue
-                vm.setVoice(selectedVoice.rawValue)
+                vm.setBackend(selectedBackend)
+                if selectedBackend == .gemini {
+                    appSettings.geminiLiveVoice = selectedVoice.rawValue
+                    vm.setVoice(selectedVoice.rawValue)
+                }
                 vm.connect()
             } label: {
                 Label("통화 시작", systemImage: "phone.fill")

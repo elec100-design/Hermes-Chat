@@ -27,7 +27,10 @@ final class LiveViewModel: ObservableObject {
     /// 새 대화로 시작
     init(appSettings: AppSettings) {
         self.appSettings = appSettings
-        self.session = LiveSession(voice: appSettings.geminiLiveVoice)
+        self.session = LiveSession(
+            voice: appSettings.geminiLiveVoice,
+            backend: appSettings.liveVoiceBackend
+        )
     }
 
     /// 저장된 대화 이어가기 — 기존 메시지를 싣고 연결 시 컨텍스트로 시드한다
@@ -42,15 +45,23 @@ final class LiveViewModel: ObservableObject {
         session.voice = voice
     }
 
+    /// 연결 전에 백엔드 선택 (T-160) — 연결 중에는 무시
+    func setBackend(_ backend: LiveVoiceBackend) {
+        guard case .disconnected = state else { return }
+        session.backend = backend
+    }
+
     // MARK: - 연결 제어
 
     func connect() {
+        guard case .disconnected = state else { return }
+
+        // 백엔드별 사전 검증 (T-160)
         let key = appSettings.geminiAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !key.isEmpty else {
+        if session.backend == .gemini, key.isEmpty {
             errorBanner = "설정 > Gemini Live에서 API 키를 입력하세요."
             return
         }
-        guard case .disconnected = state else { return }
 
         state = .connecting
         Task {
@@ -62,8 +73,17 @@ final class LiveViewModel: ObservableObject {
                 self.state = .disconnected
                 return
             }
-            self.startConnection(apiKey: key)
+            switch self.session.backend {
+            case .gemini: self.startConnection(apiKey: key)
+            case .hermes: self.startHermesConnection()
+            }
         }
+    }
+
+    /// Hermes 백엔드 연결 (T-160 자리 — T-162에서 HermesLiveService로 대체)
+    private func startHermesConnection() {
+        errorBanner = "Hermes 음성 백엔드는 다음 업데이트에서 활성화됩니다."
+        state = .disconnected
     }
 
     private func startConnection(apiKey: String) {

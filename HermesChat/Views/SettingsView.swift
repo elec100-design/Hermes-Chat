@@ -319,6 +319,44 @@ struct SettingsView: View {
                 Text("세션 음성 답변은 기기에서만 합성됩니다(외부 전송 없음). 더 자연스러운 목소리는 설정 > 손쉬운 사용 > 음성 콘텐츠에서 고품질 한국어 음성을 내려받으면 자동 적용됩니다.")
             }
 
+            // MARK: - Live 음성 백엔드 (T-160) — Live 탭에서 Gemini/Hermes 선택.
+            Section {
+                Picker("기본 백엔드", selection: $appSettings.liveVoiceBackend) {
+                    ForEach(LiveVoiceBackend.allCases) { b in
+                        Text(b.displayName).tag(b)
+                    }
+                }
+                if appSettings.liveVoiceBackend == .hermes {
+                    Picker("Hermes TTS", selection: $appSettings.hermesLiveTTSMode) {
+                        Text("기기 내장").tag(HermesLiveTTSMode.local)
+                        Text("서버 (OpenAI)").tag(HermesLiveTTSMode.server)
+                    }
+                    if appSettings.hermesLiveTTSMode == .server {
+                        TextField("TTS 엔드포인트 URL", text: $appSettings.hermesLiveTTSEndpoint)
+                            .textContentType(.URL)
+                            .keyboardType(.URL)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                        TextField("TTS 보이스 (예: alloy)", text: $appSettings.hermesLiveTTSVoice)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                    }
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("시스템 프롬프트").font(.caption).foregroundStyle(.secondary)
+                        TextField("시스템 프롬프트", text: $appSettings.hermesLiveSystemPrompt, axis: .vertical)
+                            .lineLimit(2...5)
+                    }
+                }
+            } header: {
+                Text("Live 음성")
+            } footer: {
+                if appSettings.liveVoiceBackend == .hermes {
+                    Text("Hermes 백엔드는 기기에서 음성을 인식해 텍스트로 게이트웨이에 보내고, 답변을 문장 단위로 읽어줍니다. 서버 TTS 엔드포인트는 아직 검증되지 않았습니다 — hermes-agent 게이트웨이의 실제 경로를 맥미니에서 확인해 입력하세요. 호출 실패 시 자동으로 기기 내장 음성으로 전환됩니다.")
+                } else {
+                    Text("새 Live 대화가 사용할 음성 백엔드입니다. 대화 시작 전 화면에서도 바꿀 수 있습니다.")
+                }
+            }
+
             // MARK: - Gemini Live (T-157) — Live 탭 전용. 오디오가 Google로 전송됨.
             Section {
                 HStack {

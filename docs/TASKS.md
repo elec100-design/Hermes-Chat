@@ -416,6 +416,19 @@
 | T-158 | 1.0 심사 브랜치 병합 후 **클라우드·Live 음성 재활성화** — `cloudFeaturesEnabled = true`, `liveVoiceEnabled = true`, Info.plist `UIBackgroundModes`에 `audio` 복구, `CFBundleVersion` 5. 데모 모드·심사 수정은 코드에 보존(재심사 시 플래그만 되돌림). 다음 제출 전 T-120 비고(백그라운드 시연 녹화) 확인 | `Services/AppDefaults.swift`, `Resources/Info.plist` | NEEDS-BUILD (2026-07-03) |
 | T-159 | **평생 이용권(비소모성) IAP** — `app.hermeschat.lifetime`을 `SubscriptionService.productIDs`에 추가, `hasLifetime`/`lifetimeProduct`, `activeSubscription`은 autoRenewable 한정, `planName`은 lifetime→"pro". SettingsView 평생 이용권 행 + 구매 시트 비소모성 배지. **갭**: lifetime 엔타이틀먼트는 앱 측 한정 — cloud_gateway 플랜 제한(Supabase users.plan)과의 서버 영수증 동기화는 후속 과제. **사용자 조치**: ASC에 비소모성 상품 등록(3개 언어) + 샌드박스 테스트 | `Services/SubscriptionService.swift`, `Views/SettingsView.swift`, `Resources/*.lproj/Localizable.strings` | NEEDS-BUILD (2026-07-03) |
 
+## Phase 25 — Live 탭 음성 백엔드 선택: Gemini Live ↔ Hermes Agent (2026-07-03)
+
+> hermes-agent가 음성모드(Nous Portal: LLM + Tool Gateway 경유 OpenAI TTS)를 지원하기 시작.
+> 실시간 양방향 오디오 WS는 없으므로 Hermes 백엔드는 **온디바이스 STT → streamChat SSE →
+> 문장 단위 TTS** 파이프라인으로 구현한다. 서버 TTS의 실제 엔드포인트 경로는 저장소에
+> 검증된 사실이 없다 — 설정 주입 방식 + 로컬 TTS 자동 폴백(경로 추측 하드코딩 금지).
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-160 | **LiveVoiceBackend 모델·설정·피커** — `LiveVoiceBackend`(gemini/hermes) enum, `LiveSession.backend/hermesSessionId`(기존 live_sessions.json 하위 호환 디코딩), AppDefaults `liveVoiceBackend`/`hermesLiveTTSMode`/`hermesLiveTTSEndpoint`/`hermesLiveTTSVoice`/`hermesLiveSystemPrompt`, 설정 "Live 음성" 섹션, LiveConversationView 연결 전 세그먼트 백엔드 피커(새 대화만), Gemini 키 게이트를 hermes 선택 시 통과 | `Models/LiveSessionModels.swift`, `Services/AppDefaults.swift`, `Views/SettingsView.swift`, `Views/LiveView.swift`, `ViewModels/LiveViewModel.swift` | NEEDS-BUILD (2026-07-03) |
+| T-161 | **LiveTTSProvider 추상화** — `LiveTTSProvider` 프로토콜 + `LocalTTSProvider`(SpeechService 문장 큐 래퍼) + `ServerTTSProvider`(설정 주입 엔드포인트 POST → 오디오 재생, 실패 시 onUnavailable 1회 후 Local 폴백). `HermesAPIClient.createSession(title:)` 추가. **맥미니 확인 필요**: hermes-agent 게이트웨이의 실제 TTS 라우트 → 있으면 설정에 입력, 없으면 기기 내장 유지 | `Services/LiveTTSProvider.swift`(신규, **pbxproj 등록**), `Services/HermesAPIClient.swift` | TODO |
+| T-162 | **HermesLiveService + SpeechService 콜백 claim 리팩터** — 핸즈프리 루프(청취→침묵 1.8s 자동 전송→SSE 스트리밍 문장 낭독→자동 재청취), 게이트웨이 세션 lazy 생성(`[Live] 제목`)·`hermesSessionId` 재개, barge-in은 화면 버튼(리모트 커맨드는 후속). **VCC의 SpeechService 콜백 5개를 `claimSpeechCallbacks()`로 추출해 시작 시 재획득** — 채팅 waveform 음성 실기기 회귀 필수. Live 대화가 채팅 탭 세션 목록에 보이는 것은 의도된 동작 | `Services/HermesLiveService.swift`(신규, **pbxproj 등록**), `Services/VoiceConversationController.swift`, `ViewModels/LiveViewModel.swift`, `Views/LiveView.swift` | TODO |
+
 ## 빌드 검증 기록 (검증자가 갱신)
 
 | 날짜 | 브랜치/커밋 | 결과 | 비고 |
