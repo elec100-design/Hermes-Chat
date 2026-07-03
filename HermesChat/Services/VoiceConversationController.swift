@@ -54,6 +54,14 @@ final class VoiceConversationController: ObservableObject {
     private var awaitingPhotoQuestion = false
 
     private init() {
+        claimSpeechCallbacks()
+    }
+
+    /// SpeechService 콜백은 단일 슬롯이라 마지막 소비자가 소유한다 (T-162).
+    /// Live 탭의 HermesLiveService도 같은 슬롯을 쓰므로, 이 컨트롤러는 세션을
+    /// 시작할 때마다 슬롯을 재획득한다. idle 상태로 남은 쪽에 흘러드는 낡은 콜백은
+    /// 각자의 상태 가드(advanceIfDone·state 검사)로 무해하게 무시된다.
+    private func claimSpeechCallbacks() {
         speech.onSentenceFinished = { [weak self] in self?.sentenceFinished() }
         speech.onVoiceListenEnded = { [weak self] in self?.listenEndedSpontaneously() }
         // BT 기기 분리·전화 인터럽션·단독 읽어주기/받아쓰기 선점 — 전부 모드 종료로 정리
@@ -67,6 +75,7 @@ final class VoiceConversationController: ObservableObject {
     /// 받아쓰기로 보낸 메시지의 응답을 자동으로 읽어준다 — viewModel.send() 직전에 호출
     func autoRead(viewModel: ChatViewModel) {
         if state != .idle { stop() }
+        claimSpeechCallbacks()
         do {
             try speech.beginSentenceReading()
         } catch {
@@ -94,6 +103,7 @@ final class VoiceConversationController: ObservableObject {
     func armRemoteControl(viewModel: ChatViewModel) {
         guard AppSettings.liveVoiceEnabled else { return }  // 1.0 심사: Live 음성 제외 (T-REV03)
         guard state == .idle else { return }
+        claimSpeechCallbacks()
         self.viewModel = viewModel
         enableRemoteCommands()
         setNowPlaying()
@@ -112,6 +122,7 @@ final class VoiceConversationController: ObservableObject {
     func start(viewModel: ChatViewModel) async {
         guard AppSettings.liveVoiceEnabled else { return }  // 1.0 심사: Live 음성 제외 (T-REV03)
         if state != .idle { stop() }
+        claimSpeechCallbacks()
         guard await speech.ensureVoicePermissions() else {
             speech.errorMessage = "설정 > 개인정보 보호에서 마이크와 음성 인식 권한을 허용해주세요."
             return
@@ -178,6 +189,7 @@ final class VoiceConversationController: ObservableObject {
             await sendPhotoFallback(viewModel: viewModel)
             return
         }
+        claimSpeechCallbacks()
         switch state {
         case .idle:
             // 음성 세션을 새로 시작한다 — start()와 같은 준비 절차

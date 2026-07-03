@@ -21,17 +21,18 @@ enum GeminiVoice: String, CaseIterable, Identifiable {
     }
 }
 
-/// Live 세션 연결/대화 상태 (T-155).
+/// Live 세션 연결/대화 상태 (T-155, T-162에서 thinking 추가).
 enum LiveConnectionState: Equatable {
     case disconnected
     case connecting
     case listening   // 마이크 청취 중
-    case speaking    // Gemini 응답 재생 중
+    case thinking    // Hermes 백엔드: 전송 후 첫 문장 대기
+    case speaking    // 응답 재생 중
     case error(String)
 
     var isActive: Bool {
         switch self {
-        case .listening, .speaking, .connecting: return true
+        case .listening, .thinking, .speaking, .connecting: return true
         default: return false
         }
     }

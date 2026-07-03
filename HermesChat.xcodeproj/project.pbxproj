@@ -47,6 +47,7 @@
 		AAAA0158AAAA0158AAAA0158 /* LiveSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBB0158BBBB0158BBBB0158 /* LiveSessionStore.swift */; };
 		AAAA0159AAAA0159AAAA0159 /* LiveView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBB0159BBBB0159BBBB0159 /* LiveView.swift */; };
 		AAAA0161AAAA0161AAAA0161 /* LiveTTSProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBB0161BBBB0161BBBB0161 /* LiveTTSProvider.swift */; };
+		AAAA0162AAAA0162AAAA0162 /* HermesLiveService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBB0162BBBB0162BBBB0162 /* HermesLiveService.swift */; };
 		C0F0000000000000000000A1 /* CronModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0F0000000000000000000A2 /* CronModels.swift */; };
 		C0F0000000000000000000B1 /* CronJobsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0F0000000000000000000B2 /* CronJobsView.swift */; };
 		C0F0000000000000000000C1 /* CronJobEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0F0000000000000000000C2 /* CronJobEditView.swift */; };
@@ -86,6 +87,7 @@
 		BBBB0157BBBB0157BBBB0157 /* LiveSessionModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSessionModels.swift; sourceTree = "<group>"; };
 		BBBB0158BBBB0158BBBB0158 /* LiveSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSessionStore.swift; sourceTree = "<group>"; };
 		BBBB0161BBBB0161BBBB0161 /* LiveTTSProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveTTSProvider.swift; sourceTree = "<group>"; };
+		BBBB0162BBBB0162BBBB0162 /* HermesLiveService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HermesLiveService.swift; sourceTree = "<group>"; };
 		BBBB0159BBBB0159BBBB0159 /* LiveView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveView.swift; sourceTree = "<group>"; };
 		1FB3343782720464725EB49B /* DashboardModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardModels.swift; sourceTree = "<group>"; };
 		23245B6E8F2A9A7A394852E9 /* HermesChat.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HermesChat.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -183,6 +185,7 @@
 				BBBB0155BBBB0155BBBB0155 /* GeminiLiveService.swift */,
 				BBBB0158BBBB0158BBBB0158 /* LiveSessionStore.swift */,
 				BBBB0161BBBB0161BBBB0161 /* LiveTTSProvider.swift */,
+				BBBB0162BBBB0162BBBB0162 /* HermesLiveService.swift */,
 				8ACDEF02CEF11ADBFD3CCC02 /* VoiceConversationController.swift */,
 				9BCDEF02AEF22BECFE4DDD02 /* PhotoImportWatcher.swift */,
 				A1B2C3D4E5F6010203040502 /* VoiceEntryCoordinator.swift */,
@@ -396,6 +399,7 @@
 				AAAA0154AAAA0154AAAA0154 /* GeminiLiveModels.swift in Sources */,
 				AAAA0155AAAA0155AAAA0155 /* GeminiLiveService.swift in Sources */,
 				AAAA0161AAAA0161AAAA0161 /* LiveTTSProvider.swift in Sources */,
+				AAAA0162AAAA0162AAAA0162 /* HermesLiveService.swift in Sources */,
 				AAAA0156AAAA0156AAAA0156 /* LiveViewModel.swift in Sources */,
 				AAAA0157AAAA0157AAAA0157 /* LiveSessionModels.swift in Sources */,
 				AAAA0158AAAA0158AAAA0158 /* LiveSessionStore.swift in Sources */,

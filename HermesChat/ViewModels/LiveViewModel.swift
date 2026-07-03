@@ -15,6 +15,7 @@ final class LiveViewModel: ObservableObject {
     private let appSettings: AppSettings
     private let store = LiveSessionStore.shared
     private var service: GeminiLiveService?
+    private var hermesService: HermesLiveService?
 
     /// 현재 편집 중인 LiveSession (저장 단위)
     private var session: LiveSession
@@ -80,10 +81,78 @@ final class LiveViewModel: ObservableObject {
         }
     }
 
-    /// Hermes 백엔드 연결 (T-160 자리 — T-162에서 HermesLiveService로 대체)
+    /// Hermes 백엔드 연결 (T-162) — 온디바이스 STT → 게이트웨이 SSE → 문장 단위 TTS
     private func startHermesConnection() {
-        errorBanner = "Hermes 음성 백엔드는 다음 업데이트에서 활성화됩니다."
-        state = .disconnected
+        guard case .connecting = state else { return }
+
+        // TTS 프로바이더 구성: 서버 모드 + 유효한 엔드포인트일 때만 서버 TTS, 아니면 로컬
+        let tts: LiveTTSProvider
+        let endpointString = appSettings.hermesLiveTTSEndpoint.trimmingCharacters(in: .whitespacesAndNewlines)
+        if appSettings.hermesLiveTTSMode == .server, !endpointString.isEmpty, let endpoint = URL(string: endpointString) {
+            tts = ServerTTSProvider(
+                endpoint: endpoint,
+                apiKey: appSettings.hermesClient.apiKey,
+                voice: appSettings.hermesLiveTTSVoice,
+                fallback: LocalTTSProvider()
+            )
+        } else {
+            tts = LocalTTSProvider()
+        }
+
+        let svc = HermesLiveService(
+            client: appSettings.hermesClient,
+            existingSessionId: session.hermesSessionId,
+            systemPrompt: appSettings.hermesLiveSystemPrompt,
+            tts: tts
+        )
+        wireHermes(svc)
+        hermesService = svc
+        Task { await svc.start() }
+    }
+
+    private func wireHermes(_ svc: HermesLiveService) {
+        svc.onStateChange = { [weak self] hermesState in
+            guard let self, self.hermesService != nil else { return }
+            switch hermesState {
+            case .idle:
+                // 서비스가 스스로 종료(오류·무발화 타임아웃 등) — 대화 내용은 보존
+                self.finalizeBubbles()
+                self.persist()
+                self.state = .disconnected
+            case .connecting:      self.state = .connecting
+            case .listening:       self.state = .listening
+            case .waitingResponse: self.state = .thinking
+            case .speaking:        self.state = .speaking
+            }
+        }
+        svc.onUserUtterance = { [weak self] text in
+            guard let self else { return }
+            self.finalizeBubbles()
+            self.messages.append(ChatMessage(role: .user, content: text))
+        }
+        svc.onAssistantText = { [weak self] visible in
+            self?.replaceAssistant(with: visible)
+        }
+        svc.onTurnComplete = { [weak self] in
+            self?.finalizeBubbles()
+            self?.persist()
+        }
+        svc.onSessionEstablished = { [weak self] id in
+            guard let self else { return }
+            self.session.hermesSessionId = id
+            self.persist()
+        }
+        svc.onNotice = { [weak self] notice in
+            self?.errorBanner = notice
+        }
+        svc.onError = { [weak self] message in
+            self?.errorBanner = message
+        }
+    }
+
+    /// Hermes 백엔드 barge-in — 낭독을 끊고 바로 재청취 (T-162)
+    func interrupt() {
+        hermesService?.interrupt()
     }
 
     private func startConnection(apiKey: String) {
@@ -107,6 +176,8 @@ final class LiveViewModel: ObservableObject {
     func disconnect() {
         service?.disconnect()
         service = nil
+        hermesService?.stop()
+        hermesService = nil
         finalizeBubbles()
         persist()
         state = .disconnected
@@ -160,6 +231,18 @@ final class LiveViewModel: ObservableObject {
             messages[idx].content += delta
         } else {
             let msg = ChatMessage(role: .assistant, content: delta)
+            currentAssistantID = msg.id
+            messages.append(msg)
+        }
+    }
+
+    /// Hermes 백엔드용 (T-162) — 델타가 아니라 누적 전체 텍스트로 현재 어시스턴트 버블을 교체
+    private func replaceAssistant(with visible: String) {
+        currentUserID = nil
+        if let id = currentAssistantID, let idx = messages.firstIndex(where: { $0.id == id }) {
+            messages[idx].content = visible
+        } else {
+            let msg = ChatMessage(role: .assistant, content: visible)
             currentAssistantID = msg.id
             messages.append(msg)
         }

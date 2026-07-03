@@ -199,6 +199,15 @@ struct LiveConversationView: View {
                 statusOrb
                 Text(statusText).font(.subheadline).foregroundStyle(.secondary)
                 Spacer()
+                // Hermes 백엔드 barge-in — 낭독/응답 대기를 끊고 바로 말하기 (T-162)
+                if selectedBackend == .hermes, vm.state == .speaking || vm.state == .thinking {
+                    Button {
+                        vm.interrupt()
+                    } label: {
+                        Label("끊고 말하기", systemImage: "mic.badge.xmark")
+                    }
+                    .buttonStyle(.bordered)
+                }
                 callButton
             }
         }
@@ -218,6 +227,7 @@ struct LiveConversationView: View {
     private var orbColor: Color {
         switch vm.state {
         case .listening: return .green
+        case .thinking:  return .purple
         case .speaking:  return .blue
         case .connecting: return .orange
         case .error:     return .red
@@ -230,6 +240,7 @@ struct LiveConversationView: View {
         case .disconnected: return "대기 중"
         case .connecting:   return "연결 중…"
         case .listening:    return "듣는 중 — 말씀하세요"
+        case .thinking:     return "생각 중…"
         case .speaking:     return "말하는 중…"
         case .error:        return "오류"
         }
