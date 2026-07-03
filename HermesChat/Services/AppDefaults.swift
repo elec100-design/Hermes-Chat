@@ -21,17 +21,15 @@ final class AppSettings: ObservableObject {
     @AppStorage("isDemoMode") var isDemoMode: Bool = false
 
     /// 클라우드 SaaS(로그인·구독) 기능 노출 여부.
-    /// 1.0은 데모+셀프호스트만 심사 제출하므로 false — 클라우드 게이트웨이/Supabase가
-    /// 실제 배포·검증된 1.1에서 true로 전환해 로그인·구독 UI를 다시 노출한다.
-    /// (코드는 그대로 두고 진입점만 가린다 → 되돌리기 1줄.)
-    static let cloudFeaturesEnabled = false
+    /// 1.0 심사에서는 false로 숨겼고, 1.1 개발 라인(T-158)에서 true로 복구.
+    /// 다음 심사 제출 시 필요하면 다시 false로 1줄 되돌린다 (코드는 그대로).
+    static let cloudFeaturesEnabled = true
 
     /// Live 음성(핸즈프리 대화) 기능 노출 여부 (T-REV03, 앱심사 2.5.4).
-    /// 1.0은 UIBackgroundModes `audio` 제거와 함께 Live 기능을 통째로 제외하고 출시 —
-    /// 유료 요금제와 함께 도입하는 이후 버전에서 true로 전환해 waveform 버튼·
-    /// hermes://voice·Siri/위젯 진입·리모트 커맨드 무장을 다시 노출한다.
-    /// (코드는 그대로 두고 진입점만 가린다 → 되돌리기 1줄 + Info.plist audio 복구.)
-    static let liveVoiceEnabled = false
+    /// 1.0은 UIBackgroundModes `audio` 제거와 함께 숨기고 출시했고,
+    /// 1.1 개발 라인(T-158)에서 true + Info.plist audio 복구.
+    /// 다음 심사에서 2.5.4가 다시 문제 되면 false + audio 제거로 1줄 되돌린다.
+    static let liveVoiceEnabled = true
 
     // MARK: - 음성/TTS (T-153) — 로컬 AVSpeech 최적화. 외부 전송 없음.
     /// AVSpeechUtterance.rate (0.0~1.0, 기본 0.5). 0.52로 약간 빠르게.

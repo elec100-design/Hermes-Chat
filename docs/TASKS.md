@@ -51,11 +51,18 @@
 >   **사용자 조치 필요**: 맥 빌드 → 빌드 4 아카이브 → 재제출. 로컬 Xcode에 HermesWidgets 타깃을
 >   만들어 뒀다면 1.0 아카이브에서 제외(음성 위젯이 무반응이면 그 자체가 거절 사유).
 >
+> **2026-07-03 현황 (1.0 등록 완료 — 1.1 개발 재개)**:
+> - **1.0 심사 통과·App Store 등록 완료** (빌드 4, 데모 모드 포함 `claude/app-store-audio-background-mode-jrifq4`).
+> - 심사 브랜치를 개발 라인(`claude/live-tab-voice-selection-ey9rhn`, Phase 23 Live 탭 포함)에 병합.
+>   데모 모드·Info.plist 심사 수정은 보존, 다음 심사 때 플래그만 되돌려 재사용.
+> - 1.1 방향: Phase 24(유료 기능 부활 + 평생 이용권) → Phase 25(Live 탭 Gemini/Hermes 음성 백엔드 선택)
+>   → Phase 26(OpenClaw 스타일 리디자인 — 파랑 액센트 유지). 상세는 PLAN.md.
+>
 > **다음 세션 예정 작업**:
-> 1. T-REV01 맥 빌드 검증 → DONE으로 갱신
-> 2. App Store Connect Review Notes 업데이트 후 재제출
+> 1. Phase 24~26 (T-158~T-167) 맥 빌드 검증 → DONE으로 갱신
+> 2. App Store Connect: 비소모성 `app.hermeschat.lifetime` 상품 등록 + 샌드박스 구매/복원 테스트
 > 3. T-C01 Sign in with Apple 실기기 런타임 검증 (Supabase id_token 흐름)
-> 4. T-C03 StoreKit 샌드박스 테스트 (App Store Connect 제품 등록 후)
+> 4. 맥미니에서 hermes-agent 게이트웨이 TTS 엔드포인트 유무 확인 → 있으면 설정에 입력(T-161 비고)
 
 ## 즉시 (사람 또는 맥미니 Hermes가 1회 수행)
 
@@ -401,6 +408,13 @@
 | T-D02 | TestFlight 베타 — 내부 테스터 → 외부 100명. 측정: 온보딩 완료율·연결 실패율·채팅 전환율 | TestFlight (코드 아님) | TODO |
 | T-D03 | 앱 심사 제출 준비 — 리뷰어 계정·ATS 심사 노트·PrivacyInfo.xcprivacy 최종 확인. 심사 노트는 `docs/COMMERCIALIZATION.md` §App Store 심사 노트 템플릿 참조 | App Store Connect (코드 아님) | TODO |
 | T-D04 | v1.1 출시 계획 — Phase 15 핸즈프리 음성(NEEDS-BUILD 완료 후) → TestFlight → 업데이트 심사 | 계획 | TODO |
+
+## Phase 24 — 1.0 심사 병합 + 유료 기능 부활 (브랜치 `claude/live-tab-voice-selection-ey9rhn`, 2026-07-03)
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-158 | 1.0 심사 브랜치 병합 후 **클라우드·Live 음성 재활성화** — `cloudFeaturesEnabled = true`, `liveVoiceEnabled = true`, Info.plist `UIBackgroundModes`에 `audio` 복구, `CFBundleVersion` 5. 데모 모드·심사 수정은 코드에 보존(재심사 시 플래그만 되돌림). 다음 제출 전 T-120 비고(백그라운드 시연 녹화) 확인 | `Services/AppDefaults.swift`, `Resources/Info.plist` | NEEDS-BUILD (2026-07-03) |
+| T-159 | **평생 이용권(비소모성) IAP** — `app.hermeschat.lifetime`을 `SubscriptionService.productIDs`에 추가, `hasLifetime`/`lifetimeProduct`, `activeSubscription`은 autoRenewable 한정, `planName`은 lifetime→"pro". SettingsView 평생 이용권 행 + 구매 시트 비소모성 배지. **갭**: lifetime 엔타이틀먼트는 앱 측 한정 — cloud_gateway 플랜 제한(Supabase users.plan)과의 서버 영수증 동기화는 후속 과제. **사용자 조치**: ASC에 비소모성 상품 등록(3개 언어) + 샌드박스 테스트 | `Services/SubscriptionService.swift`, `Views/SettingsView.swift`, `Resources/*.lproj/Localizable.strings` | TODO |
 
 ## 빌드 검증 기록 (검증자가 갱신)
 
