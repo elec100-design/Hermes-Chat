@@ -148,10 +148,11 @@ final class HermesAPIClient {
         )
     }
 
-    func createSession(model: String? = nil, systemPrompt: String? = nil) async throws -> Session {
+    func createSession(model: String? = nil, systemPrompt: String? = nil, title: String? = nil) async throws -> Session {
         var body: [String: Any] = [:]
         if let model { body["model"] = model }
         if let sp = systemPrompt, !sp.isEmpty { body["system_prompt"] = sp }
+        if let title, !title.isEmpty { body["title"] = title }
         let data = try await post("/api/sessions", body: body)
         return try parseSessionResponse(data)
     }
