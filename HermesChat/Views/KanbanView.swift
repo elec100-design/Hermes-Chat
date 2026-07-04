@@ -281,11 +281,8 @@ struct KanbanView: View {
     private func column(status: KanbanStatus, tasks: [KanbanTask]) -> some View {
         VStack(spacing: 0) {
             HStack(spacing: 8) {
-                Circle()
-                    .fill(status.color)
-                    .frame(width: 10, height: 10)
-                Text(status.displayName)
-                    .font(.headline)
+                // 컬럼 헤더를 공용 StatusPill로 통일 (T-166)
+                StatusPill(text: status.displayName, color: status.color)
                 Text("\(tasks.count)")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -328,7 +325,7 @@ struct KanbanView: View {
                         .font(.caption2)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(Color.blue.opacity(0.12))
+                        .background(Color.accentColor.opacity(0.12))
                         .clipShape(Capsule())
                 }
                 if task.status == .running {
@@ -349,8 +346,8 @@ struct KanbanView: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .background(Color.hermesCardBG)
+        .clipShape(RoundedRectangle(cornerRadius: HermesUI.corner, style: .continuous))
         .contentShape(Rectangle())
         .onTapGesture { inspectingTask = task }
     }
@@ -441,12 +438,7 @@ private struct KanbanTaskDetail: View {
             Form {
                 Section {
                     LabeledContent("kanban.task.status") {
-                        HStack(spacing: 6) {
-                            Circle()
-                                .fill(task.status.color)
-                                .frame(width: 8, height: 8)
-                            Text(task.status.displayName)
-                        }
+                        StatusPill(text: task.status.displayName, color: task.status.color)
                     }
                     if let assignee = task.assignee, !assignee.isEmpty {
                         LabeledContent("kanban.task.assignee.label", value: assignee)

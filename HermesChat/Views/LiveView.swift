@@ -68,17 +68,24 @@ struct LiveView: View {
         List {
             ForEach(filtered) { session in
                 Button { path.append(LiveRoute.existing(session.id)) } label: {
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: 6) {
                         Text(session.title).font(.headline).foregroundStyle(.primary)
                         HStack(spacing: 6) {
-                            Image(systemName: "waveform")
-                            Text(session.voice)
-                            Text("· \(session.messages.count)개")
+                            // 백엔드 배지 (T-166) — Gemini는 보이스명, Hermes는 이름만
+                            StatusPill(
+                                text: session.backend == .gemini
+                                    ? "\(session.backend.displayName) · \(session.voice)"
+                                    : session.backend.displayName,
+                                color: .accentColor
+                            )
+                            Text("\(session.messages.count)개")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                             Spacer()
                             Text(session.updatedAt, style: .date)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
                     }
                 }
             }

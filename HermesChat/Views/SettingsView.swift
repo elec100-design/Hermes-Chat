@@ -25,7 +25,7 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
-            Section("settings.connection") {
+            Section {
                 TextField("settings.connection.host", text: $appSettings.serverHost)
                     .textContentType(.URL)
                     .keyboardType(.URL)
@@ -60,6 +60,8 @@ struct SettingsView: View {
                     }
                     .font(.footnote)
                 }
+            } header: {
+                Label("settings.connection", systemImage: "antenna.radiowaves.left.and.right")
             }
 
             Section {
@@ -136,7 +138,7 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
             } header: {
-                Text("settings.profiles")
+                Label("settings.profiles", systemImage: "person.2")
             } footer: {
                 Text("settings.profiles.footer")
             }
@@ -187,7 +189,7 @@ struct SettingsView: View {
                         }
                     }
                 } header: {
-                    Text("settings.cloud_account")
+                    Label("settings.cloud_account", systemImage: "icloud")
                 } footer: {
                     Text("settings.cloud_account.footer")
                 }
@@ -241,7 +243,7 @@ struct SettingsView: View {
                             .foregroundStyle(.secondary)
                         }
                     } header: {
-                        Text("settings.subscription")
+                        Label("settings.subscription", systemImage: "star.circle")
                     } footer: {
                         Text("settings.subscription.footer")
                     }
@@ -265,7 +267,7 @@ struct SettingsView: View {
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                 } header: {
-                    Text("settings.cloud.config")
+                    Label("settings.cloud.config", systemImage: "gearshape.2")
                 }
             } // cloudFeaturesEnabled
 
@@ -289,7 +291,7 @@ struct SettingsView: View {
                     .buttonStyle(.plain)
                 }
             } header: {
-                Text("settings.bridge")
+                Label("settings.bridge", systemImage: "link")
             } footer: {
                 Text("settings.bridge.desc")
             }
@@ -314,7 +316,7 @@ struct SettingsView: View {
                     }
                 }
             } header: {
-                Text("음성 읽어주기")
+                Label("음성 읽어주기", systemImage: "speaker.wave.2")
             } footer: {
                 Text("세션 음성 답변은 기기에서만 합성됩니다(외부 전송 없음). 더 자연스러운 목소리는 설정 > 손쉬운 사용 > 음성 콘텐츠에서 고품질 한국어 음성을 내려받으면 자동 적용됩니다.")
             }
@@ -348,7 +350,7 @@ struct SettingsView: View {
                     }
                 }
             } header: {
-                Text("Live 음성")
+                Label("Live 음성", systemImage: "waveform")
             } footer: {
                 if appSettings.liveVoiceBackend == .hermes {
                     Text("Hermes 백엔드는 기기에서 음성을 인식해 텍스트로 게이트웨이에 보내고, 답변을 문장 단위로 읽어줍니다. 서버 TTS 엔드포인트는 아직 검증되지 않았습니다 — hermes-agent 게이트웨이의 실제 경로를 맥미니에서 확인해 입력하세요. 호출 실패 시 자동으로 기기 내장 음성으로 전환됩니다.")
@@ -386,7 +388,7 @@ struct SettingsView: View {
                         .lineLimit(2...5)
                 }
             } header: {
-                Text("Gemini Live")
+                Label("Gemini Live", systemImage: "sparkles")
             } footer: {
                 Text("Live 탭의 실시간 음성 대화에 사용됩니다. 마이크 오디오와 자막이 Google로 전송되며, 비용은 본인 Google AI Studio 키로 종량 과금됩니다. 키는 기기 Keychain에만 저장됩니다.")
             }
