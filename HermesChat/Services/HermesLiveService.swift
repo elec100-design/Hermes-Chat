@@ -211,19 +211,26 @@ final class HermesLiveService {
     // MARK: - 전송/스트리밍
 
     private func sendAndStream(_ text: String) async {
-        // 게이트웨이 세션 lazy 확보 — 첫 발화 앞부분을 제목으로
+        // 게이트웨이 세션 lazy 확보 — 첫 발화 앞부분을 제목으로.
+        // 게이트웨이는 세션 제목의 전역 유일성을 요구한다("invalid_title"). 같은 첫 마디로
+        // 시작하면 이전 Live 세션과 충돌하므로, 초 단위 시각을 붙여 실질적으로 유일하게 만들고,
+        // 그래도 실패하면 제목 없이 재시도(서버 자동 제목)해 대화가 절대 막히지 않게 한다.
         if sessionId == nil {
+            let session: Session
+            let stamp = Date().formatted(.dateTime.hour().minute().second())
+            let title = "[Live] " + String(text.prefix(20)) + " · " + stamp
             do {
-                let session = try await client.createSession(
-                    systemPrompt: systemPrompt,
-                    title: "[Live] " + String(text.prefix(20))
-                )
-                sessionId = session.id
-                onSessionEstablished?(session.id)
+                session = try await client.createSession(systemPrompt: systemPrompt, title: title)
             } catch {
-                fail("세션을 만들 수 없습니다: \(error.localizedDescription)")
-                return
+                do {
+                    session = try await client.createSession(systemPrompt: systemPrompt, title: nil)
+                } catch {
+                    fail("세션을 만들 수 없습니다: \(error.localizedDescription)")
+                    return
+                }
             }
+            sessionId = session.id
+            onSessionEstablished?(session.id)
         }
         guard let sessionId, state == .waitingResponse else { return }
 

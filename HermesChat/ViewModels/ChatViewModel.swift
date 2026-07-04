@@ -390,7 +390,7 @@ final class ChatViewModel: ObservableObject {
         let assistantIndex = messages.count
         messages.append(assistant)
 
-        let response = await DemoData.nextResponse()
+        let response = DemoData.nextResponse()
         // 스트리밍처럼 보이게 단어 단위로 삽입
         let words = response.split(separator: " ", omittingEmptySubsequences: false).map(String.init)
         for word in words {
