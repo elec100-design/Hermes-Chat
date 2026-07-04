@@ -121,12 +121,21 @@ struct HermesChatApp: App {
     }
 
     /// hermes://voice (옵션 ?session=<id>) 딥링크를 음성 진입 요청으로 변환 (T-133).
+    /// hermes://demo — App Review용 데모 모드 즉시 활성화 (온보딩 상태와 무관).
     @MainActor
     private func handleDeepLink(_ url: URL) {
-        guard url.scheme?.lowercased() == "hermes", url.host?.lowercased() == "voice" else { return }
-        let sessionId = URLComponents(url: url, resolvingAgainstBaseURL: false)?
-            .queryItems?.first(where: { $0.name == "session" })?.value
-        coordinator.requestVoiceEntry(sessionId: sessionId)
+        guard url.scheme?.lowercased() == "hermes" else { return }
+        switch url.host?.lowercased() {
+        case "demo":
+            appSettings.isDemoMode = true
+            appSettings.isFirstLaunchComplete = true
+        case "voice":
+            let sessionId = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                .queryItems?.first(where: { $0.name == "session" })?.value
+            coordinator.requestVoiceEntry(sessionId: sessionId)
+        default:
+            break
+        }
     }
 
     /// 다음 백그라운드 폴링 예약. 실행 보장은 없으며(iOS 스케줄러 재량),

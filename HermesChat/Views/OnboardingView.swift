@@ -89,14 +89,26 @@ struct OnboardingView: View {
                     withAnimation { step = 1 }
                 }
 
+                if AppSettings.cloudFeaturesEnabled {
+                    connectionOptionButton(
+                        icon: "icloud.fill",
+                        titleKey: "onboarding.welcome.cloud",
+                        descKey: "onboarding.welcome.cloud.desc",
+                        isEnabled: true
+                    ) {
+                        appSettings.connectionMode = .cloud
+                        goToCloudAuth = true
+                    }
+                }
+
                 connectionOptionButton(
-                    icon: "icloud.fill",
-                    titleKey: "onboarding.welcome.cloud",
-                    descKey: "onboarding.welcome.cloud.desc",
+                    icon: "play.circle.fill",
+                    titleKey: "onboarding.welcome.demo",
+                    descKey: "onboarding.welcome.demo.desc",
                     isEnabled: true
                 ) {
-                    appSettings.connectionMode = .cloud
-                    goToCloudAuth = true
+                    appSettings.isDemoMode = true
+                    appSettings.isFirstLaunchComplete = true
                 }
             }
             .padding(.horizontal, 24)

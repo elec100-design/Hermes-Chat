@@ -53,6 +53,7 @@
 		ONBR001A00000000000ONBR01 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ONBR001A00000000000ONBR02 /* OnboardingView.swift */; };
 		PRIV001A00000000000PRIV01 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = PRIV001A00000000000PRIV02 /* PrivacyInfo.xcprivacy */; };
 		SUBS001A00000000000SUBS01 /* SubscriptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = SUBS001A00000000000SUBS02 /* SubscriptionService.swift */; };
+		DEMO001A00000000000DEMO01 /* DemoData.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEMO001A00000000000DEMO02 /* DemoData.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -109,6 +110,7 @@
 		ONBR001A00000000000ONBR02 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		PRIV001A00000000000PRIV02 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		SUBS001A00000000000SUBS02 /* SubscriptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionService.swift; sourceTree = "<group>"; };
+		DEMO001A00000000000DEMO02 /* DemoData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoData.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -160,6 +162,7 @@
 				9BCDEF02AEF22BECFE4DDD02 /* PhotoImportWatcher.swift */,
 				A1B2C3D4E5F6010203040502 /* VoiceEntryCoordinator.swift */,
 				SUBS001A00000000000SUBS02 /* SubscriptionService.swift */,
+				DEMO001A00000000000DEMO02 /* DemoData.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -342,6 +345,7 @@
 				5EABCD01FCD88EB9EB1AAA01 /* NotificationService.swift in Sources */,
 				6FBCDE01ADE99FCAFC2BBB01 /* SpeechService.swift in Sources */,
 				SUBS001A00000000000SUBS01 /* SubscriptionService.swift in Sources */,
+				DEMO001A00000000000DEMO01 /* DemoData.swift in Sources */,
 				8ACDEF01CEF11ADBFD3CCC01 /* VoiceConversationController.swift in Sources */,
 				9BCDEF01AEF22BECFE4DDD01 /* PhotoImportWatcher.swift in Sources */,
 				A1B2C3D4E5F6010203040501 /* VoiceEntryCoordinator.swift in Sources */,

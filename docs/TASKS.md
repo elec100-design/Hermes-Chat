@@ -32,11 +32,17 @@
 >   유료 Apple Developer 계정(C4LUZYK8L5) + Supabase Apple OAuth 설정 완료.
 >   런타임 검증 대기: Sign in with Apple 실제 흐름 (T-C01), StoreKit 샌드박스 테스트 (T-C03).
 >
+> **2026-06-25 현황 (App Review 거절 해결)**:
+> - **T-REV01**: Apple 심사 거절 3건(2.1(a) 데모 계정·2.1(b) 비즈니스 모델·2.1(a) Sign in 오류) 해결.
+>   `DemoData.swift` 신규 + Demo Mode 추가(OnboardingView·SessionListView·ProfileBoardView·
+>   KanbanView·ChatViewModel). 브랜치 `claude/epic-hopper-ayax9p`. NEEDS-BUILD.
+>   **사용자 조치 필요**: App Store Connect 심사 노트에 비즈니스 모델 답변 + Demo Mode 안내 입력.
+>
 > **다음 세션 예정 작업**:
-> 1. PR #14 (`claude/sleepy-bardeen-x86kpk` → `main`) 병합 후 기준선 갱신
-> 2. T-C01 Sign in with Apple 실기기 런타임 검증 (Supabase id_token 흐름)
-> 3. T-C03 StoreKit 샌드박스 테스트 (App Store Connect 제품 등록 후)
-> 4. T-B02 Supabase Apple OAuth 심사 통과 확인
+> 1. T-REV01 맥 빌드 검증 → DONE으로 갱신
+> 2. App Store Connect Review Notes 업데이트 후 재제출
+> 3. T-C01 Sign in with Apple 실기기 런타임 검증 (Supabase id_token 흐름)
+> 4. T-C03 StoreKit 샌드박스 테스트 (App Store Connect 제품 등록 후)
 
 ## 즉시 (사람 또는 맥미니 Hermes가 1회 수행)
 

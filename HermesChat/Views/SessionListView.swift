@@ -192,6 +192,13 @@ struct SessionListView: View {
     // MARK: - Profile / Source Menu
 
     private var displayedSessions: [Session] {
+        if appSettings.isDemoMode {
+            guard !searchText.isEmpty else { return DemoData.sessions }
+            return DemoData.sessions.filter {
+                $0.displayTitle.localizedCaseInsensitiveContains(searchText)
+                    || ($0.preview ?? "").localizedCaseInsensitiveContains(searchText)
+            }
+        }
         let base = appSettings.filteredSessions
         guard !searchText.isEmpty else { return base }
         return base.filter {

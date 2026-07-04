@@ -27,6 +27,8 @@
 "onboarding.next" = "다음";
 "onboarding.back" = "뒤로";
 "onboarding.skip" = "건너뛰기";
+"onboarding.welcome.demo" = "데모 체험 (앱 심사용)";
+"onboarding.welcome.demo.desc" = "서버나 계정 없이 모든 기능을 체험해보세요";
 
 /* Settings */
 "settings.title" = "설정";
@@ -315,6 +317,7 @@
 "auth.cloud_gateway_url" = "클라우드 게이트웨이 URL";
 "auth.error.no_token" = "Apple ID 토큰을 받지 못했습니다.";
 "auth.error.supabase_not_configured" = "설정에서 Supabase URL과 Anon Key를 먼저 입력하세요.";
+"auth.error.supabase_demo_hint" = "또는 환영 화면의 \"데모 체험\" 버튼을 탭하면 서버 없이 앱을 체험할 수 있습니다.";
 "auth.error.gateway_not_configured" = "클라우드 게이트웨이 URL이 설정되지 않았습니다.";
 "auth.error.network" = "네트워크 연결을 확인하세요.";
 "auth.error.supabase_failed" = "인증 서버 오류: %@";

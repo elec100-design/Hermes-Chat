@@ -27,6 +27,8 @@
 "onboarding.next" = "Next";
 "onboarding.back" = "Back";
 "onboarding.skip" = "Skip";
+"onboarding.welcome.demo" = "Try Demo (App Review)";
+"onboarding.welcome.demo.desc" = "Explore all features without a server or account";
 
 /* Settings */
 "settings.title" = "Settings";
@@ -315,6 +317,7 @@
 "auth.cloud_gateway_url" = "Cloud Gateway URL";
 "auth.error.no_token" = "Could not obtain Apple ID token.";
 "auth.error.supabase_not_configured" = "Enter Supabase URL and Anon Key in Settings first.";
+"auth.error.supabase_demo_hint" = "Or tap \"Try Demo\" on the welcome screen to explore the app without a server.";
 "auth.error.gateway_not_configured" = "Cloud Gateway URL is not configured.";
 "auth.error.network" = "Check your network connection.";
 "auth.error.supabase_failed" = "Auth server error: %@";

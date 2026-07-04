@@ -47,11 +47,16 @@ struct AuthView: View {
             }
 
             if appSettings.supabaseURL.isEmpty || appSettings.supabaseAnonKey.isEmpty {
-                HStack(spacing: 8) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.orange)
-                    Text("auth.error.supabase_not_configured")
-                        .font(.footnote)
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                        Text("auth.error.supabase_not_configured")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                    Text("auth.error.supabase_demo_hint")
+                        .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 .padding(12)
