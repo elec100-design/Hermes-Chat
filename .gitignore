@@ -46,3 +46,4 @@ fastlane/test_output/
 # Python (server/hermes_bridge.py)
 __pycache__/
 *.pyc
+HermesWidgets/Assets.xcassets/
