@@ -48,6 +48,7 @@
 		AAAA0159AAAA0159AAAA0159 /* LiveView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBB0159BBBB0159BBBB0159 /* LiveView.swift */; };
 		AAAA0161AAAA0161AAAA0161 /* LiveTTSProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBB0161BBBB0161BBBB0161 /* LiveTTSProvider.swift */; };
 		AAAA0162AAAA0162AAAA0162 /* HermesLiveService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBB0162BBBB0162BBBB0162 /* HermesLiveService.swift */; };
+		AAAA0163AAAA0163AAAA0163 /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBB0163BBBB0163BBBB0163 /* DesignSystem.swift */; };
 		C0F0000000000000000000A1 /* CronModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0F0000000000000000000A2 /* CronModels.swift */; };
 		C0F0000000000000000000B1 /* CronJobsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0F0000000000000000000B2 /* CronJobsView.swift */; };
 		C0F0000000000000000000C1 /* CronJobEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0F0000000000000000000C2 /* CronJobEditView.swift */; };
@@ -88,6 +89,7 @@
 		BBBB0158BBBB0158BBBB0158 /* LiveSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSessionStore.swift; sourceTree = "<group>"; };
 		BBBB0161BBBB0161BBBB0161 /* LiveTTSProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveTTSProvider.swift; sourceTree = "<group>"; };
 		BBBB0162BBBB0162BBBB0162 /* HermesLiveService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HermesLiveService.swift; sourceTree = "<group>"; };
+		BBBB0163BBBB0163BBBB0163 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
 		BBBB0159BBBB0159BBBB0159 /* LiveView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveView.swift; sourceTree = "<group>"; };
 		1FB3343782720464725EB49B /* DashboardModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardModels.swift; sourceTree = "<group>"; };
 		23245B6E8F2A9A7A394852E9 /* HermesChat.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HermesChat.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -141,6 +143,7 @@
 			children = (
 				7ACDEF02BEFAAADBAD3CCC02 /* ChatImageView.swift */,
 				4D9FAE02EBC77DA8DA9FFF02 /* MarkdownText.swift */,
+				BBBB0163BBBB0163BBBB0163 /* DesignSystem.swift */,
 				E6079AD100F5FFAC1B2FE955 /* MessageView.swift */,
 				6743DB1D930CC2F7E9C650CC /* ToolResultView.swift */,
 			);
@@ -400,6 +403,7 @@
 				AAAA0155AAAA0155AAAA0155 /* GeminiLiveService.swift in Sources */,
 				AAAA0161AAAA0161AAAA0161 /* LiveTTSProvider.swift in Sources */,
 				AAAA0162AAAA0162AAAA0162 /* HermesLiveService.swift in Sources */,
+				AAAA0163AAAA0163AAAA0163 /* DesignSystem.swift in Sources */,
 				AAAA0156AAAA0156AAAA0156 /* LiveViewModel.swift in Sources */,
 				AAAA0157AAAA0157AAAA0157 /* LiveSessionModels.swift in Sources */,
 				AAAA0158AAAA0158AAAA0158 /* LiveSessionStore.swift in Sources */,
@@ -437,6 +441,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = HermesChat/HermesChat.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
@@ -515,6 +520,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = HermesChat/HermesChat.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;

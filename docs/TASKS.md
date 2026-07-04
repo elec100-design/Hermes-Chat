@@ -429,6 +429,19 @@
 | T-161 | **LiveTTSProvider 추상화** — `LiveTTSProvider` 프로토콜 + `LocalTTSProvider`(SpeechService 문장 큐 래퍼) + `ServerTTSProvider`(설정 주입 엔드포인트 POST → 오디오 재생, 실패 시 onUnavailable 1회 후 Local 폴백). `HermesAPIClient.createSession(title:)` 추가. **맥미니 확인 필요**: hermes-agent 게이트웨이의 실제 TTS 라우트 → 있으면 설정에 입력, 없으면 기기 내장 유지 | `Services/LiveTTSProvider.swift`(신규, **pbxproj 등록**), `Services/HermesAPIClient.swift` | NEEDS-BUILD (2026-07-03) |
 | T-162 | **HermesLiveService + SpeechService 콜백 claim 리팩터** — 핸즈프리 루프(청취→침묵 1.8s 자동 전송→SSE 스트리밍 문장 낭독→자동 재청취), 게이트웨이 세션 lazy 생성(`[Live] 제목`)·`hermesSessionId` 재개, barge-in은 화면 버튼(리모트 커맨드는 후속). **VCC의 SpeechService 콜백 5개를 `claimSpeechCallbacks()`로 추출해 시작 시 재획득** — 채팅 waveform 음성 실기기 회귀 필수. Live 대화가 채팅 탭 세션 목록에 보이는 것은 의도된 동작 | `Services/HermesLiveService.swift`(신규, **pbxproj 등록**), `Services/VoiceConversationController.swift`, `ViewModels/LiveViewModel.swift`, `Views/LiveView.swift`, `Models/GeminiLiveModels.swift` | NEEDS-BUILD (2026-07-03) — 실기기: 채팅 waveform 음성 회귀 + Live Hermes 발화→낭독→재청취→끊고 말하기 + 백엔드 왕복 전환 |
 
+## Phase 26 — OpenClaw 스타일 리디자인: 디자인 시스템 + 5탭 플로팅 탭바 + 홈 허브 (2026-07-03)
+
+> OpenClaw 공식 iOS 앱의 카드 기반 다크 디자인을 참조하되 **파랑 액센트 유지**, 라이트/다크 모두 지원.
+> 탭 6개(보드/세션/Live/칸반/대시보드/설정) → 5개(홈/채팅/Live/칸반/설정) — 보드·대시보드·크론·
+> 스킬·파일은 홈 허브(Control 스타일)의 카드 섹션으로 통합.
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-163 | **디자인 토큰 + 파랑 AccentColor** — `HermesUI` 토큰(corner/cardPadding/sectionSpacing/tabBarClearance), `Color.hermesCardBG` 등, `.hermesCard()`/`.floatingTabBarClearance()`, `StatusPill`/`IconRow`/`SectionHeader` 컴포넌트. `AccentColor.colorset`(라이트 #007AFF/다크 #0A84FF) + 두 타깃에 `ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME` | `Views/Components/DesignSystem.swift`(신규, **pbxproj 등록**), `Resources/Assets.xcassets/AccentColor.colorset/`, `project.pbxproj` | NEEDS-BUILD (2026-07-03) |
+| T-164 | **FloatingTabBar + HomeHubView + 5탭 개편** — `AppTab`{home,chat,live,kanban,settings}, 커스텀 캡슐 플로팅 탭바(.ultraThinMaterial), `TabBarVisibility`+`.hidesFloatingTabBar()`(푸시 상세에서 숨김), 홈 허브: 에이전트 상태 카드(+StatusPill) / 에이전트·모니터링·리소스 IconRow 섹션. ProfileBoardView/DashboardWebView는 푸시 목적지화(NavigationStack 래퍼 제거) | `Views/Components/FloatingTabBar.swift`·`Views/HomeHubView.swift`(신규, **pbxproj 등록**), `HermesChatApp.swift`, `Views/ProfileBoardView.swift`, `Views/DashboardWebView.swift`, `Resources/*.lproj/Localizable.strings` | TODO |
+| T-165 | **SessionList/Chat 리스타일** — 세션 행 카드화·소스 StatusPill, ChatView 입력바 캡슐(.ultraThinMaterial), 버블 코너 토큰화. **동작 무변경**(스와이프/음성 코드 불변) | `Views/SessionListView.swift`, `Views/ChatView.swift`, `Views/Components/MessageView.swift` | TODO |
+| T-166 | **Live/Kanban/Settings 리스타일** — Live 목록 카드+백엔드 배지(waveform/server.rack), 칸반 상태 칩 StatusPill 통일·셀 카드화, Settings 섹션 아이콘 라벨 정리(기존 필드·게이트 전부 유지) | `Views/LiveView.swift`, `Views/KanbanView.swift`, `Views/SettingsView.swift` | TODO |
+
 ## 빌드 검증 기록 (검증자가 갱신)
 
 | 날짜 | 브랜치/커밋 | 결과 | 비고 |
