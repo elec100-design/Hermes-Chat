@@ -16,23 +16,22 @@ struct DashboardWebView: View {
     /// 데스크톱 모드 토글 상태(앱 내 단순 설정값, 비밀값 아님).
     @AppStorage("dashboardDesktopMode") private var desktopMode = false
 
+    // T-164: 홈 허브에서 push되는 목적지로 전환 — 자체 NavigationStack 래퍼 제거.
     var body: some View {
-        NavigationStack {
-            WebView(url: appSettings.dashboardURL, desktopMode: desktopMode)
-                .ignoresSafeArea(edges: .bottom)
-                .navigationTitle("tab.dashboard")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button {
-                            desktopMode.toggle()
-                        } label: {
-                            Image(systemName: desktopMode ? "desktopcomputer" : "iphone")
-                        }
-                        .accessibilityLabel(desktopMode ? "dashboard.desktop.label" : "dashboard.mobile.label")
+        WebView(url: appSettings.dashboardURL, desktopMode: desktopMode)
+            .ignoresSafeArea(edges: .bottom)
+            .navigationTitle("tab.dashboard")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        desktopMode.toggle()
+                    } label: {
+                        Image(systemName: desktopMode ? "desktopcomputer" : "iphone")
                     }
+                    .accessibilityLabel(desktopMode ? "dashboard.desktop.label" : "dashboard.mobile.label")
                 }
-        }
+            }
     }
 }
 

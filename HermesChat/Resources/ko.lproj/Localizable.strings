@@ -4,6 +4,20 @@
 "tab.kanban" = "칸반";
 "tab.dashboard" = "대시보드";
 "tab.settings" = "설정";
+"tab.home" = "홈";
+"tab.chat" = "채팅";
+"home.section.agent" = "에이전트";
+"home.section.monitoring" = "모니터링";
+"home.section.resources" = "리소스";
+"home.board.subtitle" = "프로필 상태와 전환";
+"home.discussion.subtitle" = "멀티 에이전트 토론룸";
+"home.cron.subtitle" = "예약 작업과 반복 실행";
+"home.dashboard.subtitle" = "맥미니 대시보드";
+"home.kanban.subtitle" = "작업 보드와 진행 상황";
+"home.skills.subtitle" = "에이전트 스킬 목록";
+"home.files.subtitle" = "서버 파일 탐색";
+"home.open_chat" = "채팅 열기";
+"home.open_chat.subtitle" = "세션 목록으로 이동";
 
 /* Onboarding */
 "onboarding.welcome.title" = "HermesChat에 오신 것을 환영합니다";

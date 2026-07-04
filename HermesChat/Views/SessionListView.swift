@@ -182,6 +182,7 @@ struct SessionListView: View {
             }
             .navigationDestination(for: Session.self) { session in
                 ChatView(sessionId: session.id, appSettings: appSettings)
+                    .hidesFloatingTabBar()  // 몰입형 채팅 — 입력바가 하단을 차지 (T-164)
             }
             .onAppear {
                 appSettings.loadSessions()

@@ -4,6 +4,20 @@
 "tab.kanban" = "Kanban";
 "tab.dashboard" = "Dashboard";
 "tab.settings" = "Settings";
+"tab.home" = "Home";
+"tab.chat" = "Chat";
+"home.section.agent" = "Agent";
+"home.section.monitoring" = "Monitoring";
+"home.section.resources" = "Resources";
+"home.board.subtitle" = "Profile status and switching";
+"home.discussion.subtitle" = "Multi-agent discussion room";
+"home.cron.subtitle" = "Scheduled and recurring runs";
+"home.dashboard.subtitle" = "Mac mini dashboard";
+"home.kanban.subtitle" = "Work board and progress";
+"home.skills.subtitle" = "Agent skills";
+"home.files.subtitle" = "Browse server files";
+"home.open_chat" = "Open Chat";
+"home.open_chat.subtitle" = "Go to session list";
 
 /* Onboarding */
 "onboarding.welcome.title" = "Welcome to HermesChat";

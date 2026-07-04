@@ -1,12 +1,12 @@
 import BackgroundTasks
 import SwiftUI
 
+/// 5탭 구조 (T-164) — 보드·대시보드는 홈 허브(HomeHubView)의 카드 섹션으로 통합.
 enum AppTab: Hashable {
-    case board
-    case sessions
+    case home
+    case chat
     case live
     case kanban
-    case dashboard
     case settings
 }
 
@@ -15,7 +15,8 @@ struct HermesChatApp: App {
     @StateObject private var appSettings = AppSettings()
     @StateObject private var coordinator = VoiceEntryCoordinator.shared
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    @State private var selectedTab: AppTab = .board
+    @State private var selectedTab: AppTab = .home
+    @StateObject private var tabBarVisibility = TabBarVisibility()
     @Environment(\.scenePhase) private var scenePhase
 
     /// Info.plist BGTaskSchedulerPermittedIdentifiers와 일치해야 한다 (T-095)
@@ -23,33 +24,47 @@ struct HermesChatApp: App {
 
     var body: some Scene {
         WindowGroup {
-            TabView(selection: $selectedTab) {
-                ProfileBoardView(appSettings: appSettings, selectedTab: $selectedTab)
-                    .tabItem { Label("tab.board", systemImage: "square.grid.2x2") }
-                    .tag(AppTab.board)
+            // 커스텀 플로팅 탭바 (T-164) — 시스템 TabView 크롬 대신 ZStack 오버레이.
+            // 탭 콘텐츠는 유지된 상태로 전환(ZStack이 아닌 switch면 상태가 초기화되므로
+            // 각 탭을 항상 만들어 두고 opacity로 표시를 전환한다).
+            ZStack(alignment: .bottom) {
+                ZStack {
+                    HomeHubView(appSettings: appSettings, selectedTab: $selectedTab)
+                        .opacity(selectedTab == .home ? 1 : 0)
+                        .allowsHitTesting(selectedTab == .home)
 
-                SessionListView(appSettings: appSettings)
-                    .tabItem { Label("tab.sessions", systemImage: "bubble.left.and.bubble.right") }
-                    .tag(AppTab.sessions)
+                    SessionListView(appSettings: appSettings)
+                        .opacity(selectedTab == .chat ? 1 : 0)
+                        .allowsHitTesting(selectedTab == .chat)
 
-                LiveView(appSettings: appSettings)
-                    .tabItem { Label("Live", systemImage: "waveform") }
-                    .tag(AppTab.live)
+                    LiveView(appSettings: appSettings)
+                        .opacity(selectedTab == .live ? 1 : 0)
+                        .allowsHitTesting(selectedTab == .live)
 
-                KanbanView(appSettings: appSettings)
-                    .tabItem { Label("tab.kanban", systemImage: "rectangle.split.3x1") }
-                    .tag(AppTab.kanban)
+                    KanbanView(appSettings: appSettings)
+                        .opacity(selectedTab == .kanban ? 1 : 0)
+                        .allowsHitTesting(selectedTab == .kanban)
 
-                DashboardWebView(appSettings: appSettings)
-                    .tabItem { Label("tab.dashboard", systemImage: "gauge.with.dots.needle.50percent") }
-                    .tag(AppTab.dashboard)
-
-                NavigationStack {
-                    SettingsView(appSettings: appSettings)
+                    NavigationStack {
+                        SettingsView(appSettings: appSettings)
+                    }
+                    .opacity(selectedTab == .settings ? 1 : 0)
+                    .allowsHitTesting(selectedTab == .settings)
                 }
-                .tabItem { Label("tab.settings", systemImage: "gearshape") }
-                .tag(AppTab.settings)
+                .safeAreaInset(edge: .bottom) {
+                    // 탭바가 보일 때만 루트 화면에 하단 여백 — 몰입 화면(push)에서는 사라진다
+                    if tabBarVisibility.isVisible {
+                        Color.clear.frame(height: HermesUI.tabBarClearance)
+                    }
+                }
+
+                if tabBarVisibility.isVisible {
+                    FloatingTabBar(selection: $selectedTab)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
             }
+            .animation(.snappy(duration: 0.2), value: tabBarVisibility.isVisible)
+            .environmentObject(tabBarVisibility)
             .fullScreenCover(isPresented: Binding(
                 get: { !appSettings.isFirstLaunchComplete },
                 set: { if !$0 { appSettings.isFirstLaunchComplete = true } }
@@ -100,7 +115,7 @@ struct HermesChatApp: App {
     @MainActor
     private func routeVoiceEntryIfNeeded() async {
         guard coordinator.beginRouting() else { return }
-        selectedTab = .sessions
+        selectedTab = .chat
 
         // 이미 채팅에 들어가 있고 특정 세션 지정도 없으면 경로를 건드리지 않는다 —
         // 보이는 ChatView가 arm을 onChange로 소비해 그 세션에서 바로 음성을 시작한다.

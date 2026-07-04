@@ -55,8 +55,10 @@ struct LiveView: View {
                 switch route {
                 case .new:
                     LiveConversationView(appSettings: appSettings, existingID: nil)
+                        .hidesFloatingTabBar()  // 통화 화면 — 하단 제어바와 겹침 방지 (T-164)
                 case .existing(let id):
                     LiveConversationView(appSettings: appSettings, existingID: id)
+                        .hidesFloatingTabBar()
                 }
             }
         }

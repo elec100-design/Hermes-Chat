@@ -27,64 +27,64 @@ struct ProfileBoardView: View {
         appSettings.isDemoMode ? DemoData.profiles : appSettings.profiles
     }
 
+    // T-164: 홈 허브(HomeHubView)의 NavigationStack 안에서 push되는 목적지로 전환 —
+    // 자체 NavigationStack 래퍼를 제거했다 (중첩 스택 방지).
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                LazyVGrid(columns: columns, spacing: 12) {
-                    ForEach(displayedProfiles) { profile in
-                        card(profile)
-                    }
-                    if !appSettings.isDemoMode { addCard }
+        ScrollView {
+            LazyVGrid(columns: columns, spacing: 12) {
+                ForEach(displayedProfiles) { profile in
+                    card(profile)
                 }
-                .padding()
+                if !appSettings.isDemoMode { addCard }
             }
-            .navigationTitle("profile.board.title")
-            .toolbar {
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    // 멀티 에이전트 토론룸 진입 (Phase 14)
+            .padding()
+        }
+        .navigationTitle("profile.board.title")
+        .toolbar {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                // 멀티 에이전트 토론룸 진입 (Phase 14)
+                Button {
+                    showDiscussion = true
+                } label: {
+                    Label("Deep think", systemImage: "brain.head.profile")
+                        .labelStyle(.titleAndIcon)
+                }
+                // 전 프로필 크론 관리 (한 곳에서 드롭다운 필터)
+                Button {
+                    showCronManager = true
+                } label: {
+                    Label("profile.board.cron.manage", systemImage: "clock.arrow.circlepath")
+                }
+                if isProbing {
+                    ProgressView().scaleEffect(0.8)
+                } else if !appSettings.isDemoMode {
                     Button {
-                        showDiscussion = true
+                        Task { await probeAll() }
                     } label: {
-                        Label("Deep think", systemImage: "brain.head.profile")
-                            .labelStyle(.titleAndIcon)
-                    }
-                    // 전 프로필 크론 관리 (한 곳에서 드롭다운 필터)
-                    Button {
-                        showCronManager = true
-                    } label: {
-                        Label("profile.board.cron.manage", systemImage: "clock.arrow.circlepath")
-                    }
-                    if isProbing {
-                        ProgressView().scaleEffect(0.8)
-                    } else if !appSettings.isDemoMode {
-                        Button {
-                            Task { await probeAll() }
-                        } label: {
-                            Image(systemName: "arrow.clockwise")
-                        }
+                        Image(systemName: "arrow.clockwise")
                     }
                 }
             }
-            .fullScreenCover(isPresented: $showDiscussion) {
-                DiscussionView(appSettings: appSettings)
-            }
-            .sheet(isPresented: $showCronManager) {
-                CronManagerView(appSettings: appSettings)
-            }
-            .sheet(isPresented: $showCreateProfile) {
-                CreateProfileView(appSettings: appSettings)
-            }
-            .refreshable {
-                if !appSettings.isDemoMode { await probeAll() }
-            }
-            .task {
-                if appSettings.isDemoMode {
-                    for profile in DemoData.profiles {
-                        status[profile.id] = ProfileStatus(online: true, sessionCount: 3)
-                    }
-                } else {
-                    await probeAll()
+        }
+        .fullScreenCover(isPresented: $showDiscussion) {
+            DiscussionView(appSettings: appSettings)
+        }
+        .sheet(isPresented: $showCronManager) {
+            CronManagerView(appSettings: appSettings)
+        }
+        .sheet(isPresented: $showCreateProfile) {
+            CreateProfileView(appSettings: appSettings)
+        }
+        .refreshable {
+            if !appSettings.isDemoMode { await probeAll() }
+        }
+        .task {
+            if appSettings.isDemoMode {
+                for profile in DemoData.profiles {
+                    status[profile.id] = ProfileStatus(online: true, sessionCount: 3)
                 }
+            } else {
+                await probeAll()
             }
         }
     }
@@ -93,7 +93,7 @@ struct ProfileBoardView: View {
         let profileStatus = status[profile.id]
         return Button {
             appSettings.selectProfile(profile)
-            selectedTab = .sessions
+            selectedTab = .chat
         } label: {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 6) {
@@ -194,7 +194,8 @@ struct ProfileBoardView: View {
         }
     }
 
-    nonisolated private static func probeHealth(baseURL: URL) async -> Bool {
+    /// 홈 허브 상태 카드도 재사용한다 (T-164)
+    nonisolated static func probeHealth(baseURL: URL) async -> Bool {
         var request = URLRequest(url: baseURL.appendingPathComponent("health"))
         request.timeoutInterval = 3
         guard let (_, response) = try? await URLSession.shared.data(for: request),
