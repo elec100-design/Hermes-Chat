@@ -81,6 +81,9 @@ xcodebuild -project HermesChat.xcodeproj -scheme HermesChat \
 `project.pbxproj`는 objectVersion 77, **명시적 파일 참조** 방식이다 (폴더 자동 동기화 아님).
 새 `.swift` 파일은 pbxproj에 등록해야 빌드에 포함된다.
 
+> ⚠️ 루트의 `project.yml`은 초기 xcodegen 잔재로 **더 이상 프로젝트와 동기화되지 않는다.
+> 절대 xcodegen을 실행하지 말 것** — 로컬라이제이션·엔타이틀먼트·수기 등록 파일이 전부 날아간다.
+
 - **Xcode에서 작업 중이면**: Xcode로 파일 생성 (자동 등록됨). 끝.
 - **CLI/웹 에이전트면** 4곳에 추가 (기존 `SessionModels.swift` 항목을 검색해 패턴 복사):
   1. `PBXBuildFile` 섹션: `<ID1> /* Foo.swift in Sources */ = {isa = PBXBuildFile; fileRef = <ID2> /* Foo.swift */; };`

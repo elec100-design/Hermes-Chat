@@ -1,9 +1,11 @@
 # HermesChat iOS — 전체 개발 계획 (Master Plan)
 
-> 최종 수정: 2026-06-21 (Claude Code — Phase C 코드 완성, 브랜치 `claude/sleepy-bardeen-x86kpk` PR #14)
+> 최종 수정: 2026-07-03 (Claude Code — 1.0 App Store 등록 완료, 1.1 개발 재개: Phase 24~26,
+> 브랜치 `claude/live-tab-voice-selection-ey9rhn`)
 > 진행 상태는 `docs/TASKS.md`, 에이전트 교대 규칙은 `docs/HANDOFF.md` 참조.
 > **어떤 에이전트든 이 3개 문서만 읽으면 즉시 작업을 이어갈 수 있어야 한다.**
-> 다음 작업: PR #14 main 병합 → T-C01 Sign in with Apple 런타임 검증 → T-C03 StoreKit 샌드박스 테스트 (App Store Connect 제품 등록 필요).
+> 다음 작업: Phase 24~26 (T-158~T-167) 맥 빌드 검증 → ASC에 `app.hermeschat.lifetime`
+> 비소모성 상품 등록·샌드박스 테스트 → 맥미니에서 게이트웨이 TTS 엔드포인트 확인(§3 Phase 25).
 
 ---
 
@@ -368,6 +370,35 @@ cloud_gateway.py (:8080) ← T-B03
 | T-C03 | StoreKit 2 구독 — `SubscriptionService.swift` Basic/Pro 제품 로드·엔타이틀먼트 | T-C01 |
 | T-C04 | OnboardingView 클라우드 경로 활성화 (AuthView 연결) | T-C01 |
 | T-C05 | 사용량 표시 — `GET /usage` 폴링, 잔여 메시지 수 SettingsView 표시 | T-C02 |
+
+### Phase 24 — 1.0 심사 병합 + 유료 기능 부활 (2026-07-03, T-158~159)
+1.0은 데모 모드 브랜치(`claude/app-store-audio-background-mode-jrifq4`)로 심사 통과·App Store 등록 완료.
+그 브랜치를 개발 라인에 병합해 데모 모드·Info.plist 심사 수정(수출규정·LaunchScreen·`hermes://demo`)을
+보존하고, `cloudFeaturesEnabled`/`liveVoiceEnabled`를 true로 되살렸다(빌드번호 5, audio 백그라운드 복구).
+다음 심사 제출 시 두 플래그를 되돌리고 데모 모드로 재심사한다(T-120 비고: 백그라운드 시연 녹화 첨부).
+월 구독(basic/pro)에 **평생 이용권 비소모성 `app.hermeschat.lifetime`** 추가 — `planName`은 lifetime→pro.
+갭: lifetime 엔타이틀먼트는 앱 측 한정, cloud_gateway 플랜 제한과의 영수증 동기화는 후속 과제.
+
+### Phase 25 — Live 탭 음성 백엔드 선택: Gemini Live ↔ Hermes Agent (2026-07-03, T-160~162)
+hermes-agent가 음성모드(Nous Portal: LLM + Tool Gateway 경유 OpenAI TTS)를 지원하기 시작했으나
+**실시간 양방향 오디오 API는 확인된 것이 없다**(§0 검증된 사실에 음성 엔드포인트 없음). 아키텍처:
+- Gemini 백엔드: 기존 `GeminiLiveService`(BidiGenerateContent WS) 그대로.
+- Hermes 백엔드: **온디바이스 STT(SpeechService) → `POST /api/sessions/{id}/chat/stream` SSE →
+  문장 단위 TTS(`LiveTTSProvider`)**. 핸즈프리 루프는 `HermesLiveService`(VCC와 동형 상태 머신).
+  게이트웨이 세션은 첫 발화에 lazy 생성(`[Live] 제목`) → `LiveSession.hermesSessionId`로 재개
+  (서버가 히스토리를 가지므로 Gemini식 12턴 시드 불필요).
+- TTS: 기본은 기기 내장(`LocalTTSProvider`). 서버 OpenAI TTS는 **엔드포인트 경로 미검증** —
+  설정(`hermesLiveTTSEndpoint`) 주입 방식으로 맥미니에서 실제 라우트 확인 후 입력, 실패 시 자동 로컬 폴백.
+- SpeechService 콜백은 단일 슬롯 → VCC·HermesLiveService 모두 **시작 시 claim**(T-162 리팩터).
+  채팅 waveform 음성의 실기기 회귀 검증 필수.
+
+### Phase 26 — OpenClaw 스타일 리디자인 (2026-07-03, T-163~166)
+파랑 액센트 유지(라이트 #007AFF/다크 #0A84FF AccentColor 애셋), 라이트/다크 모두 지원.
+- `DesignSystem.swift`: `HermesUI` 토큰 + `StatusPill`/`IconRow`/`SectionHeader`/`.hermesCard()`.
+- 탭 6→5 (`AppTab`{home,chat,live,kanban,settings}): 커스텀 `FloatingTabBar`(캡슐·ultraThinMaterial),
+  보드·대시보드·크론·스킬·파일은 `HomeHubView`(OpenClaw 'Control' 허브)의 카드 섹션으로 통합.
+  몰입 화면(채팅·Live 통화·대시보드 웹)은 `.hidesFloatingTabBar()`로 탭바 숨김.
+- 탭 콘텐츠는 ZStack + opacity 전환으로 상태 보존 — 시스템 TabView 크롬 제거.
 
 ---
 

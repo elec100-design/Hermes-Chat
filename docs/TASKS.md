@@ -441,6 +441,7 @@
 | T-164 | **FloatingTabBar + HomeHubView + 5탭 개편** — `AppTab`{home,chat,live,kanban,settings}, 커스텀 캡슐 플로팅 탭바(.ultraThinMaterial), `TabBarVisibility`+`.hidesFloatingTabBar()`(푸시 상세에서 숨김), 홈 허브: 에이전트 상태 카드(+StatusPill) / 에이전트·모니터링·리소스 IconRow 섹션. ProfileBoardView/DashboardWebView는 푸시 목적지화(NavigationStack 래퍼 제거) | `Views/Components/FloatingTabBar.swift`·`Views/HomeHubView.swift`(신규, **pbxproj 등록**), `HermesChatApp.swift`, `Views/ProfileBoardView.swift`, `Views/DashboardWebView.swift`, `Views/SessionListView.swift`, `Views/LiveView.swift`, `Resources/*.lproj/Localizable.strings` | NEEDS-BUILD (2026-07-03) — 실기기: 탭 전환 상태 유지·채팅/Live 통화에서 탭바 숨김·온보딩 커버·hermes://voice 라우팅(.chat) |
 | T-165 | **SessionList/Chat 리스타일** — 세션 행 카드화·소스 StatusPill, ChatView 입력바 캡슐(.ultraThinMaterial), 버블 코너 토큰화. **동작 무변경**(스와이프/음성 코드 불변) | `Views/SessionListView.swift`, `Views/ChatView.swift` | NEEDS-BUILD (2026-07-03) — 버블(18pt 연속 코너·액센트)은 이미 목표 스타일이라 MessageView 무수정 |
 | T-166 | **Live/Kanban/Settings 리스타일** — Live 목록 카드+백엔드 배지(waveform/server.rack), 칸반 상태 칩 StatusPill 통일·셀 카드화, Settings 섹션 아이콘 라벨 정리(기존 필드·게이트 전부 유지) | `Views/LiveView.swift`, `Views/KanbanView.swift`, `Views/SettingsView.swift` | NEEDS-BUILD (2026-07-03) |
+| T-167 | **문서 갱신** — PLAN.md Phase 24~26 + 헤더 '다음 작업', HANDOFF.md에 project.yml/xcodegen 금지 경고, TASKS.md 현황 정리 | `docs/PLAN.md`, `docs/HANDOFF.md`, `docs/TASKS.md` | DONE (문서 — 빌드 불필요, 2026-07-03) |
 
 ## 빌드 검증 기록 (검증자가 갱신)
 
