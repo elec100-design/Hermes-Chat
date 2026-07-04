@@ -62,7 +62,7 @@ struct SessionListView: View {
                                 if appSettings.isPinned(id: session.id) {
                                     Image(systemName: "pin.fill")
                                         .font(.caption2)
-                                        .foregroundStyle(.orange)
+                                        .foregroundStyle(.tint)
                                 }
                                 Text(session.displayTitle)
                                     .font(.headline)
@@ -70,13 +70,8 @@ struct SessionListView: View {
                             }
                             HStack(spacing: 6) {
                                 if let source = session.source {
-                                    Text(sourceDisplayName(source))
-                                        .font(.caption2)
-                                        .padding(.horizontal, 5)
-                                        .padding(.vertical, 2)
-                                        .background(sourceColor(source).opacity(0.15))
-                                        .foregroundStyle(sourceColor(source))
-                                        .clipShape(Capsule())
+                                    // 공용 StatusPill로 통일 (T-165)
+                                    StatusPill(text: sourceDisplayName(source), color: sourceColor(source))
                                 }
                                 Text(formattedDate(session.updatedAt))
                                     .font(.caption)
@@ -98,7 +93,7 @@ struct SessionListView: View {
                         } label: {
                             Label("session.rename", systemImage: "pencil")
                         }
-                        .tint(.blue)
+                        .tint(Color.accentColor)
                         Button {
                             appSettings.togglePin(id: session.id)
                         } label: {

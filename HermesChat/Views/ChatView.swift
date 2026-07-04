@@ -69,10 +69,10 @@ struct ChatView: View {
                 glassesStatusBanner
             }
 
-            Divider()
             inputBar
-                .padding()
-                .background(.background)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(.ultraThinMaterial)
         }
         .navigationTitle("Hermes Chat")
         .navigationBarTitleDisplayMode(.inline)
@@ -416,16 +416,24 @@ struct ChatView: View {
                 }
                 .accessibilityLabel(viewModel.glassesCaptureActive ? String(localized: "chat.glasses.disable") : String(localized: "chat.glasses.enable"))
 
+                // OpenClaw풍 캡슐 입력 필드 (T-165) — 동작 동일, 표면만 교체
                 TextField("chat.message.placeholder", text: $viewModel.inputText, axis: .vertical)
-                    .textFieldStyle(.roundedBorder)
+                    .textFieldStyle(.plain)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(Color(.tertiarySystemFill))
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                     .focused($isInputFocused)
 
                 Button {
                     Task { await viewModel.send() }
                     isInputFocused = false
                 } label: {
-                    Image(systemName: viewModel.isWorking ? "ellipsis" : "paperplane.fill")
-                        .font(.system(size: 18, weight: .semibold))
+                    Image(systemName: viewModel.isWorking ? "ellipsis" : "arrow.up")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 34, height: 34)
+                        .background(Circle().fill(Color.accentColor))
                 }
                 .disabled(
                     (viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
