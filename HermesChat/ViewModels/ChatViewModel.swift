@@ -32,6 +32,11 @@ final class ChatViewModel: ObservableObject {
     /// Bridge 업로드 한도와 동일 (server/hermes_bridge.py MAX_UPLOAD)
     static let maxAttachmentBytes = 50 * 1024 * 1024
 
+    /// 업로드용 이미지 긴 변 상한 (T-169)
+    static let maxUploadPixel: CGFloat = 2048
+    /// 이 크기를 넘는 이미지는 축소 없이도 재인코딩해 용량을 줄인다 (T-169)
+    static let uploadRecompressThreshold = 1_500_000
+
     /// 글라스 사진 도착 후 사용자가 질문하지 않을 때 쓰는 기본 프롬프트 (T-126)
     static let glassesPhotoPrompt = "방금 찍은 사진이야. 무엇이 보이는지 설명해줘."
 
@@ -112,15 +117,50 @@ final class ChatViewModel: ObservableObject {
         attachments.append(PendingAttachment(filename: filename, data: data, thumbnail: thumbnail))
     }
 
-    /// HEIC/HEIF 이미지를 JPEG로 변환하고 확장자를 `.jpg`로 바꾼다 (T-130).
-    /// HEIC가 아니거나 변환 실패면 원본을 그대로 돌려준다(방어). PNG/JPEG/WebP/GIF·비이미지는 무변환.
+    /// 업로드 전 이미지 정규화.
+    /// 1) HEIC/HEIF는 LLM 비전 API가 거부하므로 JPEG로 변환한다 (T-130).
+    /// 2) 최신 아이폰 원본 사진은 한 장이 5~15MB라 셀룰러/Tailscale 경유 업로드가
+    ///    타임아웃의 주원인이었다. 긴 변 2048px·JPEG 0.8로 줄인다 (T-169) —
+    ///    비전 모델 입력 해상도에는 충분하고 용량은 대개 10분의 1 이하가 된다.
+    /// GIF(애니메이션)·비이미지·이미 작은 이미지는 무변환. 변환 실패면 원본을 그대로(방어).
     /// UIImage가 EXIF 방향을 반영해 디코드하고 jpegData가 정방향으로 기록하므로 회전 문제는 없다.
     private static func normalizedImageForUpload(data: Data, filename: String) -> (Data, String) {
         let ext = (filename as NSString).pathExtension.lowercased()
-        guard ext == "heic" || ext == "heif" else { return (data, filename) }
-        guard let jpeg = UIImage(data: data)?.jpegData(compressionQuality: 0.85) else {
+        let isHEIC = ext == "heic" || ext == "heif"
+        guard isHEIC || ChatImageSource.isImagePath(filename) else { return (data, filename) }
+        guard ext != "gif" else { return (data, filename) }
+        guard let image = UIImage(data: data) else { return (data, filename) }
+
+        let longSide = max(image.size.width, image.size.height)
+        let needsResize = longSide > maxUploadPixel
+        // HEIC는 포맷 때문에, 큰 파일은 용량 때문에 재인코딩한다.
+        guard needsResize || isHEIC || data.count > uploadRecompressThreshold else {
             return (data, filename)
         }
+
+        let target: UIImage
+        if needsResize, longSide > 0 {
+            let scale = maxUploadPixel / longSide
+            let size = CGSize(
+                width: (image.size.width * scale).rounded(),
+                height: (image.size.height * scale).rounded()
+            )
+            let format = UIGraphicsImageRendererFormat.default()
+            format.scale = 1
+            format.opaque = true
+            target = UIGraphicsImageRenderer(size: size, format: format).image { context in
+                // JPEG는 알파를 못 담으므로 투명 PNG는 흰 배경으로 평탄화한다.
+                UIColor.white.setFill()
+                context.fill(CGRect(origin: .zero, size: size))
+                image.draw(in: CGRect(origin: .zero, size: size))
+            }
+        } else {
+            target = image
+        }
+
+        guard let jpeg = target.jpegData(compressionQuality: 0.8) else { return (data, filename) }
+        // 재인코딩이 오히려 커졌으면(작은 PNG 등) 원본 유지 — 단 HEIC는 포맷 때문에 반드시 교체.
+        guard isHEIC || jpeg.count < data.count else { return (data, filename) }
         let base = (filename as NSString).deletingPathExtension
         return (jpeg, base + ".jpg")
     }

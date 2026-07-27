@@ -155,15 +155,50 @@ final class BridgeClient {
 
     /// 파일을 해당 프로필의 uploads 폴더로 올리고 맥미니 측 절대경로를 돌려준다.
     /// 돌려받은 경로를 채팅 메시지에 포함하면 Hermes가 파일 도구로 읽을 수 있다.
+    ///
+    /// 사진은 수 MB라 기본 15초로는 셀룰러/Tailscale 경유 시 자주 끊겼다(T-169).
+    /// 전용 업로드 세션(요청 유휴 120s / 전체 600s)을 쓰고, 타임아웃·연결끊김은 1회 재시도한다.
     func upload(data fileData: Data, filename: String, profile: String) async throws -> String {
         struct Response: Decodable { let path: String }
-        let data = try await request(
+        do {
+            let data = try await uploadOnce(fileData, filename: filename, profile: profile)
+            return try decode(Response.self, from: data).path
+        } catch let error as URLError where Self.isRetryable(error) {
+            let data = try await uploadOnce(fileData, filename: filename, profile: profile)
+            return try decode(Response.self, from: data).path
+        }
+    }
+
+    private func uploadOnce(_ fileData: Data, filename: String, profile: String) async throws -> Data {
+        try await request(
             "POST", "upload/\(profile)",
             body: fileData,
-            headers: ["X-Filename": filename]
+            headers: ["X-Filename": filename],
+            timeout: Self.uploadRequestTimeout,
+            session: Self.uploadSession
         )
-        return try decode(Response.self, from: data).path
     }
+
+    private static func isRetryable(_ error: URLError) -> Bool {
+        switch error.code {
+        case .timedOut, .networkConnectionLost, .cannotConnectToHost, .notConnectedToInternet:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private static let uploadRequestTimeout: TimeInterval = 120
+
+    /// 업로드 전용 세션 — 전체 리소스 타임아웃까지 넉넉히 준다.
+    /// (`URLSession.shared`는 전역 설정이라 건드리지 않는다.)
+    private static let uploadSession: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = uploadRequestTimeout
+        config.timeoutIntervalForResource = 600
+        config.waitsForConnectivity = true
+        return URLSession(configuration: config)
+    }()
 
     // MARK: - Files & Logs (읽기전용, T-061)
 
@@ -261,7 +296,8 @@ final class BridgeClient {
         query: [String: String]? = nil,
         body: Data? = nil,
         headers: [String: String] = [:],
-        timeout: TimeInterval = 15
+        timeout: TimeInterval = 15,
+        session: URLSession = .shared
     ) async throws -> Data {
         var url = baseURL.appendingPathComponent(path)
         if let query,
@@ -279,9 +315,15 @@ final class BridgeClient {
         for (key, value) in headers {
             urlRequest.setValue(value, forHTTPHeaderField: key)
         }
-        urlRequest.httpBody = body
 
-        let (data, response) = try await URLSession.shared.data(for: urlRequest)
+        // 본문이 있으면 upload(for:from:)로 스트리밍한다 — 큰 첨부에서 메모리·타임아웃 거동이 낫다.
+        let data: Data
+        let response: URLResponse
+        if let body {
+            (data, response) = try await session.upload(for: urlRequest, from: body)
+        } else {
+            (data, response) = try await session.data(for: urlRequest)
+        }
         guard let http = response as? HTTPURLResponse else {
             throw HermesAPIError.serverError("브리지 응답 없음")
         }
