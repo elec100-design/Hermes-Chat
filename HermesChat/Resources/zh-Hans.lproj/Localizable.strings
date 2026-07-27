@@ -36,7 +36,12 @@
 "settings.connection.host" = "服务器地址";
 "settings.connection.test" = "测试连接";
 "settings.bridge" = "Hermes Bridge";
-"settings.bridge.desc" = "Mac mini 的桥接服务(:8765)。用于编辑 SOUL.md、重启网关、自动搜索配置文件和上传文件。";
+"settings.bridge.desc" = "Mac mini 的桥接服务(:8765)。用于 SOUL.md/模型设置、重启网关、自动搜索配置文件和上传文件。需要与网关 API Key 不同的 Bridge Token。";
+"settings.bridge.test" = "测试 Bridge 连接";
+"settings.bridge.test.success" = "Bridge 连接成功";
+"settings.bridge.test.missing_url" = "请输入 Bridge URL。";
+"settings.bridge.test.missing_token" = "请输入 Bridge Token（与网关 API Key 不同）。";
+"settings.bridge.test.invalid_url" = "Bridge URL 格式不正确。";
 "settings.model.default" = "默认模型";
 "settings.profiles" = "配置文件（Mac Mini 网关）";
 "settings.profiles.port" = "端口 %d";
@@ -76,6 +81,7 @@
 "settings.connection.test.status" = "状态码：%d";
 "settings.connection.test.response_error" = "响应格式错误";
 "settings.connection.test.failed" = "连接失败：%@";
+"settings.connection.test.unauthorized" = "API Key 无效。";
 "settings.skills.footer" = "技能与工具基于当前选择的配置文件（%@）网关，文件浏览器需要 Bridge（只读）。";
 
 /* Common */

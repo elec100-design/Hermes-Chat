@@ -41,7 +41,8 @@ final class BridgeClient {
 
     init(baseURL: URL, token: String) {
         self.baseURL = baseURL
-        self.token = token
+        // 앞뒤 공백/개행이 있으면 Bridge 401을 유발하므로 저장 시 정규화한다.
+        self.token = token.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     // MARK: - Profiles
@@ -276,7 +277,16 @@ final class BridgeClient {
         case 200..<300:
             return data
         case 401:
-            throw HermesAPIError.unauthorized
+            // 게이트웨이 API Key와 별개인 Bridge 토큰 인증 실패.
+            // HermesAPIError.unauthorized("API Key가…")로 매핑하면 원인 파악이 어렵다.
+            if token.isEmpty {
+                throw HermesAPIError.serverError(
+                    "Bridge Token이 비어 있습니다. 설정 → Hermes Bridge에 토큰을 입력하세요."
+                )
+            }
+            throw HermesAPIError.serverError(
+                "Bridge Token이 유효하지 않습니다. 설정 → Hermes Bridge 토큰을 맥미니 HERMES_BRIDGE_TOKEN과 맞추세요."
+            )
         default:
             let message = String(data: data, encoding: .utf8) ?? "알 수 없는 오류"
             throw HermesAPIError.serverError("브리지 HTTP \(http.statusCode): \(message)")

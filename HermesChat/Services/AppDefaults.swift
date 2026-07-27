@@ -191,13 +191,15 @@ final class AppSettings: ObservableObject {
         baseURL(for: HermesProfile(name: "dashboard", port: dashboardPort))
     }
 
-    /// Bridge 주소가 설정되어 있을 때만 만들어진다 (SOUL.md, 재시작, 업로드, 칸반).
+    /// Bridge 주소+토큰이 모두 있을 때만 만들어진다 (SOUL.md, 모델, 재시작, 업로드, 칸반).
+    /// URL만 있고 토큰이 비면 401이 "API Key 오류"로 오인되므로 클라이언트를 만들지 않는다.
     var bridgeClient: BridgeClient? {
-        var trimmed = bridgeHost.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return nil }
+        var trimmed = bridgeHost.trimmingCharacters(in: .whitespacesAndNewlines)
+        let token = bridgeToken.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, !token.isEmpty else { return nil }
         if !trimmed.lowercased().hasPrefix("http") { trimmed = "http://" + trimmed }
         guard let url = URL(string: trimmed) else { return nil }
-        return BridgeClient(baseURL: url, token: bridgeToken)
+        return BridgeClient(baseURL: url, token: token)
     }
 
     func selectProfile(_ profile: HermesProfile) {
