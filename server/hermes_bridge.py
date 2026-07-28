@@ -611,6 +611,10 @@ def kanban_push_watcher():
 class Handler(BaseHTTPRequestHandler):
     server_version = "HermesBridge/1.0"
 
+    def handle_one_request(self):
+        self._body_consumed = False  # 요청마다 본문 소비 플래그 초기화
+        super().handle_one_request()
+
     # ── helpers ──────────────────────────────────────────────
 
     def send_json(self, obj, status=200):
@@ -622,7 +626,32 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def fail(self, status, message):
+        # 본문을 아직 안 읽었는데 에러를 내보내면(401/404/400 등) 클라이언트는 남은
+        # 업로드 바이트를 계속 쓰다 막혀서 "HTTP 4xx"가 아니라 타임아웃으로 본다.
+        # 응답 전에 남은 본문을 버려 정상적인 상태코드가 전달되게 한다 (T-169).
+        self.drain_body()
         self.send_json({"error": message}, status)
+
+    def drain_body(self):
+        """아직 읽지 않은 요청 본문을 버린다. 이미 읽었거나 본문이 없으면 no-op."""
+        if getattr(self, "_body_consumed", False):
+            return
+        self._body_consumed = True
+        try:
+            remaining = int(self.headers.get("Content-Length", 0))
+        except (TypeError, ValueError):
+            return
+        if remaining <= 0:
+            return
+        # 한도를 넘는 본문까지 전부 받아주진 않는다 — 연결을 닫아 클라이언트가 즉시 알게 한다.
+        if remaining > MAX_UPLOAD:
+            self.close_connection = True
+            return
+        while remaining > 0:
+            chunk = self.rfile.read(min(remaining, 1024 * 1024))
+            if not chunk:
+                break
+            remaining -= len(chunk)
 
     def send_text(self, text, status=200):
         body = text.encode()
@@ -653,7 +682,16 @@ class Handler(BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length", 0))
         if length <= 0 or length > limit:
             return None
-        return self.rfile.read(length)
+        self._body_consumed = True
+        # rfile.read()는 한 번에 다 못 읽고 짧게 돌아올 수 있다 — 큰 업로드에서
+        # 파일이 잘려 저장되던 원인. 요청한 길이를 다 채울 때까지 읽는다 (T-169).
+        buf = bytearray()
+        while len(buf) < length:
+            chunk = self.rfile.read(min(length - len(buf), 1024 * 1024))
+            if not chunk:
+                break
+            buf.extend(chunk)
+        return bytes(buf) if len(buf) == length else None
 
     # ── routing ──────────────────────────────────────────────
 
@@ -663,7 +701,13 @@ class Handler(BaseHTTPRequestHandler):
         query = {k: v[0] for k, v in parse_qs(parsed.query).items()}
 
         if parts == ["health"]:
-            return self.send_json({"status": "ok", "service": "hermes-bridge"})
+            # auth_required는 토큰 설정 여부만 노출한다(값은 절대 노출 안 함) —
+            # 앱이 "브리지는 토큰을 요구하는데 앱 토큰이 비어 있음"을 짚어줄 수 있게 (T-170).
+            return self.send_json({
+                "status": "ok",
+                "service": "hermes-bridge",
+                "auth_required": bool(TOKEN),
+            })
         if not self.authorized():
             return self.fail(401, "unauthorized")
 

@@ -6,6 +6,9 @@ enum HermesAPIError: LocalizedError {
     case invalidURL
     case network(Error)
     case unauthorized
+    /// Bridge가 401 — 게이트웨이 API Key가 아니라 **Bridge Token** 문제다 (T-170).
+    /// 둘을 한 메시지로 뭉쳐두면 사용자가 엉뚱한 키를 고치게 된다.
+    case bridgeUnauthorized
     case serverError(String)
     case decoding(Error)
     case vpnRequired
@@ -15,6 +18,9 @@ enum HermesAPIError: LocalizedError {
         case .invalidURL: return "서버 주소가 올바르지 않습니다."
         case .network(let error): return "네트워크 오류: \(error.localizedDescription)"
         case .unauthorized: return "API Key가 유효하지 않습니다."
+        case .bridgeUnauthorized:
+            return "Bridge Token이 유효하지 않습니다. 설정 → Hermes Bridge의 토큰이 "
+                 + "맥미니의 HERMES_BRIDGE_TOKEN과 같은지 확인하세요."
         case .serverError(let message): return "서버 오류: \(message)"
         case .decoding(let error): return "응답 처리 오류: \(error.localizedDescription)"
         case .vpnRequired: return "Tailscale VPN 연결이 필요합니다."
