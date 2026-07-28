@@ -701,7 +701,13 @@ class Handler(BaseHTTPRequestHandler):
         query = {k: v[0] for k, v in parse_qs(parsed.query).items()}
 
         if parts == ["health"]:
-            return self.send_json({"status": "ok", "service": "hermes-bridge"})
+            # auth_required는 토큰 설정 여부만 노출한다(값은 절대 노출 안 함) —
+            # 앱이 "브리지는 토큰을 요구하는데 앱 토큰이 비어 있음"을 짚어줄 수 있게 (T-170).
+            return self.send_json({
+                "status": "ok",
+                "service": "hermes-bridge",
+                "auth_required": bool(TOKEN),
+            })
         if not self.authorized():
             return self.fail(401, "unauthorized")
 

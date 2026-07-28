@@ -359,3 +359,10 @@
 "settings.usage" = "Usage This Month";
 "settings.usage.count" = "%d / %d messages";
 "settings.usage.unlimited" = "Unlimited";
+
+/* Bridge connection diagnostics (T-170) */
+"settings.bridge.test" = "Test bridge connection";
+"settings.bridge.test.unreachable %@" = "Cannot reach the bridge (check the URL): %@";
+"settings.bridge.test.ok %lld %@" = "OK — %lld profile(s): %@";
+"settings.bridge.test.token.empty" = "URL is fine. The bridge requires a token but Bridge Token is empty.";
+"settings.bridge.test.auth.failed %@" = "URL is fine, authentication failed: %@";

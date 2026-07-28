@@ -18,6 +18,9 @@ struct SettingsView: View {
     @State private var editingProfile: HermesProfile? = nil
     @State private var editingProfileName = ""
     @State private var showEditAlert = false
+    @State private var bridgeTestResult: String? = nil
+    @State private var bridgeTestOK = false
+    @State private var isTestingBridge = false
 
     private enum ConnectionTestResult {
         case success, failure(String)
@@ -290,6 +293,25 @@ struct SettingsView: View {
                     }
                     .buttonStyle(.plain)
                 }
+                // 브리지는 /health만 무인증이라, 주소가 맞아도 토큰이 틀리면 모든 기능이
+                // 401로 조용히 죽는다. 두 단계를 따로 찍어 어디가 문제인지 알려준다 (T-170).
+                Button {
+                    testBridgeConnection()
+                } label: {
+                    HStack {
+                        Text("settings.bridge.test")
+                        if isTestingBridge {
+                            Spacer()
+                            ProgressView()
+                        }
+                    }
+                }
+                .disabled(isTestingBridge || appSettings.bridgeClient == nil)
+                if let bridgeTestResult {
+                    Text(bridgeTestResult)
+                        .font(.footnote)
+                        .foregroundStyle(bridgeTestOK ? .green : .red)
+                }
             } header: {
                 Label("settings.bridge", systemImage: "link")
             } footer: {
@@ -444,6 +466,47 @@ struct SettingsView: View {
             }
         } message: { _ in
             Text("settings.profile.rename.message")
+        }
+    }
+
+    /// 1단계 `/health`(무인증)로 주소·도달성을, 2단계 `/profiles`(인증)로 토큰을 확인한다.
+    private func testBridgeConnection() {
+        guard let bridge = appSettings.bridgeClient else { return }
+        isTestingBridge = true
+        bridgeTestResult = nil
+        Task {
+            defer { isTestingBridge = false }
+            let health: BridgeClient.BridgeHealth
+            do {
+                health = try await bridge.health()
+            } catch {
+                bridgeTestOK = false
+                bridgeTestResult = String(
+                    format: NSLocalizedString("settings.bridge.test.unreachable %@", comment: ""),
+                    error.localizedDescription
+                )
+                return
+            }
+            do {
+                let profiles = try await bridge.fetchProfiles()
+                bridgeTestOK = true
+                bridgeTestResult = String(
+                    format: NSLocalizedString("settings.bridge.test.ok %lld %@", comment: ""),
+                    profiles.count,
+                    profiles.map(\.name).joined(separator: ", ")
+                )
+            } catch {
+                bridgeTestOK = false
+                let tokenEmpty = appSettings.bridgeToken.trimmingCharacters(in: .whitespaces).isEmpty
+                if health.authRequired == true, tokenEmpty {
+                    bridgeTestResult = String(localized: "settings.bridge.test.token.empty")
+                } else {
+                    bridgeTestResult = String(
+                        format: NSLocalizedString("settings.bridge.test.auth.failed %@", comment: ""),
+                        error.localizedDescription
+                    )
+                }
+            }
         }
     }
 

@@ -44,6 +44,31 @@ final class BridgeClient {
         self.token = token
     }
 
+    // MARK: - Health (무인증 — 주소·도달성 확인용, T-170)
+
+    struct BridgeHealth: Decodable {
+        let service: String?
+        /// 구버전 브리지는 이 필드가 없다 → nil
+        let authRequired: Bool?
+
+        enum CodingKeys: String, CodingKey {
+            case service
+            case authRequired = "auth_required"
+        }
+    }
+
+    /// `/health`는 토큰 없이도 응답한다. 응답이 hermes-bridge가 맞는지까지 확인해
+    /// 엉뚱한 서비스가 그 포트를 잡고 있는 경우를 걸러낸다.
+    @discardableResult
+    func health() async throws -> BridgeHealth {
+        let data = try await request("GET", "health", timeout: 10)
+        let health = try decode(BridgeHealth.self, from: data)
+        guard health.service == "hermes-bridge" else {
+            throw HermesAPIError.serverError("해당 주소는 Hermes Bridge가 아닙니다.")
+        }
+        return health
+    }
+
     // MARK: - Profiles
 
     func fetchProfiles() async throws -> [BridgeProfile] {
@@ -331,7 +356,7 @@ final class BridgeClient {
         case 200..<300:
             return data
         case 401:
-            throw HermesAPIError.unauthorized
+            throw HermesAPIError.bridgeUnauthorized
         default:
             let message = String(data: data, encoding: .utf8) ?? "알 수 없는 오류"
             throw HermesAPIError.serverError("브리지 HTTP \(http.statusCode): \(message)")

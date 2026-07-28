@@ -359,3 +359,10 @@
 "settings.usage" = "이달 사용량";
 "settings.usage.count" = "%d / %d 메시지";
 "settings.usage.unlimited" = "무제한";
+
+/* Bridge 연결 진단 (T-170) */
+"settings.bridge.test" = "브리지 연결 테스트";
+"settings.bridge.test.unreachable %@" = "브리지에 연결할 수 없습니다 (주소 확인): %@";
+"settings.bridge.test.ok %lld %@" = "정상 — 프로필 %lld개: %@";
+"settings.bridge.test.token.empty" = "주소는 정상. 브리지가 토큰을 요구하는데 Bridge Token이 비어 있습니다.";
+"settings.bridge.test.auth.failed %@" = "주소는 정상, 인증 실패: %@";
