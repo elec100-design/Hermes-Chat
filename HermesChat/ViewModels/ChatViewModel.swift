@@ -188,12 +188,21 @@ final class ChatViewModel: ObservableObject {
         let startedAt = Date.now
         let stream = appSettings.hermesClient.streamChat(sessionId: sessionId, message: outgoing)
 
-        do {
-            var assistant = ChatMessage(role: .assistant, content: "", toolCalls: [], createdAt: .now)
-            let assistantIndex = messages.count
-            messages.append(assistant)
-            var toolDictionary: [String: ToolCall] = [:]
+        // 대기 어시스턴트 버블은 do-scope 바깥에 유지한다 — 스트림이 도중에 끊겨도(catch)
+        // 회수 폴링이 성공하면 이 버블에 최종 답을 채우고, 실패했을 때만 에러 버블로 대체한다.
+        // 이렇게 하면 "일시적 연결 끊김 → 서버가 답을 저장 → 앱은 [에러]"인 회귀를 막을 수 있다 (T-149).
+        //
+        // ⚠️ 인덱스가 아닌 **id**로 자리표시자를 추적한다. await 사이에 이 배열이 다른
+        // 경로(예: `addAttachment`가 50MB 초과 알림, `handleCapturedPhoto`, history 재로드)로
+        // 변경되면 인덱스가 밀려 잘못된 버블을 덮어쓸 수 있다. 매번 id로 재해석하고 사라졌으면
+        // 조용히 건너뛴다.
+        var assistant = ChatMessage(role: .assistant, content: "", toolCalls: [], createdAt: .now)
+        let assistantId = assistant.id
+        messages.append(assistant)
+        var toolDictionary: [String: ToolCall] = [:]
+        var caughtError: Error?
 
+        do {
             for try await update in stream {
                 switch update {
                 case .content(let chunk):
@@ -208,52 +217,147 @@ final class ChatViewModel: ObservableObject {
                         toolDictionary[id] = ToolCall(id: id, name: name, arguments: ["_delta": argumentsDelta], result: nil)
                     }
                 }
-                messages[assistantIndex].content = assistant.content
-                // 도구 실행 중에도 칩 카운트가 실시간 갱신되도록 (T-104)
-                messages[assistantIndex].toolCalls = Array(toolDictionary.values)
-            }
-
-            messages[assistantIndex].content = assistant.content
-            messages[assistantIndex].toolCalls = Array(toolDictionary.values)
-
-            // 스트림이 빈(또는 think-only) 채 끝나면 세션 기록을 폴링해 답을 회수한다 (T-116).
-            // 게이트웨이가 응답을 세션에는 쓰지만 SSE로는 안 보내는 실기기 버그 대응 — 토론룸의
-            // T-114와 동종. 이 폴백이 없으면 화면엔 답이 안 뜨고, 세션을 나갔다 다시 들어와야
-            // (loadHistory 재호출) 비로소 답이 보였다.
-            let streamedVisible = MarkdownLite.strippingThink(assistant.content)
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            let hasTool = !(messages[assistantIndex].toolCalls?.isEmpty ?? true)
-            if streamedVisible.isEmpty && !hasTool {
-                // 내용이 아예 안 왔으면 게이트웨이가 생성 중일 수 있어 길게(300초), 내용은 왔지만
-                // think 제거 후 비면 세션 기록도 think-only일 확률이 높아 짧게(6초)만 시도.
-                let deadline: TimeInterval = assistant.content.isEmpty ? 300 : 6
-                if let recovered = await pollForMissedReply(deadline: deadline) {
-                    messages[assistantIndex].content = recovered
-                    assistant.content = recovered
+                // 배열이 흔들려도 안전: id로 재해석 후 갱신. 사라졌으면 이번 청크는 버린다.
+                if let idx = messages.firstIndex(where: { $0.id == assistantId }) {
+                    messages[idx].content = assistant.content
+                    // 도구 실행 중에도 칩 카운트가 실시간 갱신되도록 (T-104)
+                    messages[idx].toolCalls = Array(toolDictionary.values)
                 }
             }
-            // 음성 낭독은 회수분까지 확정된 최종 본문으로 마무리 알림 (T-118)
-            voiceStreamHandler?(assistant.content, true)
-
-            if messages[assistantIndex].content.isEmpty && (messages[assistantIndex].toolCalls?.isEmpty ?? true) {
-                messages.remove(at: assistantIndex)
-            }
-
-            notifyCompletionIfBackground(startedAt: startedAt, responseText: assistant.content)
-
-            if isFirstMessage {
-                await updateAutoTitle(from: text)
-            }
+        } catch is CancellationError {
+            finalizeCancellation(assistantId: assistantId, assistantContent: assistant.content)
+            return
         } catch {
+            caughtError = error
+        }
+
+        // 사용자 중지는 두 경로로 도착한다:
+        //  ① 스트림이 CancellationError를 throw (위 catch)
+        //  ② HermesAPIClient.streamChat이 URLError.cancelled를 조용히 finish로 승격 → for-await가 자연 종료
+        // ②의 경우 for-await는 던지지 않으므로 Task.isCancelled로 잡는다. 이렇게 하지 않으면
+        // 사용자 중지가 300초 회수 폴링으로 이어져 화면이 "생성 중" 상태에 머문다 (T-149 수용 기준).
+        if Task.isCancelled {
+            finalizeCancellation(assistantId: assistantId, assistantContent: assistant.content)
+            return
+        }
+
+        // 스트리밍이 정상 종료했든, 도중에 끊겼든 여기서 지금까지의 버퍼를 확정한다.
+        if let idx = messages.firstIndex(where: { $0.id == assistantId }) {
+            messages[idx].content = assistant.content
+            messages[idx].toolCalls = Array(toolDictionary.values)
+        }
+
+        // 회수 판정 (T-116/T-149):
+        // ① 스트림은 정상 종료됐지만 보이는 본문이 비었을 때 — 게이트웨이가 세션에는 쓰지만
+        //    SSE로는 안 보내는 실기기 버그(T-114와 동종). 폴링해 회수한다.
+        // ② 스트림이 좁은 화이트리스트에 해당하는 **전송 오류**(networkConnectionLost/timedOut,
+        //    조기 EOF 포함)로 끊겼을 때 — 서버 백그라운드 태스크가 계속 돌아 몇 초 뒤 state.db에
+        //    답을 기록한 사례 확인됨 (2026-08-05 aiohttp ClientConnectionResetError).
+        // ③ 명시적 서버/인증/프로토콜 오류(HermesAPIError.serverError/.unauthorized/파서 에러)는
+        //    폴링 대상이 아니다 — 즉시 원본 오류로 표면화한다. (`event: error`, 401, 5xx 등)
+        let streamedVisible = MarkdownLite.strippingThink(assistant.content)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let hasTool: Bool
+        if let idx = messages.firstIndex(where: { $0.id == assistantId }) {
+            hasTool = !(messages[idx].toolCalls?.isEmpty ?? true)
+        } else {
+            hasTool = false
+        }
+        let isRecoverableTransport = caughtError.map(Self.isRecoverableTransportError) ?? false
+        let shouldRecover = isRecoverableTransport || (caughtError == nil && streamedVisible.isEmpty && !hasTool)
+
+        if shouldRecover {
+            let deadline: TimeInterval = Self.recoveryDeadline(
+                caughtError: caughtError,
+                streamedContent: assistant.content
+            )
+            if let recovered = await pollForMissedReply(deadline: deadline) {
+                if let idx = messages.firstIndex(where: { $0.id == assistantId }) {
+                    messages[idx].content = recovered
+                }
+                assistant.content = recovered
+                caughtError = nil  // 회수 성공 — 에러 없이 진행
+            }
+            // 회수 실패 시 원본 오류는 보존됨 (caughtError). 폴링 자체의 취소는 nil로 조용히 종료.
+            // 폴링 중 사용자가 중지했으면 조용히 마무리 (에러 버블 방지)
+            if Task.isCancelled {
+                finalizeCancellation(assistantId: assistantId, assistantContent: assistant.content)
+                return
+            }
+        }
+
+        if let error = caughtError {
+            // 실행 가능한 에러 버블을 남긴다. 대기 자리표시자가 비어 있으면 정리한다.
+            if let idx = messages.firstIndex(where: { $0.id == assistantId }),
+               messages[idx].content.isEmpty && (messages[idx].toolCalls?.isEmpty ?? true) {
+                messages.remove(at: idx)
+            }
             messages.append(ChatMessage(
                 role: .assistant,
                 content: "[에러] \(error.localizedDescription)",
                 toolCalls: nil,
                 createdAt: .now
             ))
-            // 음성 루프가 에러 후에도 재청취/종료로 자연 복귀하도록 완료를 알린다 (T-118)
             voiceStreamHandler?("", true)
+            return
         }
+
+        // 정상 종료 또는 회수 성공. TTS·알림·자동 제목은 정확히 한 번씩 실행된다.
+        voiceStreamHandler?(assistant.content, true)
+
+        if let idx = messages.firstIndex(where: { $0.id == assistantId }),
+           messages[idx].content.isEmpty && (messages[idx].toolCalls?.isEmpty ?? true) {
+            messages.remove(at: idx)
+        }
+
+        notifyCompletionIfBackground(startedAt: startedAt, responseText: assistant.content)
+
+        if isFirstMessage {
+            await updateAutoTitle(from: text)
+        }
+    }
+
+    /// 사용자가 중지했을 때의 마무리 — 부분 발언은 살리고 완전히 빈 버블만 제거한다 (T-149).
+    /// 회수 폴링 없이, 에러 버블 없이 조용히 종료한다. id 기반 재해석으로 인덱스 밀림에 안전.
+    private func finalizeCancellation(assistantId: UUID, assistantContent: String) {
+        if let idx = messages.firstIndex(where: { $0.id == assistantId }) {
+            messages[idx].content = assistantContent
+            if messages[idx].content.isEmpty && (messages[idx].toolCalls?.isEmpty ?? true) {
+                messages.remove(at: idx)
+            }
+        }
+        voiceStreamHandler?(assistantContent, true)
+    }
+
+    /// 회수 폴링을 시도할 만한 **좁은** 전송 오류만 통과시킨다 (T-149 수용 기준).
+    /// 서버/인증/프로토콜 오류는 여기서 걸러져 즉시 사용자에게 표면화된다.
+    /// - `networkConnectionLost`: 조기 EOF·연결 리셋(HermesAPIClient가 승격) 포함
+    /// - `timedOut`: 유휴 시간 초과
+    /// 다른 URL 에러(도메인 해석 실패 등)나 `HermesAPIError.serverError`/`.unauthorized`는
+    /// 폴링 대상이 아니다.
+    nonisolated static func isRecoverableTransportError(_ error: Error) -> Bool {
+        if case HermesAPIError.network(let underlying) = error,
+           let urlError = underlying as? URLError {
+            switch urlError.code {
+            case .networkConnectionLost, .timedOut:
+                return true
+            default:
+                return false
+            }
+        }
+        return false
+    }
+
+    /// 회수 폴링 데드라인 (T-149) —
+    /// - 스트림이 끊긴(caughtError) 경우 서버가 계속 답을 쓰고 있을 수 있으므로 넉넉히,
+    ///   단 이미 부분 본문이 있으면 그 위에 이어질 가능성이 낮아 짧게.
+    /// - 정상 종료했지만 보이는 내용이 비면 T-116의 정책을 그대로 유지한다.
+    /// 이 함수는 회수 대상 판정을 먼저 통과한 뒤에만 호출된다 — 여기서 다시 판정하지 않는다.
+    nonisolated static func recoveryDeadline(caughtError: Error?, streamedContent: String) -> TimeInterval {
+        if caughtError != nil {
+            return streamedContent.isEmpty ? 300 : 30
+        }
+        return streamedContent.isEmpty ? 300 : 6
     }
 
     /// 스트림이 빈 채 끝났을 때(SSE 미전송 실기기 버그) 세션 기록을 2초 간격으로 폴링해
