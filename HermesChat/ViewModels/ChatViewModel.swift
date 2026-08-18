@@ -258,14 +258,14 @@ final class ChatViewModel: ObservableObject {
 
     /// 스트림이 빈 채 끝났을 때(SSE 미전송 실기기 버그) 세션 기록을 2초 간격으로 폴링해
     /// 마지막 user 메시지 뒤의 "보이는" assistant 답을 회수한다 (T-116).
-    /// 판정은 토론룸 폴백과 동일한 `DiscussionViewModel.missedReply`를 재사용한다 — 직전 턴
+    /// 판정은 토론룸 폴백과 동일한 `DiscussionPrompts.missedReply`를 재사용한다 — 직전 턴
     /// 답을 오인하지 않도록 지금까지 보낸 user 메시지 수로 앵커링한다. 타임아웃/취소 시 nil.
     private func pollForMissedReply(deadline: TimeInterval) async -> String? {
         let expectedUserCount = messages.filter { $0.role == .user }.count
         let limit = Date.now.addingTimeInterval(deadline)
         while Date.now < limit {
             if let server = try? await appSettings.hermesClient.fetchMessages(sessionId: sessionId),
-               let reply = DiscussionViewModel.missedReply(in: server, expectedUserCount: expectedUserCount) {
+               let reply = DiscussionPrompts.missedReply(in: server, expectedUserCount: expectedUserCount) {
                 return reply
             }
             do {
