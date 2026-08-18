@@ -1,0 +1,218 @@
+import Foundation
+
+/// 맥미니 hermes-agent 프로필 목록·선택·검색 상태를 담당한다 (T-C02, T-099, T-123).
+///
+/// 프로필별 apiKey는 Keychain(`profileApiKey.<name>`)에, 목록은 UserDefaults JSON에
+/// 직렬화해 보관한다. AppSettings의 서버 호스트/API 키/브리지 주소를 직접 읽지
+/// 않도록 클로저로 주입받는다 — View 코드를 바꾸지 않고 테스트에서 교체 가능.
+@MainActor
+final class ProfileStore: ObservableObject {
+    @Published var profiles: [HermesProfile] = []
+    @Published var selectedProfileID: UUID?
+    @Published var isDiscoveringProfiles: Bool = false
+
+    /// serverHost 값 제공 (AppSettings가 주입)
+    var hostProvider: () -> String = { "http://localhost:8642" }
+    /// 전역 apiKey 값 제공 (AppSettings가 주입)
+    var apiKeyProvider: () -> String = { "" }
+    /// bridgeClient 제공 — nil이면 브리지 대신 포트 스캔 (AppSettings가 주입)
+    var bridgeProvider: () -> BridgeClient? = { nil }
+    /// 선택 프로필이 바뀌었을 때 호출 (AppSettings가 세션 목록 리셋에 사용)
+    var onProfileSelectionChanged: (() -> Void)?
+
+    private static let profilesKey = "hermesProfiles"
+    private static let selectedProfileNameKey = "selectedProfileName"
+
+    init() {
+        let (stored, migrated) = Self.loadStoredProfiles()
+        profiles = stored.isEmpty ? [.default] : stored
+        let storedName = UserDefaults.standard.string(forKey: Self.selectedProfileNameKey) ?? "default"
+        selectedProfileID = (profiles.first { $0.name == storedName } ?? profiles.first)?.id
+        // 구버전 평문 apiKey가 있었으면 재직렬화로 UserDefaults에서 제거 (T-099)
+        if migrated { persistProfiles() }
+    }
+
+    var selectedProfile: HermesProfile {
+        profiles.first { $0.id == selectedProfileID } ?? profiles.first ?? .default
+    }
+
+    /// serverHost의 scheme/host에 프로필의 포트를 결합한 baseURL
+    func baseURL(for profile: HermesProfile) -> URL {
+        var comps = URLComponents(string: hostProvider().trimmingCharacters(in: .whitespaces)) ?? URLComponents()
+        if comps.scheme == nil { comps.scheme = "http" }
+        if comps.host == nil || comps.host?.isEmpty == true { comps.host = "localhost" }
+        comps.port = profile.port
+        comps.path = ""
+        comps.query = nil
+        return comps.url ?? URL(string: "http://localhost:8642")!
+    }
+
+    func selectProfile(_ profile: HermesProfile) {
+        guard profile.id != selectedProfileID else { return }
+        selectedProfileID = profile.id
+        UserDefaults.standard.set(profile.name, forKey: Self.selectedProfileNameKey)
+        onProfileSelectionChanged?()
+    }
+
+    func addProfile(name: String, port: Int) {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty, !profiles.contains(where: { $0.port == port }) else { return }
+        profiles.append(HermesProfile(name: trimmed, port: port))
+        profiles.sort { $0.port < $1.port }
+        persistProfiles()
+    }
+
+    func updateProfile(_ profile: HermesProfile) {
+        guard let idx = profiles.firstIndex(where: { $0.id == profile.id }) else { return }
+        let oldName = profiles[idx].name
+        profiles[idx] = profile
+        // 프로필 이름이 변경된 경우, 이전 이름의 Keychain 값을 정리
+        if oldName != profile.name {
+            KeychainHelper.delete(Self.profileKeychainKey(oldName))
+        }
+        persistProfiles()
+    }
+
+    func removeProfiles(at offsets: IndexSet) {
+        let removingSelected = offsets.contains { profiles[$0].id == selectedProfileID }
+        for offset in offsets {
+            KeychainHelper.delete(Self.profileKeychainKey(profiles[offset].name))
+        }
+        profiles.remove(atOffsets: offsets)
+        if profiles.isEmpty { profiles = [.default] }
+        if removingSelected, let first = profiles.first {
+            selectedProfileID = first.id
+            UserDefaults.standard.set(first.name, forKey: Self.selectedProfileNameKey)
+            onProfileSelectionChanged?()
+        }
+        persistProfiles()
+    }
+
+    /// 프로필 자동 검색. Bridge가 설정돼 있으면 정확한 목록을 받아오고,
+    /// 아니면 호스트의 포트 범위를 스캔해서 응답하는 hermes API 서버를 등록한다.
+    /// 스캔 시 프로필 이름은 각 API 서버가 /v1/models 로 알려주는 모델 식별자
+    /// (API_SERVER_MODEL_NAME, 기본값 = 프로필 이름)를 사용한다.
+    /// 이미 등록된 포트의 이름이 서버 보고와 다르면 갱신한다 — 맥에서 프로필
+    /// 폴더명을 바꾼 경우(codex→builder 등) 삭제·재검색 없이 따라간다 (T-123).
+    /// - Returns: 추가되거나 이름이 갱신된 프로필 수
+    @discardableResult
+    func discoverProfiles(ports: [Int] = Array(8642...8651)) async -> Int {
+        guard !isDiscoveringProfiles else { return 0 }
+        isDiscoveringProfiles = true
+        defer { isDiscoveringProfiles = false }
+
+        if let bridge = bridgeProvider(),
+           let bridgeProfiles = try? await bridge.fetchProfiles() {
+            var changed = 0
+            for bp in bridgeProfiles where bp.apiEnabled {
+                if profiles.contains(where: { $0.port == bp.port }) {
+                    if renameProfileIfNeeded(port: bp.port, to: bp.name) { changed += 1 }
+                } else {
+                    profiles.append(HermesProfile(name: bp.name, port: bp.port))
+                    changed += 1
+                }
+            }
+            if changed > 0 {
+                profiles.sort { $0.port < $1.port }
+                persistProfiles()
+            }
+            return changed
+        }
+
+        var found: [(port: Int, name: String)] = []
+        await withTaskGroup(of: (Int, String)?.self) { group in
+            for port in ports {
+                let url = baseURL(for: HermesProfile(name: "probe", port: port))
+                let key = apiKeyProvider()
+                group.addTask {
+                    guard let name = await Self.probeModelName(baseURL: url, apiKey: key) else { return nil }
+                    return (port, name)
+                }
+            }
+            for await result in group {
+                if let result { found.append(result) }
+            }
+        }
+
+        var changed = 0
+        for item in found {
+            if profiles.contains(where: { $0.port == item.port }) {
+                if renameProfileIfNeeded(port: item.port, to: item.name) { changed += 1 }
+            } else {
+                profiles.append(HermesProfile(name: item.name, port: item.port))
+                changed += 1
+            }
+        }
+        if changed > 0 {
+            profiles.sort { $0.port < $1.port }
+            persistProfiles()
+        }
+        return changed
+    }
+
+    /// 같은 포트의 등록 항목 이름을 서버 보고에 맞춰 갱신한다 (T-123).
+    /// 프로필별 apiKey Keychain 항목(T-099 체계)과 선택 저장명도 새 이름으로 이전.
+    private func renameProfileIfNeeded(port: Int, to name: String) -> Bool {
+        guard let idx = profiles.firstIndex(where: { $0.port == port }),
+              profiles[idx].name != name, !name.isEmpty else { return false }
+        let oldKey = Self.profileKeychainKey(profiles[idx].name)
+        if let stored = KeychainHelper.get(oldKey), !stored.isEmpty {
+            KeychainHelper.set(stored, for: Self.profileKeychainKey(name))
+        }
+        KeychainHelper.delete(oldKey)
+        profiles[idx].name = name
+        if profiles[idx].id == selectedProfileID {
+            UserDefaults.standard.set(name, forKey: Self.selectedProfileNameKey)
+        }
+        return true
+    }
+
+    nonisolated private static func probeModelName(baseURL: URL, apiKey: String) async -> String? {
+        var request = URLRequest(url: baseURL.appendingPathComponent("v1/models"))
+        request.timeoutInterval = 3
+        if !apiKey.isEmpty {
+            request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        }
+        guard let (data, response) = try? await URLSession.shared.data(for: request),
+              let http = response as? HTTPURLResponse, http.statusCode == 200 else { return nil }
+        struct ModelsResponse: Decodable {
+            struct Model: Decodable { let id: String }
+            let data: [Model]
+        }
+        return (try? JSONDecoder().decode(ModelsResponse.self, from: data))?.data.first?.id
+    }
+
+    private static func profileKeychainKey(_ name: String) -> String { "profileApiKey.\(name)" }
+
+    /// 프로필별 apiKey는 Keychain에 보관하고, UserDefaults JSON에는 빈 문자열로 직렬화한다 (T-099).
+    private func persistProfiles() {
+        for profile in profiles {
+            // 빈 값이면 KeychainHelper.set이 삭제 처리
+            KeychainHelper.set(profile.apiKey, for: Self.profileKeychainKey(profile.name))
+        }
+        var sanitized = profiles
+        for idx in sanitized.indices { sanitized[idx].apiKey = "" }
+        if let data = try? JSONEncoder().encode(sanitized) {
+            UserDefaults.standard.set(data, forKey: Self.profilesKey)
+        }
+    }
+
+    /// - Returns: 저장된 프로필과, 구버전 평문 apiKey를 Keychain으로 이관했는지 여부
+    private static func loadStoredProfiles() -> (profiles: [HermesProfile], migrated: Bool) {
+        guard let data = UserDefaults.standard.data(forKey: profilesKey),
+              var decoded = try? JSONDecoder().decode([HermesProfile].self, from: data)
+        else { return ([], false) }
+        var migrated = false
+        for idx in decoded.indices {
+            let key = profileKeychainKey(decoded[idx].name)
+            if !decoded[idx].apiKey.isEmpty {
+                // 구버전: UserDefaults에 평문으로 남아 있던 키 → Keychain 1회 이관
+                KeychainHelper.set(decoded[idx].apiKey, for: key)
+                migrated = true
+            } else if let stored = KeychainHelper.get(key) {
+                decoded[idx].apiKey = stored
+            }
+        }
+        return (decoded, migrated)
+    }
+}

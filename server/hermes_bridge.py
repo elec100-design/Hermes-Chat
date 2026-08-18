@@ -746,6 +746,7 @@ class Handler(BaseHTTPRequestHandler):
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                     start_new_session=True,
+                    env=hermes_env(),  # launchd env 미상속 보정 — create/delete/cron run과 동일 (T-144)
                 )
             except Exception as e:  # noqa: BLE001
                 return self.fail(500, f"restart failed: {e}")

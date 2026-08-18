@@ -108,11 +108,13 @@
 ## 맥미니 초기 설정
 
 ### 1. Hermes Bridge 실행
+<!-- 폐기 보류: server/com.hermes.bridge.plist 는 저장소에 없음 (실제는 ai.hermes.bridge.plist, 아래 배포 절차 참조)
 ```bash
 # LaunchAgent로 상시 기동
 cp server/com.hermes.bridge.plist ~/Library/LaunchAgents/
 launchctl load ~/Library/LaunchAgents/com.hermes.bridge.plist
 ```
+-->
 
 > **⚠️ 브리지 코드(`server/hermes_bridge.py`)를 고쳤다면 맥미니의 기동본을 교체하고
 > LaunchAgent를 재기동해야 반영된다.** 안 하면 앱이 새 엔드포인트를 호출할 때
