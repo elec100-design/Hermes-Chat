@@ -11,11 +11,15 @@ final class LiveViewModel: ObservableObject {
     @Published private(set) var messages: [ChatMessage] = []
     /// 사용자에게 보여줄 일시적 오류 배너
     @Published var errorBanner: String?
+    /// 글라스 사진·영상 감시 중 (Gemini 연결 중 + 전체 사진 접근일 때)
+    @Published private(set) var isWatchingMedia = false
 
     private let appSettings: AppSettings
     private let store = LiveSessionStore.shared
     private var service: GeminiLiveService?
     private var hermesService: HermesLiveService?
+    /// 글라스 촬영물이 카메라 롤에 동기화되면 Gemini에 바로 보여준다
+    private let mediaWatcher = PhotoImportWatcher()
 
     /// 현재 편집 중인 LiveSession (저장 단위)
     private var session: LiveSession
@@ -174,6 +178,7 @@ final class LiveViewModel: ObservableObject {
     }
 
     func disconnect() {
+        stopMediaWatch()
         service?.disconnect()
         service = nil
         hermesService?.stop()
@@ -188,6 +193,7 @@ final class LiveViewModel: ObservableObject {
             guard let self else { return }
             self.state = .listening
             self.service?.startRecording()
+            self.startMediaWatch()
         }
         svc.onUserTranscript = { [weak self] delta in self?.appendUser(delta) }
         svc.onModelTranscript = { [weak self] delta in self?.appendAssistant(delta) }
@@ -205,9 +211,86 @@ final class LiveViewModel: ObservableObject {
             guard let self else { return }
             self.errorBanner = message
             self.state = .error(message)
+            self.stopMediaWatch()
             self.service?.disconnect()
             self.service = nil
         }
+    }
+
+    // MARK: - 글라스 사진·영상
+
+    private func startMediaWatch() {
+        mediaWatcher.onNewPhoto = { [weak self] _, data in self?.sendPhoto(data) }
+        mediaWatcher.onNewVideo = { [weak self] asset in self?.sendVideo(asset) }
+        Task {
+            let result = await mediaWatcher.start(since: .now)
+            guard self.service != nil else { mediaWatcher.stop(); return }   // 권한 대기 중 종료됨
+            switch result {
+            case .authorized: isWatchingMedia = true
+            case .limited: errorBanner = "글라스 사진을 보려면 설정 > 사진에서 '전체 접근'을 허용하세요."
+            case .denied: errorBanner = "사진 접근이 거부돼 글라스 사진·영상은 볼 수 없어요. 음성 대화는 계속됩니다."
+            }
+        }
+    }
+
+    private func stopMediaWatch() {
+        mediaWatcher.stop()
+        isWatchingMedia = false
+    }
+
+    private func sendPhoto(_ data: Data) {
+        guard let image = UIImage(data: data), let jpeg = Self.jpeg(image, maxSide: 1024) else { return }
+        deliverMedia([jpeg], label: "📷 글라스 사진",
+                     prompt: "방금 글라스로 찍은 사진이야. 무엇이 보이는지 짧게 말해줘.")
+    }
+
+    private func sendVideo(_ asset: AVAsset) {
+        Task {
+            let frames = await Self.sampleFrames(asset)
+            guard !frames.isEmpty else { return }
+            deliverMedia(frames, label: "🎥 글라스 영상 (\(frames.count)프레임)",
+                         prompt: "방금 글라스로 찍은 짧은 영상에서 시간순으로 뽑은 프레임들이야. 무슨 장면인지 짧게 말해줘.")
+        }
+    }
+
+    private func deliverMedia(_ jpegs: [Data], label: String, prompt: String) {
+        guard let service else { return }
+        finalizeBubbles()
+        messages.append(ChatMessage(role: .user, content: label))
+        persist()
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        service.sendImages(jpegs, prompt: prompt)
+    }
+
+    /// 영상에서 1초당 1장, 최대 10장을 균등 추출한다.
+    /// ponytail: 오디오 트랙은 무시(프레임만). 영상 속 말소리까지 필요하면 PCM 추출해 realtimeInput.audio로 추가.
+    private static func sampleFrames(_ asset: AVAsset) async -> [Data] {
+        guard let duration = try? await asset.load(.duration).seconds, duration > 0 else { return [] }
+        let count = min(10, max(1, Int(duration.rounded(.up))))
+        let generator = AVAssetImageGenerator(asset: asset)
+        generator.appliesPreferredTrackTransform = true
+        generator.maximumSize = CGSize(width: 768, height: 768)
+        var frames: [Data] = []
+        for i in 0..<count {
+            let t = CMTime(seconds: duration * (Double(i) + 0.5) / Double(count), preferredTimescale: 600)
+            if let cg = try? await generator.image(at: t).image,
+               let jpeg = UIImage(cgImage: cg).jpegData(compressionQuality: 0.7) {
+                frames.append(jpeg)
+            }
+        }
+        return frames
+    }
+
+    private static func jpeg(_ image: UIImage, maxSide: CGFloat) -> Data? {
+        let longSide = max(image.size.width, image.size.height)
+        guard longSide > maxSide else { return image.jpegData(compressionQuality: 0.7) }
+        let scale = maxSide / longSide
+        let size = CGSize(width: (image.size.width * scale).rounded(), height: (image.size.height * scale).rounded())
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = 1
+        return UIGraphicsImageRenderer(size: size, format: format)
+            .image { _ in image.draw(in: CGRect(origin: .zero, size: size)) }
+            .jpegData(compressionQuality: 0.7)
     }
 
     // MARK: - 버블 누적

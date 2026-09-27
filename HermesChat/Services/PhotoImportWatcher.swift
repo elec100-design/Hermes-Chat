@@ -1,3 +1,4 @@
+import AVFoundation
 import Foundation
 import Photos
 import UIKit
@@ -15,6 +16,8 @@ import UIKit
 final class PhotoImportWatcher: NSObject, ObservableObject, PHPhotoLibraryChangeObserver {
     /// 새 사진 1건을 포착했을 때 (파일명, 이미지 데이터). 메인 액터에서 호출된다.
     var onNewPhoto: ((String, Data) -> Void)?
+    /// 새 동영상 1건 (Live 탭 전용). nil이면 동영상은 무시한다 — 채팅 탭은 기존대로 사진만.
+    var onNewVideo: ((AVAsset) -> Void)?
 
     @Published private(set) var isWatching = false
 
@@ -90,6 +93,17 @@ final class PhotoImportWatcher: NSObject, ObservableObject, PHPhotoLibraryChange
     }
 
     private func loadAndDeliver(_ asset: PHAsset) {
+        if asset.mediaType == .video {
+            guard onNewVideo != nil else { return }
+            let options = PHVideoRequestOptions()
+            options.version = .current
+            options.isNetworkAccessAllowed = true
+            PHImageManager.default().requestAVAsset(forVideo: asset, options: options) { [weak self] avAsset, _, _ in
+                guard let avAsset else { return }
+                Task { @MainActor [weak self] in self?.onNewVideo?(avAsset) }
+            }
+            return
+        }
         let filename = Self.filename(for: asset)
         let options = PHImageRequestOptions()
         options.version = .current
@@ -105,12 +119,12 @@ final class PhotoImportWatcher: NSObject, ObservableObject, PHPhotoLibraryChange
 
     // MARK: - Helpers
 
-    /// 기준 시각 이후 생성된 이미지 에셋 (생성순 오름차순)
+    /// 기준 시각 이후 생성된 이미지·동영상 에셋 (생성순 오름차순)
     private static func fetchImages(after date: Date) -> PHFetchResult<PHAsset> {
         let options = PHFetchOptions()
         options.predicate = NSPredicate(
-            format: "mediaType == %d AND creationDate >= %@",
-            PHAssetMediaType.image.rawValue, date as NSDate
+            format: "(mediaType == %d OR mediaType == %d) AND creationDate >= %@",
+            PHAssetMediaType.image.rawValue, PHAssetMediaType.video.rawValue, date as NSDate
         )
         options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: true)]
         return PHAsset.fetchAssets(with: options)

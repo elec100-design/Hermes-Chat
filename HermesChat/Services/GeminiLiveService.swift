@@ -164,7 +164,9 @@ final class GeminiLiveService: NSObject {
                 ],
                 // 양측 자막을 받아 챗 버블로 표시 (T-156)
                 "input_audio_transcription": [String: Any](),
-                "output_audio_transcription": [String: Any]()
+                "output_audio_transcription": [String: Any](),
+                // 글라스 사진·영상 프레임 토큰이 쌓여도 세션이 끊기지 않도록 오래된 맥락을 밀어낸다
+                "context_window_compression": ["sliding_window": [String: Any]()]
             ]
         ]
         sendJSON(setup)
@@ -180,6 +182,17 @@ final class GeminiLiveService: NSObject {
         }
         guard !turns.isEmpty else { return }
         sendJSON(["clientContent": ["turns": turns, "turnComplete": false]])
+    }
+
+    /// 글라스 사진/영상 프레임을 보여주고 텍스트로 설명을 요청해 즉시 응답을 유도한다.
+    /// 대화 중 `clientContent` 이미지는 최신 Live 모델(3.x)이 받지 않으므로 모든 모델이 받는
+    /// `realtimeInput.video`(JPEG 프레임) + `realtimeInput.text`로 보낸다.
+    func sendImages(_ jpegs: [Data], prompt: String) {
+        guard isSessionConfigured, !jpegs.isEmpty else { return }
+        for jpeg in jpegs {
+            sendJSON(["realtimeInput": ["video": ["mimeType": "image/jpeg", "data": jpeg.base64EncodedString()]]])
+        }
+        sendJSON(["realtimeInput": ["text": prompt]])
     }
 
     // MARK: - 녹음

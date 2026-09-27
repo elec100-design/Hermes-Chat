@@ -207,6 +207,11 @@ struct LiveConversationView: View {
             HStack(spacing: 12) {
                 statusOrb
                 Text(statusText).font(.subheadline).foregroundStyle(.secondary)
+                if vm.isWatchingMedia {
+                    Image(systemName: "camera.fill")
+                        .foregroundStyle(.secondary)
+                        .accessibilityLabel("글라스 사진·영상 감지 중")
+                }
                 Spacer()
                 // Hermes 백엔드 barge-in — 낭독/응답 대기를 끊고 바로 말하기 (T-162)
                 if selectedBackend == .hermes, vm.state == .speaking || vm.state == .thinking {
