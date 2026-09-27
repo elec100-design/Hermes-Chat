@@ -184,15 +184,16 @@ final class GeminiLiveService: NSObject {
         sendJSON(["clientContent": ["turns": turns, "turnComplete": false]])
     }
 
-    /// 글라스 사진/영상 프레임을 보여주고 텍스트로 설명을 요청해 즉시 응답을 유도한다.
-    /// 대화 중 `clientContent` 이미지는 최신 Live 모델(3.x)이 받지 않으므로 모든 모델이 받는
-    /// `realtimeInput.video`(JPEG 프레임) + `realtimeInput.text`로 보낸다.
+    /// 글라스 사진/영상 프레임을 설명 요청과 함께 한 사용자 턴으로 보내 즉시 응답을 유도한다.
+    /// 실기기 검증: `realtimeInput.video` 단일 프레임 + `realtimeInput.text`로는 모델이
+    /// "사진이 보이지 않는다"고 답했다 → 턴에 이미지를 직접 첨부하는 `clientContent`로 보낸다.
     func sendImages(_ jpegs: [Data], prompt: String) {
         guard isSessionConfigured, !jpegs.isEmpty else { return }
-        for jpeg in jpegs {
-            sendJSON(["realtimeInput": ["video": ["mimeType": "image/jpeg", "data": jpeg.base64EncodedString()]]])
+        var parts: [[String: Any]] = jpegs.map {
+            ["inlineData": ["mimeType": "image/jpeg", "data": $0.base64EncodedString()]]
         }
-        sendJSON(["realtimeInput": ["text": prompt]])
+        parts.append(["text": prompt])
+        sendJSON(["clientContent": ["turns": [["role": "user", "parts": parts]], "turnComplete": true]])
     }
 
     // MARK: - 녹음

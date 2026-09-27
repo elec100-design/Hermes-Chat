@@ -24,10 +24,10 @@ final class PhotoImportWatcher: NSObject, ObservableObject, PHPhotoLibraryChange
     /// 권한 요청 결과 — 제한 접근은 호출부가 안내하도록 구분한다.
     enum StartResult { case authorized, limited, denied }
 
-    /// 감시 시작 시각 — 이 이후 생성된 사진만 대상으로 본다
+    /// 감시 시작 시각 — 이보다 하루 이상 오래된 촬영물은 무시한다(iCloud로 옛 사진이 들어오는 경우 등)
     private var since = Date.distantFuture
-    /// 이미 처리(또는 시작 시점 베이스라인으로 무시)한 에셋 식별자 — 중복 전송 방지
-    private var processedIDs = Set<String>()
+    /// 변화 비교 기준 — 이 결과에 *새로 삽입된* 에셋만 새 촬영물로 본다
+    private var fetchResult: PHFetchResult<PHAsset>?
     private var isRegistered = false
 
     /// 감시를 시작한다. **전체 접근**이 허용된 경우에만 `.authorized`를 반환하고 실제로 감시한다.
@@ -40,11 +40,8 @@ final class PhotoImportWatcher: NSObject, ObservableObject, PHPhotoLibraryChange
         }
 
         self.since = date
-        // 시작 시점에 이미 보관함에 있던 사진은 베이스라인으로 기록해 무시한다 (옛 사진 오발송 방지)
-        processedIDs.removeAll()
-        Self.fetchImages(after: date).enumerateObjects { asset, _, _ in
-            self.processedIDs.insert(asset.localIdentifier)
-        }
+        // 시작 시점 보관함을 기준으로 잡는다 — 이후 변화에서 insertedObjects만 본다 (옛 사진 오발송 방지)
+        fetchResult = Self.fetchMedia()
         if !isRegistered {
             PHPhotoLibrary.shared().register(self)
             isRegistered = true
@@ -61,33 +58,31 @@ final class PhotoImportWatcher: NSObject, ObservableObject, PHPhotoLibraryChange
         }
         isWatching = false
         since = .distantFuture
-        processedIDs.removeAll()
+        fetchResult = nil
     }
 
     // MARK: - PHPhotoLibraryChangeObserver
 
     nonisolated func photoLibraryDidChange(_ changeInstance: PHChange) {
-        Task { @MainActor [weak self] in self?.scanForNewPhotos() }
+        Task { @MainActor [weak self] in self?.handleChange(changeInstance) }
     }
 
-    /// 변화 이후 보관함에서 기준 시각 이후·이미지·비스크린샷·미처리 에셋을 골라 전달한다
-    private func scanForNewPhotos() {
-        guard isWatching else { return }
-        var newAssets: [PHAsset] = []
-        Self.fetchImages(after: since).enumerateObjects { asset, _, _ in
-            guard !self.processedIDs.contains(asset.localIdentifier) else { return }
-            // 스크린샷은 글라스 사진이 아니므로 제외 (한 번 보고 무시 목록에 넣는다)
-            if asset.mediaSubtypes.contains(.photoScreenshot) {
-                self.processedIDs.insert(asset.localIdentifier)
-                return
-            }
-            newAssets.append(asset)
+    /// 보관함에 새로 들어온 이미지·동영상(비스크린샷)을 골라 전달한다.
+    /// creationDate(촬영 시각)가 아니라 **삽입 여부**로 판단한다 — 실기기에서 폰 카메라 사진은 잡히는데
+    /// Meta AI 앱이 가져온 글라스 사진은 보관함에 있어도 못 잡았다. 가져온 사진의 creationDate가
+    /// 기준 시각보다 이르게 기록되는 것으로 추정 (T-171).
+    private func handleChange(_ change: PHChange) {
+        guard isWatching, let fetchResult,
+              let details = change.changeDetails(for: fetchResult) else { return }
+        self.fetchResult = details.fetchResultAfterChanges
+        let cutoff = since.addingTimeInterval(-24 * 3600)
+        let newAssets = details.insertedObjects.filter {
+            !$0.mediaSubtypes.contains(.photoScreenshot) && ($0.creationDate ?? .now) >= cutoff
         }
         // 오래된 것부터 순서대로 전달
         for asset in newAssets.sorted(by: {
             ($0.creationDate ?? .distantPast) < ($1.creationDate ?? .distantPast)
         }) {
-            processedIDs.insert(asset.localIdentifier)
             loadAndDeliver(asset)
         }
     }
@@ -119,14 +114,13 @@ final class PhotoImportWatcher: NSObject, ObservableObject, PHPhotoLibraryChange
 
     // MARK: - Helpers
 
-    /// 기준 시각 이후 생성된 이미지·동영상 에셋 (생성순 오름차순)
-    private static func fetchImages(after date: Date) -> PHFetchResult<PHAsset> {
+    /// 보관함의 이미지·동영상 전체 (변화 감지 기준용 — 열거하지 않으므로 큰 보관함도 가볍다)
+    private static func fetchMedia() -> PHFetchResult<PHAsset> {
         let options = PHFetchOptions()
         options.predicate = NSPredicate(
-            format: "(mediaType == %d OR mediaType == %d) AND creationDate >= %@",
-            PHAssetMediaType.image.rawValue, PHAssetMediaType.video.rawValue, date as NSDate
+            format: "mediaType == %d OR mediaType == %d",
+            PHAssetMediaType.image.rawValue, PHAssetMediaType.video.rawValue
         )
-        options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: true)]
         return PHAsset.fetchAssets(with: options)
     }
 
