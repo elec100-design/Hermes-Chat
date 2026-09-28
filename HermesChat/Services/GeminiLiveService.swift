@@ -196,6 +196,13 @@ final class GeminiLiveService: NSObject {
         sendJSON(["clientContent": ["turns": [["role": "user", "parts": parts]], "turnComplete": true]])
     }
 
+    /// 글라스 카메라 실시간 프레임 (T-172) — 연속 스트림이라 `realtimeInput.video`가 맞다.
+    /// 모델은 사용자가 말할 때 최신 프레임을 보고 답한다 (Gemini 앱 Live 카메라와 같은 방식).
+    func sendVideoFrame(_ jpeg: Data) {
+        guard isSessionConfigured else { return }
+        sendJSON(["realtimeInput": ["video": ["mimeType": "image/jpeg", "data": jpeg.base64EncodedString()]]])
+    }
+
     // MARK: - 녹음
 
     func startRecording() {

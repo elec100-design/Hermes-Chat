@@ -134,6 +134,18 @@ struct LiveConversationView: View {
     var body: some View {
         VStack(spacing: 0) {
             messageList
+                // 글라스 카메라 미리보기 — Gemini가 지금 보고 있는 화면 (T-172)
+                .overlay(alignment: .topTrailing) {
+                    if let preview = vm.glassesPreview {
+                        Image(uiImage: preview)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 96)
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                            .padding(10)
+                            .accessibilityLabel("글라스 카메라 미리보기")
+                    }
+                }
             Divider()
             controls
         }
@@ -221,6 +233,15 @@ struct LiveConversationView: View {
                         Label("끊고 말하기", systemImage: "mic.badge.xmark")
                     }
                     .buttonStyle(.bordered)
+                }
+                // 글라스 카메라 실시간 공유 (Gemini 전용, T-172)
+                if selectedBackend == .gemini, vm.isConnected {
+                    Button { vm.toggleGlassesCamera() } label: {
+                        Image(systemName: "eyeglasses")
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(vm.isGlassesCameraOn ? .green : nil)
+                    .accessibilityLabel(vm.isGlassesCameraOn ? "글라스 카메라 끄기" : "글라스 카메라 켜기")
                 }
                 callButton
             }

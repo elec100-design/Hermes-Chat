@@ -22,6 +22,11 @@ struct HermesChatApp: App {
     /// Info.plist BGTaskSchedulerPermittedIdentifiers와 일치해야 한다 (T-095)
     nonisolated private static let refreshTaskID = "ai.hermes.chat.refresh"
 
+    init() {
+        // Meta Wearables DAT는 앱 시작 시 1회 구성해야 한다 (T-172)
+        GlassesCameraService.configureSDK()
+    }
+
     var body: some Scene {
         WindowGroup {
             // 커스텀 플로팅 탭바 (T-164) — 시스템 TabView 크롬 대신 ZStack 오버레이.
@@ -153,6 +158,8 @@ struct HermesChatApp: App {
     @MainActor
     private func handleDeepLink(_ url: URL) {
         guard url.scheme?.lowercased() == "hermes" else { return }
+        // Meta AI 앱의 글라스 등록/권한 콜백 (T-172)
+        if GlassesCameraService.handleURL(url) { return }
         switch url.host?.lowercased() {
         case "demo":
             appSettings.isDemoMode = true

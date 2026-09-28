@@ -49,6 +49,7 @@
 - 요청 범위를 넘는 대규모 리팩토링 금지 — 작은 변경부터
 - 비밀값(API Key, Private Key, 토큰) 생성/노출/커밋 금지
 - 불필요한 의존성 추가 금지 — **SPM 패키지 참조 추가 금지**(멀티 에이전트가 pbxproj를 수동 편집하는 구조라 파손 위험), CocoaPods 금지
+  - **유일한 예외: Meta Wearables DAT** (`facebook/meta-wearables-dat-ios`, MWDATCore·MWDATCamera, 2026-09-28 사용자 승인, T-172). 패키지 참조·제품 연결 블록은 건드리지 말 것
 - kanban.db를 SQL로 직접 수정 금지 — 쓰기는 반드시 `hermes kanban` CLI 경유
 - `server/hermes_bridge.py` 수정 후 맥미니 재배포 누락 금지 — 안 하면 앱이 "브리지 HTTP 404"
 
@@ -79,7 +80,8 @@
 - 핸즈프리 연속 대화(waveform 루프): 침묵 자동 전송 → 문장 단위 TTS → 자동 재청취
 - 오디오 라우팅: 받아쓰기는 HFP(`.allowBluetooth`), TTS는 A2DP 고음질. "Hey Meta"와 비간섭
 - 글라스 탭은 표준 BT AVRCP 미디어 커맨드(`MPRemoteCommandCenter`)로만 수신 — Meta SDK는 더블탭/카메라 제스처를 3P 앱에 안 줌(미도입 결정)
-- 사진 자동 전송은 `PHPhotoLibrary` 변화 감지(전체 접근) 방식 — Meta DAT 카메라 스트림 미사용
+- 사진 자동 전송은 `PHPhotoLibrary` 변화 감지(전체 접근) 방식. 단 글라스 **영상**은 Meta AI 앱이 "가져오기 대기"로만 쌓아 카메라 롤에 안 들어온다(2026-09-27 실기기 확인)
+- Live 실시간 시야 공유는 **Meta DAT 카메라 스트림**(`GlassesCameraService`, T-172) — Meta AI 앱 개발자 모드 필요, 미게시(개발자 미리보기)라 App Store 빌드엔 넣지 말 것
 - Privacy: 사용자 데이터는 Tailscale 사설망 안에서만. 공인망 노출/클라우드 저장 금지
 
 ## 자주 쓰는 Skills / MCP

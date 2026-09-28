@@ -69,6 +69,44 @@
         <string>fetch</string>
         <string>audio</string>
         <string>remote-notification</string>
+        <string>processing</string>
+        <string>bluetooth-central</string>
+        <string>bluetooth-peripheral</string>
+        <string>external-accessory</string>
+    </array>
+    <!-- Meta Wearables DAT (T-172) — 글라스 카메라 실시간 스트림. 개발자 모드라 MetaAppID는 0 -->
+    <key>MWDAT</key>
+    <dict>
+        <key>AppLinkURLScheme</key>
+        <string>hermes://</string>
+        <key>MetaAppID</key>
+        <string>0</string>
+        <key>ClientToken</key>
+        <string></string>
+        <key>TeamID</key>
+        <string>$(DEVELOPMENT_TEAM)</string>
+        <key>Analytics</key>
+        <dict>
+            <key>OptOut</key>
+            <true/>
+        </dict>
+        <key>CrashReporting</key>
+        <dict>
+            <key>OptOut</key>
+            <true/>
+        </dict>
+    </dict>
+    <key>UISupportedExternalAccessoryProtocols</key>
+    <array>
+        <string>com.meta.ar.wearable</string>
+    </array>
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>메타 글라스 카메라에 연결해 Live 대화에서 보고 있는 화면을 공유하기 위해 블루투스가 필요합니다.</string>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>메타 글라스와 Wi-Fi로 연결하고 Hermes 서버에 접속하기 위해 로컬 네트워크 접근이 필요합니다.</string>
+    <key>NSBonjourServices</key>
+    <array>
+        <string>_bonjour._tcp</string>
     </array>
     <key>NSSupportsLiveActivities</key>
     <true/>

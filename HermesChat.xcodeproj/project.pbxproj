@@ -29,14 +29,11 @@
 		7E4B207B5BCA40A070CBF676 /* SessionModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001BE0A159F3AEBDC606263C /* SessionModels.swift */; };
 		8ACDEF01CEF11ADBFD3CCC01 /* VoiceConversationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8ACDEF02CEF11ADBFD3CCC02 /* VoiceConversationController.swift */; };
 		9BCDEF01AEF22BECFE4DDD01 /* PhotoImportWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BCDEF02AEF22BECFE4DDD02 /* PhotoImportWatcher.swift */; };
+		DA7C00000000000000000031 /* GlassesCameraService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA7C00000000000000000032 /* GlassesCameraService.swift */; };
 		A048726920A8715530AACBE9 /* ToolModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ABF5AB0727489B06D16F6AB /* ToolModels.swift */; };
 		A1B2C3D4E5F6010203040501 /* VoiceEntryCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6010203040502 /* VoiceEntryCoordinator.swift */; };
 		A1B2C3D4E5F6010203040601 /* StartVoiceInputIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6010203040602 /* StartVoiceInputIntent.swift */; };
 		A9FA080264459EA4F3C7D0AA /* ToolResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6743DB1D930CC2F7E9C650CC /* ToolResultView.swift */; };
-		AC5E70A11CE700000000B001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AC5E70A11CE700000000F001 /* Assets.xcassets */; };
-		AUTH001A00000000000AUTH01 /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AUTH001A00000000000AUTH02 /* AuthView.swift */; };
-		B5B4BF8255A8DF60FFE1604F /* ChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEC3DC1D7345FE8A30F5F63E /* ChatViewModel.swift */; };
-		B681A38C220609922E6F32B6 /* ChatModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F3BB2D079331A3B8BEBB359 /* ChatModels.swift */; };
 		AAAA0149AAAA0149AAAA0149 /* HermesChatActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBB0149BBBB0149BBBB0149 /* HermesChatActivityAttributes.swift */; };
 		AAAA0149AAAA0149AAAA014A /* LiveActivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBB0149BBBB0149BBBB014A /* LiveActivityManager.swift */; };
 		AAAA0150AAAA0150AAAA0150 /* PushService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBB0150BBBB0150BBBB0150 /* PushService.swift */; };
@@ -51,6 +48,10 @@
 		AAAA0163AAAA0163AAAA0163 /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBB0163BBBB0163BBBB0163 /* DesignSystem.swift */; };
 		AAAA0164AAAA0164AAAA0164 /* FloatingTabBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBB0164BBBB0164BBBB0164 /* FloatingTabBar.swift */; };
 		AAAA0165AAAA0165AAAA0165 /* HomeHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBB0165BBBB0165BBBB0165 /* HomeHubView.swift */; };
+		AC5E70A11CE700000000B001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AC5E70A11CE700000000F001 /* Assets.xcassets */; };
+		AUTH001A00000000000AUTH01 /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AUTH001A00000000000AUTH02 /* AuthView.swift */; };
+		B5B4BF8255A8DF60FFE1604F /* ChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEC3DC1D7345FE8A30F5F63E /* ChatViewModel.swift */; };
+		B681A38C220609922E6F32B6 /* ChatModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F3BB2D079331A3B8BEBB359 /* ChatModels.swift */; };
 		C0F0000000000000000000A1 /* CronModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0F0000000000000000000A2 /* CronModels.swift */; };
 		C0F0000000000000000000B1 /* CronJobsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0F0000000000000000000B2 /* CronJobsView.swift */; };
 		C0F0000000000000000000C1 /* CronJobEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0F0000000000000000000C2 /* CronJobEditView.swift */; };
@@ -61,13 +62,15 @@
 		DD17000100000000000DEE01 /* DiscussionModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD17000200000000000DEE02 /* DiscussionModels.swift */; };
 		DD17000300000000000DEE03 /* DiscussionViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD17000400000000000DEE04 /* DiscussionViewModel.swift */; };
 		DD17000500000000000DEE05 /* DiscussionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD17000600000000000DEE06 /* DiscussionView.swift */; };
+		DEMO001A00000000000DEMO01 /* DemoData.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEMO001A00000000000DEMO02 /* DemoData.swift */; };
 		FB2E0FF7697F10D61F2B83B1 /* StreamModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB500D688436AF311932B708 /* StreamModels.swift */; };
 		L10N001A00000000000L10001 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = L10N001A00000000000L10002 /* Localizable.strings */; };
 		L10N001A00000000000L10011 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = L10N001A00000000000L10012 /* InfoPlist.strings */; };
 		ONBR001A00000000000ONBR01 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ONBR001A00000000000ONBR02 /* OnboardingView.swift */; };
 		PRIV001A00000000000PRIV01 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = PRIV001A00000000000PRIV02 /* PrivacyInfo.xcprivacy */; };
 		SUBS001A00000000000SUBS01 /* SubscriptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = SUBS001A00000000000SUBS02 /* SubscriptionService.swift */; };
-		DEMO001A00000000000DEMO01 /* DemoData.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEMO001A00000000000DEMO02 /* DemoData.swift */; };
+		DA7C00000000000000000001 /* MWDATCore in Frameworks */ = {isa = PBXBuildFile; productRef = DA7C00000000000000000011 /* MWDATCore */; };
+		DA7C00000000000000000002 /* MWDATCamera in Frameworks */ = {isa = PBXBuildFile; productRef = DA7C00000000000000000012 /* MWDATCamera */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -81,20 +84,6 @@
 		0F5BAC02A7E38D64FC5BBB02 /* KanbanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KanbanView.swift; sourceTree = "<group>"; };
 		1A6CBD02B8F49E75AD6CCC02 /* DashboardWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardWebView.swift; sourceTree = "<group>"; };
 		1F3BB2D079331A3B8BEBB359 /* ChatModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatModels.swift; sourceTree = "<group>"; };
-		BBBB0149BBBB0149BBBB0149 /* HermesChatActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HermesChatActivityAttributes.swift; sourceTree = "<group>"; };
-		BBBB0149BBBB0149BBBB014A /* LiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityManager.swift; sourceTree = "<group>"; };
-		BBBB0150BBBB0150BBBB0150 /* PushService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushService.swift; sourceTree = "<group>"; };
-		BBBB0154BBBB0154BBBB0154 /* GeminiLiveModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiLiveModels.swift; sourceTree = "<group>"; };
-		BBBB0155BBBB0155BBBB0155 /* GeminiLiveService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiLiveService.swift; sourceTree = "<group>"; };
-		BBBB0156BBBB0156BBBB0156 /* LiveViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveViewModel.swift; sourceTree = "<group>"; };
-		BBBB0157BBBB0157BBBB0157 /* LiveSessionModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSessionModels.swift; sourceTree = "<group>"; };
-		BBBB0158BBBB0158BBBB0158 /* LiveSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSessionStore.swift; sourceTree = "<group>"; };
-		BBBB0161BBBB0161BBBB0161 /* LiveTTSProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveTTSProvider.swift; sourceTree = "<group>"; };
-		BBBB0162BBBB0162BBBB0162 /* HermesLiveService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HermesLiveService.swift; sourceTree = "<group>"; };
-		BBBB0163BBBB0163BBBB0163 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
-		BBBB0164BBBB0164BBBB0164 /* FloatingTabBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloatingTabBar.swift; sourceTree = "<group>"; };
-		BBBB0165BBBB0165BBBB0165 /* HomeHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeHubView.swift; sourceTree = "<group>"; };
-		BBBB0159BBBB0159BBBB0159 /* LiveView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveView.swift; sourceTree = "<group>"; };
 		1FB3343782720464725EB49B /* DashboardModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardModels.swift; sourceTree = "<group>"; };
 		23245B6E8F2A9A7A394852E9 /* HermesChat.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HermesChat.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2B7DCE02C9A55B86BE7DDD02 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
@@ -111,12 +100,27 @@
 		8ACDEF02CEF11ADBFD3CCC02 /* VoiceConversationController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceConversationController.swift; sourceTree = "<group>"; };
 		8E3D771DF194DC8DF1975A78 /* AppDefaults.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDefaults.swift; sourceTree = "<group>"; };
 		9BCDEF02AEF22BECFE4DDD02 /* PhotoImportWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoImportWatcher.swift; sourceTree = "<group>"; };
+		DA7C00000000000000000032 /* GlassesCameraService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassesCameraService.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6010203040502 /* VoiceEntryCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceEntryCoordinator.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6010203040602 /* StartVoiceInputIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartVoiceInputIntent.swift; sourceTree = "<group>"; };
 		A221A979D2EDD87F33D38D44 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		AC5E70A11CE700000000F001 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AUTH001A00000000000AUTH02 /* AuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthView.swift; sourceTree = "<group>"; };
 		BB500D688436AF311932B708 /* StreamModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamModels.swift; sourceTree = "<group>"; };
+		BBBB0149BBBB0149BBBB0149 /* HermesChatActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HermesChatActivityAttributes.swift; sourceTree = "<group>"; };
+		BBBB0149BBBB0149BBBB014A /* LiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityManager.swift; sourceTree = "<group>"; };
+		BBBB0150BBBB0150BBBB0150 /* PushService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushService.swift; sourceTree = "<group>"; };
+		BBBB0154BBBB0154BBBB0154 /* GeminiLiveModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiLiveModels.swift; sourceTree = "<group>"; };
+		BBBB0155BBBB0155BBBB0155 /* GeminiLiveService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiLiveService.swift; sourceTree = "<group>"; };
+		BBBB0156BBBB0156BBBB0156 /* LiveViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveViewModel.swift; sourceTree = "<group>"; };
+		BBBB0157BBBB0157BBBB0157 /* LiveSessionModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSessionModels.swift; sourceTree = "<group>"; };
+		BBBB0158BBBB0158BBBB0158 /* LiveSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSessionStore.swift; sourceTree = "<group>"; };
+		BBBB0159BBBB0159BBBB0159 /* LiveView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveView.swift; sourceTree = "<group>"; };
+		BBBB0161BBBB0161BBBB0161 /* LiveTTSProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveTTSProvider.swift; sourceTree = "<group>"; };
+		BBBB0162BBBB0162BBBB0162 /* HermesLiveService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HermesLiveService.swift; sourceTree = "<group>"; };
+		BBBB0163BBBB0163BBBB0163 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
+		BBBB0164BBBB0164BBBB0164 /* FloatingTabBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloatingTabBar.swift; sourceTree = "<group>"; };
+		BBBB0165BBBB0165BBBB0165 /* HomeHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeHubView.swift; sourceTree = "<group>"; };
 		C0F0000000000000000000A2 /* CronModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CronModels.swift; sourceTree = "<group>"; };
 		C0F0000000000000000000B2 /* CronJobsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CronJobsView.swift; sourceTree = "<group>"; };
 		C0F0000000000000000000C2 /* CronJobEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CronJobEditView.swift; sourceTree = "<group>"; };
@@ -126,6 +130,7 @@
 		DD17000400000000000DEE04 /* DiscussionViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscussionViewModel.swift; sourceTree = "<group>"; };
 		DD17000600000000000DEE06 /* DiscussionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscussionView.swift; sourceTree = "<group>"; };
 		DEC3DC1D7345FE8A30F5F63E /* ChatViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatViewModel.swift; sourceTree = "<group>"; };
+		DEMO001A00000000000DEMO02 /* DemoData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoData.swift; sourceTree = "<group>"; };
 		E6079AD100F5FFAC1B2FE955 /* MessageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageView.swift; sourceTree = "<group>"; };
 		ENTA001A00000000000ENTA02 /* HermesChat.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = HermesChat.entitlements; sourceTree = "<group>"; };
 		F8DCB2A4C45DFD8E5CA9F032 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -138,8 +143,19 @@
 		ONBR001A00000000000ONBR02 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		PRIV001A00000000000PRIV02 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		SUBS001A00000000000SUBS02 /* SubscriptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionService.swift; sourceTree = "<group>"; };
-		DEMO001A00000000000DEMO02 /* DemoData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoData.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		DA7C00000000000000000020 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DA7C00000000000000000001 /* MWDATCore in Frameworks */,
+				DA7C00000000000000000002 /* MWDATCamera in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		2DBCD9AC0F176525E1C50AB6 /* Components */ = {
@@ -196,6 +212,7 @@
 				BBBB0162BBBB0162BBBB0162 /* HermesLiveService.swift */,
 				8ACDEF02CEF11ADBFD3CCC02 /* VoiceConversationController.swift */,
 				9BCDEF02AEF22BECFE4DDD02 /* PhotoImportWatcher.swift */,
+				DA7C00000000000000000032 /* GlassesCameraService.swift */,
 				A1B2C3D4E5F6010203040502 /* VoiceEntryCoordinator.swift */,
 				SUBS001A00000000000SUBS02 /* SubscriptionService.swift */,
 				DEMO001A00000000000DEMO02 /* DemoData.swift */,
@@ -292,6 +309,7 @@
 			buildConfigurationList = DACB90115195947152786C91 /* Build configuration list for PBXNativeTarget "HermesChat" */;
 			buildPhases = (
 				826B5629B0929883375420D7 /* Sources */,
+				DA7C00000000000000000020 /* Frameworks */,
 				AC5E70A11CE700000000C001 /* Resources */,
 			);
 			buildRules = (
@@ -300,6 +318,8 @@
 			);
 			name = HermesChat;
 			packageProductDependencies = (
+				DA7C00000000000000000011 /* MWDATCore */,
+				DA7C00000000000000000012 /* MWDATCamera */,
 			);
 			productName = HermesChat;
 			productReference = 23245B6E8F2A9A7A394852E9 /* HermesChat.app */;
@@ -330,6 +350,9 @@
 			);
 			mainGroup = C6988E78869DC4646BA1BD85;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				77C88012306A80FC0008274F /* XCRemoteSwiftPackageReference "meta-wearables-dat-ios" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 44F68EE33E19F15B8A6EF68B /* Products */;
 			projectDirPath = "";
@@ -393,6 +416,7 @@
 				DEMO001A00000000000DEMO01 /* DemoData.swift in Sources */,
 				8ACDEF01CEF11ADBFD3CCC01 /* VoiceConversationController.swift in Sources */,
 				9BCDEF01AEF22BECFE4DDD01 /* PhotoImportWatcher.swift in Sources */,
+				DA7C00000000000000000031 /* GlassesCameraService.swift in Sources */,
 				A1B2C3D4E5F6010203040501 /* VoiceEntryCoordinator.swift in Sources */,
 				A1B2C3D4E5F6010203040601 /* StartVoiceInputIntent.swift in Sources */,
 				0D3F8A01E5C16B42DA3FFF01 /* ProfileBoardView.swift in Sources */,
@@ -456,7 +480,7 @@
 				DEVELOPMENT_TEAM = C4LUZYK8L5;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = HermesChat/Resources/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.2;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -535,7 +559,7 @@
 				DEVELOPMENT_TEAM = C4LUZYK8L5;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = HermesChat/Resources/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.2;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -632,6 +656,30 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		77C88012306A80FC0008274F /* XCRemoteSwiftPackageReference "meta-wearables-dat-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/facebook/meta-wearables-dat-ios";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		DA7C00000000000000000011 /* MWDATCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 77C88012306A80FC0008274F /* XCRemoteSwiftPackageReference "meta-wearables-dat-ios" */;
+			productName = MWDATCore;
+		};
+		DA7C00000000000000000012 /* MWDATCamera */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 77C88012306A80FC0008274F /* XCRemoteSwiftPackageReference "meta-wearables-dat-ios" */;
+			productName = MWDATCamera;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = BD8AF0C259AF7A97636A68F7 /* Project object */;
 }

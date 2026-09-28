@@ -13,6 +13,10 @@ final class LiveViewModel: ObservableObject {
     @Published var errorBanner: String?
     /// 글라스 사진·영상 감시 중 (Gemini 연결 중 + 전체 사진 접근일 때)
     @Published private(set) var isWatchingMedia = false
+    /// 글라스 카메라 실시간 스트림 중 (T-172)
+    @Published private(set) var isGlassesCameraOn = false
+    /// 글라스 카메라 미리보기 (스트리밍 중에만)
+    @Published private(set) var glassesPreview: UIImage?
 
     private let appSettings: AppSettings
     private let store = LiveSessionStore.shared
@@ -20,6 +24,8 @@ final class LiveViewModel: ObservableObject {
     private var hermesService: HermesLiveService?
     /// 글라스 촬영물이 카메라 롤에 동기화되면 Gemini에 바로 보여준다
     private let mediaWatcher = PhotoImportWatcher()
+    /// 글라스 카메라 → Gemini 실시간 프레임 (T-172)
+    private let glassesCamera = GlassesCameraService()
 
     /// 현재 편집 중인 LiveSession (저장 단위)
     private var session: LiveSession
@@ -179,6 +185,7 @@ final class LiveViewModel: ObservableObject {
 
     func disconnect() {
         stopMediaWatch()
+        glassesCamera.stop()
         service?.disconnect()
         service = nil
         hermesService?.stop()
@@ -212,9 +219,29 @@ final class LiveViewModel: ObservableObject {
             self.errorBanner = message
             self.state = .error(message)
             self.stopMediaWatch()
+            self.glassesCamera.stop()
             self.service?.disconnect()
             self.service = nil
         }
+    }
+
+    // MARK: - 글라스 카메라 실시간 (T-172)
+
+    /// Gemini 연결 중에만 켤 수 있다. 첫 사용 땐 Meta AI 앱 등록·권한 전환이 먼저 일어난다.
+    func toggleGlassesCamera() {
+        if isGlassesCameraOn {
+            glassesCamera.stop()
+            return
+        }
+        guard service != nil else { return }
+        glassesCamera.onStatus = { [weak self] status in self?.errorBanner = status }
+        glassesCamera.onActiveChange = { [weak self] on in
+            self?.isGlassesCameraOn = on
+            if !on { self?.glassesPreview = nil }
+        }
+        glassesCamera.onPreview = { [weak self] image in self?.glassesPreview = image }
+        glassesCamera.onFrame = { [weak self] jpeg in self?.service?.sendVideoFrame(jpeg) }
+        Task { await glassesCamera.start() }
     }
 
     // MARK: - 글라스 사진·영상
