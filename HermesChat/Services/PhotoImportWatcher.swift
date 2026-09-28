@@ -17,7 +17,10 @@ final class PhotoImportWatcher: NSObject, ObservableObject, PHPhotoLibraryChange
     /// 새 사진 1건을 포착했을 때 (파일명, 이미지 데이터). 메인 액터에서 호출된다.
     var onNewPhoto: ((String, Data) -> Void)?
     /// 새 동영상 1건 (Live 탭 전용). nil이면 동영상은 무시한다 — 채팅 탭은 기존대로 사진만.
-    var onNewVideo: ((AVAsset) -> Void)?
+    /// 불러오기에 실패하면 nil — 호출부가 실패를 안내할 수 있게 한다.
+    var onNewVideo: ((AVAsset?) -> Void)?
+    /// 감지 단계의 진단 메시지 (실기기 디버깅용 — 조용한 실패를 화면에 드러낸다)
+    var onNotice: ((String) -> Void)?
 
     @Published private(set) var isWatching = false
 
@@ -75,6 +78,11 @@ final class PhotoImportWatcher: NSObject, ObservableObject, PHPhotoLibraryChange
         guard isWatching, let fetchResult,
               let details = change.changeDetails(for: fetchResult) else { return }
         self.fetchResult = details.fetchResultAfterChanges
+        // 비증분 변화면 insertedObjects가 비어 있어 새 촬영물을 알 수 없다 — 놓쳤음을 드러낸다
+        if !details.hasIncrementalChanges {
+            onNotice?("보관함이 크게 바뀌어 새 사진·영상을 확인하지 못했어요.")
+            return
+        }
         let cutoff = since.addingTimeInterval(-24 * 3600)
         let newAssets = details.insertedObjects.filter {
             !$0.mediaSubtypes.contains(.photoScreenshot) && ($0.creationDate ?? .now) >= cutoff
@@ -94,7 +102,6 @@ final class PhotoImportWatcher: NSObject, ObservableObject, PHPhotoLibraryChange
             options.version = .current
             options.isNetworkAccessAllowed = true
             PHImageManager.default().requestAVAsset(forVideo: asset, options: options) { [weak self] avAsset, _, _ in
-                guard let avAsset else { return }
                 Task { @MainActor [weak self] in self?.onNewVideo?(avAsset) }
             }
             return

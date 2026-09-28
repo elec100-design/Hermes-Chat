@@ -222,6 +222,7 @@ final class LiveViewModel: ObservableObject {
     private func startMediaWatch() {
         mediaWatcher.onNewPhoto = { [weak self] _, data in self?.sendPhoto(data) }
         mediaWatcher.onNewVideo = { [weak self] asset in self?.sendVideo(asset) }
+        mediaWatcher.onNotice = { [weak self] notice in self?.errorBanner = notice }
         Task {
             let result = await mediaWatcher.start(since: .now)
             guard self.service != nil else { mediaWatcher.stop(); return }   // 권한 대기 중 종료됨
@@ -244,10 +245,19 @@ final class LiveViewModel: ObservableObject {
                      prompt: "방금 글라스로 찍은 사진이야. 무엇이 보이는지 짧게 말해줘.")
     }
 
-    private func sendVideo(_ asset: AVAsset) {
+    private func sendVideo(_ asset: AVAsset?) {
+        guard let asset else {
+            errorBanner = "글라스 영상을 불러오지 못했어요."
+            return
+        }
         Task {
-            let frames = await Self.sampleFrames(asset)
-            guard !frames.isEmpty else { return }
+            let frames: [Data]
+            do {
+                frames = try await Self.sampleFrames(asset)
+            } catch {
+                errorBanner = "영상 프레임 추출 실패: \(error.localizedDescription)"
+                return
+            }
             deliverMedia(frames, label: "🎥 글라스 영상 (\(frames.count)프레임)",
                          prompt: "방금 글라스로 찍은 짧은 영상에서 시간순으로 뽑은 프레임들이야. 무슨 장면인지 짧게 말해줘.")
         }
@@ -264,20 +274,25 @@ final class LiveViewModel: ObservableObject {
 
     /// 영상에서 1초당 1장, 최대 10장을 균등 추출한다.
     /// ponytail: 오디오 트랙은 무시(프레임만). 영상 속 말소리까지 필요하면 PCM 추출해 realtimeInput.audio로 추가.
-    private static func sampleFrames(_ asset: AVAsset) async -> [Data] {
-        guard let duration = try? await asset.load(.duration).seconds, duration > 0 else { return [] }
+    private static func sampleFrames(_ asset: AVAsset) async throws -> [Data] {
+        let duration = try await asset.load(.duration).seconds
+        guard duration > 0 else { throw CocoaError(.fileReadCorruptFile) }
         let count = min(10, max(1, Int(duration.rounded(.up))))
         let generator = AVAssetImageGenerator(asset: asset)
         generator.appliesPreferredTrackTransform = true
         generator.maximumSize = CGSize(width: 768, height: 768)
         var frames: [Data] = []
+        var lastError: Error?
         for i in 0..<count {
             let t = CMTime(seconds: duration * (Double(i) + 0.5) / Double(count), preferredTimescale: 600)
-            if let cg = try? await generator.image(at: t).image,
-               let jpeg = UIImage(cgImage: cg).jpegData(compressionQuality: 0.7) {
-                frames.append(jpeg)
+            do {
+                let cg = try await generator.image(at: t).image
+                if let jpeg = UIImage(cgImage: cg).jpegData(compressionQuality: 0.7) { frames.append(jpeg) }
+            } catch {
+                lastError = error
             }
         }
+        if frames.isEmpty { throw lastError ?? CocoaError(.fileReadCorruptFile) }
         return frames
     }
 
