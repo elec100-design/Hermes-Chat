@@ -333,7 +333,10 @@ final class GeminiLiveService: NSObject {
         if let modelTurn = content["modelTurn"] as? [String: Any],
            let parts = modelTurn["parts"] as? [[String: Any]] {
             for part in parts {
-                if let text = part["text"] as? String { onModelTranscript?(text) }
+                // 사고(thinking) 요약은 답변이 아니다 — 버블에 "Clarifying The Inquiry…"가 뜨던 문제
+                if let text = part["text"] as? String, part["thought"] as? Bool != true {
+                    onModelTranscript?(text)
+                }
                 if let inline = part["inlineData"] as? [String: Any],
                    let mime = inline["mimeType"] as? String, mime.contains("audio"),
                    let b64 = inline["data"] as? String, let audio = Data(base64Encoded: b64) {

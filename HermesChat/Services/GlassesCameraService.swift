@@ -25,9 +25,24 @@ final class GlassesCameraService {
     private let sendInterval: TimeInterval = 1.0
     private var lastSent = Date.distantPast
 
+    /// 반드시 오래 살려 두고 `activeDeviceStream()`을 계속 소비해야 SDK가 기기 적격성을 추적한다.
+    /// 호출마다 새로 만들면 `noEligibleDevice`로 실패한다 (DAT 이슈 #148, 실기기 재현).
+    private let deviceSelector = AutoDeviceSelector(wearables: Wearables.shared)
+    private var deviceMonitor: Task<Void, Never>?
+    private var hasActiveDevice = false
     private var session: DeviceSession?
     private var camera: MWDATCamera.Camera?
     private let tokens = ListenerTokenBag()
+
+    init() {
+        deviceMonitor = Task { [weak self, deviceSelector] in
+            for await deviceId in deviceSelector.activeDeviceStream() {
+                self?.hasActiveDevice = deviceId != nil
+            }
+        }
+    }
+
+    deinit { deviceMonitor?.cancel() }
 
     /// 앱 시작 시 1회 (HermesChatApp.init)
     static func configureSDK() {
@@ -61,9 +76,16 @@ final class GlassesCameraService {
                     return
                 }
             }
-            // 3) 세션
+            // 3) 세션 — 활성 글라스가 잡힐 때까지 최대 10초 대기
             onStatus?("글라스 연결 중…")
-            let session = try wearables.createSession(deviceSelector: AutoDeviceSelector(wearables: wearables))
+            for _ in 0..<20 where !hasActiveDevice {
+                try await Task.sleep(for: .milliseconds(500))
+            }
+            guard hasActiveDevice else {
+                onStatus?("글라스를 찾지 못했어요 — 착용·안경다리 펴짐·블루투스 연결을 확인하세요.")
+                return
+            }
+            let session = try wearables.createSession(deviceSelector: deviceSelector)
             self.session = session
             session.statePublisher.listen { [weak self] state in
                 Task { @MainActor in if state == .stopped { self?.cleanup() } }
