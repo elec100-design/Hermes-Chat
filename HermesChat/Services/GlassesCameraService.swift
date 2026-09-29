@@ -39,6 +39,11 @@ final class GlassesCameraService {
     private let tokens = ListenerTokenBag()
 
     init() {
+        backgroundObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.stop() }
+        }
         deviceMonitor = Task { [weak self, deviceSelector] in
             for await deviceId in deviceSelector.activeDeviceStream() {
                 self?.hasActiveDevice = deviceId != nil
@@ -46,7 +51,14 @@ final class GlassesCameraService {
         }
     }
 
-    deinit { deviceMonitor?.cancel() }
+    deinit {
+        deviceMonitor?.cancel()
+        if let backgroundObserver { NotificationCenter.default.removeObserver(backgroundObserver) }
+    }
+
+    /// 스트림 중 앱이 정지(백그라운드·종료)되면 글라스가 "방송 중" 상태에 갇혀 이후 모든 세션이
+    /// 즉시 끊긴다(DAT #231, 케이스에 넣어야 복구). 샘플처럼 백그라운드 진입 시 먼저 정리한다.
+    private var backgroundObserver: NSObjectProtocol?
 
     /// 앱 시작 시 1회 (HermesChatApp.init)
     static func configureSDK() {
