@@ -29,7 +29,6 @@
 		7E4B207B5BCA40A070CBF676 /* SessionModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001BE0A159F3AEBDC606263C /* SessionModels.swift */; };
 		8ACDEF01CEF11ADBFD3CCC01 /* VoiceConversationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8ACDEF02CEF11ADBFD3CCC02 /* VoiceConversationController.swift */; };
 		9BCDEF01AEF22BECFE4DDD01 /* PhotoImportWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BCDEF02AEF22BECFE4DDD02 /* PhotoImportWatcher.swift */; };
-		DA7C00000000000000000031 /* GlassesCameraService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA7C00000000000000000032 /* GlassesCameraService.swift */; };
 		A048726920A8715530AACBE9 /* ToolModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ABF5AB0727489B06D16F6AB /* ToolModels.swift */; };
 		A1B2C3D4E5F6010203040501 /* VoiceEntryCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6010203040502 /* VoiceEntryCoordinator.swift */; };
 		A1B2C3D4E5F6010203040601 /* StartVoiceInputIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6010203040602 /* StartVoiceInputIntent.swift */; };
@@ -59,6 +58,9 @@
 		C29ABD7D6F0C12DFFACAAC42 /* SessionListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D485E391BB3FBF773D0C6778 /* SessionListView.swift */; };
 		CC0372ECAE6E122E1C4FAA13 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 690CD0BEB59B960A94F72420 /* ChatView.swift */; };
 		D37A2F7854931324D14E852F /* MessageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6079AD100F5FFAC1B2FE955 /* MessageView.swift */; };
+		DA7C00000000000000000001 /* MWDATCore in Frameworks */ = {isa = PBXBuildFile; productRef = DA7C00000000000000000011 /* MWDATCore */; };
+		DA7C00000000000000000002 /* MWDATCamera in Frameworks */ = {isa = PBXBuildFile; productRef = DA7C00000000000000000012 /* MWDATCamera */; };
+		DA7C00000000000000000031 /* GlassesCameraService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA7C00000000000000000032 /* GlassesCameraService.swift */; };
 		DD17000100000000000DEE01 /* DiscussionModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD17000200000000000DEE02 /* DiscussionModels.swift */; };
 		DD17000300000000000DEE03 /* DiscussionViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD17000400000000000DEE04 /* DiscussionViewModel.swift */; };
 		DD17000500000000000DEE05 /* DiscussionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD17000600000000000DEE06 /* DiscussionView.swift */; };
@@ -69,8 +71,6 @@
 		ONBR001A00000000000ONBR01 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ONBR001A00000000000ONBR02 /* OnboardingView.swift */; };
 		PRIV001A00000000000PRIV01 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = PRIV001A00000000000PRIV02 /* PrivacyInfo.xcprivacy */; };
 		SUBS001A00000000000SUBS01 /* SubscriptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = SUBS001A00000000000SUBS02 /* SubscriptionService.swift */; };
-		DA7C00000000000000000001 /* MWDATCore in Frameworks */ = {isa = PBXBuildFile; productRef = DA7C00000000000000000011 /* MWDATCore */; };
-		DA7C00000000000000000002 /* MWDATCamera in Frameworks */ = {isa = PBXBuildFile; productRef = DA7C00000000000000000012 /* MWDATCamera */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -100,7 +100,6 @@
 		8ACDEF02CEF11ADBFD3CCC02 /* VoiceConversationController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceConversationController.swift; sourceTree = "<group>"; };
 		8E3D771DF194DC8DF1975A78 /* AppDefaults.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDefaults.swift; sourceTree = "<group>"; };
 		9BCDEF02AEF22BECFE4DDD02 /* PhotoImportWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoImportWatcher.swift; sourceTree = "<group>"; };
-		DA7C00000000000000000032 /* GlassesCameraService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassesCameraService.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6010203040502 /* VoiceEntryCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceEntryCoordinator.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6010203040602 /* StartVoiceInputIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartVoiceInputIntent.swift; sourceTree = "<group>"; };
 		A221A979D2EDD87F33D38D44 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -126,6 +125,7 @@
 		C0F0000000000000000000C2 /* CronJobEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CronJobEditView.swift; sourceTree = "<group>"; };
 		C0F0000000000000000000D2 /* CreateProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateProfileView.swift; sourceTree = "<group>"; };
 		D485E391BB3FBF773D0C6778 /* SessionListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionListView.swift; sourceTree = "<group>"; };
+		DA7C00000000000000000032 /* GlassesCameraService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassesCameraService.swift; sourceTree = "<group>"; };
 		DD17000200000000000DEE02 /* DiscussionModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscussionModels.swift; sourceTree = "<group>"; };
 		DD17000400000000000DEE04 /* DiscussionViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscussionViewModel.swift; sourceTree = "<group>"; };
 		DD17000600000000000DEE06 /* DiscussionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscussionView.swift; sourceTree = "<group>"; };
@@ -477,7 +477,7 @@
 				CODE_SIGN_ENTITLEMENTS = HermesChat/HermesChat.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = C4LUZYK8L5;
+				DEVELOPMENT_TEAM = FQC4365RD8;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = HermesChat/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.2;
@@ -556,7 +556,7 @@
 				CODE_SIGN_ENTITLEMENTS = HermesChat/HermesChat.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = C4LUZYK8L5;
+				DEVELOPMENT_TEAM = FQC4365RD8;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = HermesChat/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.2;
