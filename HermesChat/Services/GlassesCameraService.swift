@@ -27,7 +27,7 @@ final class GlassesCameraService {
 
     /// 반드시 오래 살려 두고 `activeDeviceStream()`을 계속 소비해야 SDK가 기기 적격성을 추적한다.
     /// 호출마다 새로 만들면 `noEligibleDevice`로 실패한다 (DAT 이슈 #148, 실기기 재현).
-    private let deviceSelector = AutoDeviceSelector(wearables: Wearables.shared)
+    private var deviceSelector = AutoDeviceSelector(wearables: Wearables.shared)
     private var deviceMonitor: Task<Void, Never>?
     private var hasActiveDevice = false
     private var session: DeviceSession?
@@ -47,11 +47,29 @@ final class GlassesCameraService {
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.stop() }
         }
-        deviceMonitor = Task { [weak self, deviceSelector] in
-            for await deviceId in deviceSelector.activeDeviceStream() {
+        startDeviceMonitor()
+    }
+
+    /// 선택기를 새로 만들고 활성 기기 추적을 시작한다. 재등록 전에 만든 선택기는 새 등록의 글라스를
+    /// 못 잡았다(실기기: 재등록 직후 "글라스를 찾지 못했어요").
+    private func startDeviceMonitor() {
+        deviceMonitor?.cancel()
+        hasActiveDevice = false
+        let selector = AutoDeviceSelector(wearables: Wearables.shared)
+        deviceSelector = selector
+        deviceMonitor = Task { [weak self] in
+            for await deviceId in selector.activeDeviceStream() {
                 self?.hasActiveDevice = deviceId != nil
             }
         }
+    }
+
+    /// 최대 10초 동안 활성 글라스를 기다린다
+    private func waitForActiveDevice() async throws -> Bool {
+        for _ in 0..<20 where !hasActiveDevice {
+            try await Task.sleep(for: .milliseconds(500))
+        }
+        return hasActiveDevice
     }
 
     deinit {
@@ -109,12 +127,15 @@ final class GlassesCameraService {
             }
             // 3) 세션 — 활성 글라스가 잡힐 때까지 최대 10초 대기
             onStatus?("글라스 연결 중…")
-            for _ in 0..<20 where !hasActiveDevice {
-                try await Task.sleep(for: .milliseconds(500))
-            }
-            guard hasActiveDevice else {
-                onStatus?("글라스를 찾지 못했어요 — 착용·안경다리 펴짐·블루투스 연결을 확인하세요.")
-                return
+            if try await !waitForActiveDevice() {
+                // 선택기를 새로 만들어 한 번 더 — 등록이 바뀐 뒤엔 기존 선택기가 기기를 못 따라간다
+                onStatus?("글라스 다시 찾는 중…")
+                startDeviceMonitor()
+                guard try await waitForActiveDevice() else {
+                    let known = wearables.devices.count
+                    onStatus?("글라스를 찾지 못했어요 (SDK가 아는 기기 \(known)대) — 착용·안경다리 펴짐·블루투스 연결을 확인하세요.")
+                    return
+                }
             }
             let session = try wearables.createSession(deviceSelector: deviceSelector)
             self.session = session
