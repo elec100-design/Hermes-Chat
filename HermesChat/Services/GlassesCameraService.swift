@@ -37,6 +37,8 @@ final class GlassesCameraService {
     /// "Device unavailable" = 글라스 쪽 앱 인증 기록이 사라진 것(DAT #292). 앱은 여전히 `.registered`로
     /// 알고 있어 등록을 건너뛰므로, 다음 👓 탭에서 등록 해제 → 재등록을 강제한다. 화면 간 유지(static).
     private static var needsReregistration = false
+    /// 재등록은 앱 실행당 1회만 — 실기기에서 재등록해도 같은 오류로 무한 반복됐다(원인은 버전/글라스 쪽)
+    private static var didReregister = false
     private var framesReceived = 0
     private var camera: MWDATCamera.Camera?
     private let tokens = ListenerTokenBag()
@@ -108,6 +110,7 @@ final class GlassesCameraService {
             // 0) 인증 기록이 깨졌으면 등록 해제부터 (Meta AI 앱 전환 → 돌아와 다시 누르면 1)로 재등록)
             if Self.needsReregistration, wearables.registrationState == .registered {
                 Self.needsReregistration = false
+                Self.didReregister = true
                 onStatus?("재등록 1/2: Meta AI 앱에서 연결 해제 후 돌아와 👓를 다시 눌러주세요.")
                 try await wearables.startUnregistration()
                 return
@@ -145,7 +148,10 @@ final class GlassesCameraService {
             session.errorPublisher.listen { [weak self] error in
                 Task { @MainActor in
                     let message = error.localizedDescription
-                    if message.localizedCaseInsensitiveContains("unavailable") {
+                    if message.localizedCaseInsensitiveContains("unavailable"), Self.didReregister {
+                        self?.retriesLeft = 0
+                        self?.onStatus?("재등록 후에도 Device unavailable — 글라스 펌웨어 v128·Meta AI 앱 v290 이상인지, Meta AI 앱 > 앱 연결에서 글라스 쪽 앱 업데이트가 필요한지 확인하세요.")
+                    } else if message.localizedCaseInsensitiveContains("unavailable") {
                         Self.needsReregistration = true
                         self?.retriesLeft = 0   // 재시도해도 같은 인증 실패 — 재등록이 필요
                         self?.onStatus?("글라스 인증이 풀렸어요(Device unavailable). 👓를 다시 누르면 재등록을 시작합니다.")
