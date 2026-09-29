@@ -34,6 +34,9 @@ final class GlassesCameraService {
     /// 글라스가 세션을 끊으면(`Session ended by device`) 1회 자동 재연결 — DAT 이슈 #301:
     /// 기기가 시작 후 수 초 만에 세션을 끊는 구간이 있고, 즉시 재생성하면 대개 회복된다.
     private var retriesLeft = 0
+    /// "Device unavailable" = 글라스 쪽 앱 인증 기록이 사라진 것(DAT #292). 앱은 여전히 `.registered`로
+    /// 알고 있어 등록을 건너뛰므로, 다음 👓 탭에서 등록 해제 → 재등록을 강제한다. 화면 간 유지(static).
+    private static var needsReregistration = false
     private var framesReceived = 0
     private var camera: MWDATCamera.Camera?
     private let tokens = ListenerTokenBag()
@@ -84,6 +87,13 @@ final class GlassesCameraService {
         guard session == nil else { return }
         let wearables = Wearables.shared
         do {
+            // 0) 인증 기록이 깨졌으면 등록 해제부터 (Meta AI 앱 전환 → 돌아와 다시 누르면 1)로 재등록)
+            if Self.needsReregistration, wearables.registrationState == .registered {
+                Self.needsReregistration = false
+                onStatus?("재등록 1/2: Meta AI 앱에서 연결 해제 후 돌아와 👓를 다시 눌러주세요.")
+                try await wearables.startUnregistration()
+                return
+            }
             // 1) 등록 — Meta AI 앱으로 전환된다. 돌아온 뒤 다시 켜면 다음 단계로 진행.
             if wearables.registrationState != .registered {
                 onStatus?("Meta AI 앱에서 연결을 승인한 뒤 돌아와 다시 눌러주세요.")
@@ -112,7 +122,16 @@ final class GlassesCameraService {
                 Task { @MainActor in if state == .stopped { self?.sessionEndedByDevice() } }
             }.store(in: tokens)
             session.errorPublisher.listen { [weak self] error in
-                Task { @MainActor in self?.onStatus?("글라스 오류: \(error.localizedDescription)") }
+                Task { @MainActor in
+                    let message = error.localizedDescription
+                    if message.localizedCaseInsensitiveContains("unavailable") {
+                        Self.needsReregistration = true
+                        self?.retriesLeft = 0   // 재시도해도 같은 인증 실패 — 재등록이 필요
+                        self?.onStatus?("글라스 인증이 풀렸어요(Device unavailable). 👓를 다시 누르면 재등록을 시작합니다.")
+                    } else {
+                        self?.onStatus?("글라스 오류: \(message)")
+                    }
+                }
             }.store(in: tokens)
             let states = session.stateStream()
             try session.start()
