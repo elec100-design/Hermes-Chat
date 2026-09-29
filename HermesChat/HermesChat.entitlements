@@ -8,5 +8,11 @@
 	</array>
 	<key>aps-environment</key>
 	<string>development</string>
+	<!-- Meta DAT (T-172): 글라스 카메라 영상은 Wi-Fi 핫스팟 링크로 온다 — 공식 CameraAccess 샘플과 동일.
+	     개인(무료) 팀은 지원 안 됨 — 유료 팀 C4LUZYK8L5로 서명 -->
+	<key>com.apple.developer.networking.HotspotConfiguration</key>
+	<true/>
+	<key>com.apple.developer.networking.wifi-info</key>
+	<true/>
 </dict>
 </plist>
