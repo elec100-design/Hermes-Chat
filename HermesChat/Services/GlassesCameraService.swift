@@ -109,8 +109,10 @@ final class GlassesCameraService {
                 if state == .stopped { return }
             }
             onStatus?("글라스 연결됨 — 카메라 여는 중…")
-            // 4) 카메라 스트림 — 저해상도·최저 fps가 블루투스 압축이 적어 화질이 가장 좋다
-            let config = StreamConfiguration(videoCodec: .raw, resolution: .low, frameRate: 2)
+            // 4) 카메라 스트림 — 360×640@15fps. 실기기: 2fps는 streaming까지 가도 프레임이 0장이다가
+            // "Critical error"로 종료됐다(키프레임 간격 문제로 추정). 샘플·검증 사례는 15~24fps.
+            // Gemini엔 어차피 초당 1장만 보낸다(`sendInterval`).
+            let config = StreamConfiguration(videoCodec: .raw, resolution: .low, frameRate: 15)
             guard let camera = try session.addCamera(config: config) else {
                 onStatus?("글라스 카메라를 열지 못했어요.")
                 stop()
@@ -130,7 +132,7 @@ final class GlassesCameraService {
                 }
             }.store(in: tokens)
             camera.stream.errorPublisher.listen { [weak self] error in
-                Task { @MainActor in self?.onStatus?("글라스 카메라 오류: \(error.localizedDescription)") }
+                Task { @MainActor in self?.streamFailed(error.localizedDescription) }
             }.store(in: tokens)
             camera.stream.videoFramePublisher.listen { [weak self] frame in
                 // 프레임 콜백은 백그라운드 스레드 — 이미지 변환은 여기서, UI·전송은 메인에서
@@ -163,6 +165,22 @@ final class GlassesCameraService {
         guard retriesLeft > 0 else { return }
         retriesLeft -= 1
         onStatus?("글라스가 연결을 끊어 다시 연결하는 중…")
+        Task {
+            try? await Task.sleep(for: .seconds(1))
+            await run()
+        }
+    }
+
+    /// 스트림 오류는 복구되지 않는다("the stream should end") — 정리하고 1회 재시도.
+    /// 기존엔 오류 문구만 띄우고 👓가 켜진(초록) 상태로 남았다.
+    private func streamFailed(_ message: String) {
+        teardown()
+        guard retriesLeft > 0 else {
+            onStatus?("글라스 카메라 오류: \(message)")
+            return
+        }
+        retriesLeft -= 1
+        onStatus?("글라스 카메라 오류로 다시 연결하는 중… (\(message))")
         Task {
             try? await Task.sleep(for: .seconds(1))
             await run()
