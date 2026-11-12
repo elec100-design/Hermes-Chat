@@ -18,6 +18,8 @@ struct ChatView: View {
     @ObservedObject private var coordinator = VoiceEntryCoordinator.shared
     /// 외부 진입(Siri·위젯·URL·글라스)의 arm을 보이는 뷰에서만 소비하기 위한 가시성 추적 (T-131)
     @State private var isVisible = false
+    /// Live 전체화면(T-152) 표시 여부 — 핸즈프리 진입 시 자동으로 뜨고, 최소화하면 내려간다
+    @State private var showLive = false
     /// 글라스 사진 자동 전송 감시자 (Phase 16) — 세션 화면 수명 동안만 산다
     @StateObject private var photoWatcher = PhotoImportWatcher()
     /// 사진 권한 부족 안내 (제한 접근/거부) — nil이 아니면 알럿 표시
@@ -84,6 +86,22 @@ struct ChatView: View {
                         Label("chat.fork_session", systemImage: "arrow.triangle.branch")
                     }
                     .disabled(isForking || viewModel.isWorking)
+
+                    // 채팅 안에서 다른 프로필의 새 세션으로 바로 전환 (T-151). 데모 모드에선 숨김.
+                    let otherProfiles = appSettings.profiles.filter { $0.id != appSettings.selectedProfile.id }
+                    if !appSettings.isDemoMode, !otherProfiles.isEmpty {
+                        Section("chat.switch.title") {
+                            ForEach(otherProfiles) { profile in
+                                Button {
+                                    switchProfile(to: profile)
+                                } label: {
+                                    Label(profile.name, systemImage: "person.crop.circle")
+                                }
+                                // 진행 중 프로필이 바뀌면 폴백 폴링이 엉뚱한 게이트웨이로 간다
+                                .disabled(isForking || viewModel.isWorking)
+                            }
+                        }
+                    }
                 } label: {
                     if isForking {
                         ProgressView()
@@ -134,15 +152,26 @@ struct ChatView: View {
         .onChange(of: voice.state) { _, state in
             if state == .idle, isVisible { voice.armRemoteControl(viewModel: viewModel) }
         }
+        // 핸즈프리가 켜지면(waveform 버튼·Siri·위젯·글라스 모두) 이 화면이 보이고 내 세션일 때 Live 표시 (T-152)
+        .onChange(of: voice.handsFree) { _, on in
+            if on {
+                if isVisible, voice.boundSessionId == viewModel.sessionId { showLive = true }
+            } else {
+                showLive = false
+            }
+        }
+        .fullScreenCover(isPresented: $showLive, onDismiss: {
+            // cover가 내려갔는데 화면이 이미 사라진 상태(뒤로가기 등)면 그때 음성을 정리한다
+            if !isVisible { cleanupVoice() }
+        }) {
+            LiveVoiceView(viewModel: viewModel, title: liveTitle)
+        }
         .onDisappear {
+            // cover가 뜰 때도 presenter의 onDisappear가 불릴 수 있다 — 그때는 화면이 사라진 게
+            // 아니므로 isVisible도 유지하고 음성도 끊지 않는다 (T-152)
+            guard !showLive else { return }
             isVisible = false
-            // 내 세션에 묶인 음성만 정리 — 라우팅 재진입으로 다른 ChatView가 이미
-            // 시작한 음성은 끄지 않는다 (T-131)
-            if voice.state != .idle, voice.boundSessionId == viewModel.sessionId { voice.stop() }
-            // idle 리모트 무장 해제 (내 세션에 묶여 있을 때만) (T-134)
-            voice.disarmRemoteControl(for: viewModel.sessionId)
-            photoWatcher.stop()
-            viewModel.glassesCaptureActive = false
+            cleanupVoice()
         }
         .alert("chat.photo_access.title", isPresented: .init(
             get: { photoAccessAlert != nil },
@@ -176,6 +205,42 @@ struct ChatView: View {
                     viewModel.addAttachment(filename: url.lastPathComponent, data: data)
                 }
             }
+        }
+    }
+
+    /// 화면을 떠날 때의 음성·글라스 정리 (T-152: onDisappear에서 추출)
+    private func cleanupVoice() {
+        // 내 세션에 묶인 음성만 정리 — 라우팅 재진입으로 다른 ChatView가 이미
+        // 시작한 음성은 끄지 않는다 (T-131)
+        if voice.state != .idle, voice.boundSessionId == viewModel.sessionId { voice.stop() }
+        // idle 리모트 무장 해제 (내 세션에 묶여 있을 때만) (T-134)
+        voice.disarmRemoteControl(for: viewModel.sessionId)
+        photoWatcher.stop()
+        viewModel.glassesCaptureActive = false
+    }
+
+    /// Live 화면 제목 — 세션 제목이 있으면 그것, 없으면 선택된 프로필 이름
+    private var liveTitle: String {
+        let sessionTitle = appSettings.sessions.first(where: { $0.id == sessionId })?.title
+        if let sessionTitle, !sessionTitle.isEmpty { return sessionTitle }
+        return appSettings.selectedProfile.name
+    }
+
+    /// 다른 프로필의 새 세션으로 전환 — AppDefaults/HermesChatApp의 라우팅과 같은 방식으로
+    /// 세션 탭 경로를 새 세션 하나로 교체한다 (T-151). 실패 시 분기 실패 알럿 재사용.
+    private func switchProfile(to profile: HermesProfile) {
+        guard !isForking, !viewModel.isWorking else { return }
+        isForking = true
+        Task {
+            do {
+                appSettings.selectProfile(profile)
+                let session = try await appSettings.createSession()
+                coordinator.sessionsPath = NavigationPath()
+                coordinator.sessionsPath.append(session)
+            } catch {
+                forkError = error.localizedDescription
+            }
+            isForking = false
         }
     }
 
@@ -263,6 +328,11 @@ struct ChatView: View {
         .padding(.horizontal)
         .padding(.vertical, 8)
         .background(.thinMaterial)
+        // 최소화한 Live를 배너 탭으로 다시 연다 (핸즈프리 + 내 세션일 때만) (T-152)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if voice.handsFree, voice.boundSessionId == viewModel.sessionId { showLive = true }
+        }
     }
 
     private var voiceStatusIcon: String {
@@ -410,18 +480,22 @@ struct ChatView: View {
                     .focused($isInputFocused)
 
                 Button {
-                    Task { await viewModel.send() }
-                    isInputFocused = false
+                    if viewModel.isWorking {
+                        viewModel.cancelSend()  // 응답 중단 (T-150)
+                    } else {
+                        Task { await viewModel.send() }
+                        isInputFocused = false
+                    }
                 } label: {
-                    Image(systemName: viewModel.isWorking ? "ellipsis" : "paperplane.fill")
+                    Image(systemName: viewModel.isWorking ? "stop.circle.fill" : "paperplane.fill")
                         .font(.system(size: 18, weight: .semibold))
                 }
                 .disabled(
-                    (viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        && viewModel.attachments.isEmpty)
-                    || viewModel.isWorking
+                    !viewModel.isWorking
+                        && viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        && viewModel.attachments.isEmpty
                 )
-                .accessibilityLabel("Send")
+                .accessibilityLabel(viewModel.isWorking ? LocalizedStringKey("chat.stop") : LocalizedStringKey("Send"))
             }
         }
     }

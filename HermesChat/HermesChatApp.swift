@@ -2,10 +2,10 @@ import BackgroundTasks
 import SwiftUI
 
 enum AppTab: Hashable {
+    case bots
     case board
     case sessions
     case kanban
-    case dashboard
     case settings
 }
 
@@ -13,7 +13,10 @@ enum AppTab: Hashable {
 struct HermesChatApp: App {
     @StateObject private var appSettings = AppSettings()
     @StateObject private var coordinator = VoiceEntryCoordinator.shared
-    @State private var selectedTab: AppTab = .board
+    /// 봇 서버를 설정한 사용자는 봇 탭이 첫 화면, 미설정·데모 모드는 지금처럼 보드 (T-159)
+    @State private var selectedTab: AppTab =
+        (UserDefaults.standard.string(forKey: "botHost") ?? "").trimmingCharacters(in: .whitespaces).isEmpty
+        ? .board : .bots
     @Environment(\.scenePhase) private var scenePhase
 
     /// Info.plist BGTaskSchedulerPermittedIdentifiers와 일치해야 한다 (T-095)
@@ -22,6 +25,10 @@ struct HermesChatApp: App {
     var body: some Scene {
         WindowGroup {
             TabView(selection: $selectedTab) {
+                BotsView(appSettings: appSettings, selectedTab: $selectedTab)
+                    .tabItem { Label("tab.bots", systemImage: "bubble.left.and.text.bubble.right") }
+                    .tag(AppTab.bots)
+
                 ProfileBoardView(appSettings: appSettings, selectedTab: $selectedTab)
                     .tabItem { Label("tab.board", systemImage: "square.grid.2x2") }
                     .tag(AppTab.board)
@@ -33,10 +40,6 @@ struct HermesChatApp: App {
                 KanbanView(appSettings: appSettings)
                     .tabItem { Label("tab.kanban", systemImage: "rectangle.split.3x1") }
                     .tag(AppTab.kanban)
-
-                DashboardWebView(appSettings: appSettings)
-                    .tabItem { Label("tab.dashboard", systemImage: "gauge.with.dots.needle.50percent") }
-                    .tag(AppTab.dashboard)
 
                 NavigationStack {
                     SettingsView(appSettings: appSettings)

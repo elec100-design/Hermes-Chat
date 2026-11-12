@@ -44,6 +44,9 @@
 > 3. T-C01 Sign in with Apple 실기기 런타임 검증 (Supabase id_token 흐름)
 > 4. T-C03 StoreKit 샌드박스 테스트 (App Store Connect 제품 등록 후)
 
+> **2026-11-12 현황 (Phase 22~25)**:
+> - Phase 22~25 코드 작성 완료 — 맥 빌드/실기기 검증 대기, 신규 Swift 7개 pbxproj 등록됨, 다국어 키 41개 추가(ko/en/zh-Hans)
+
 ## 즉시 (사람 또는 맥미니 Hermes가 1회 수행)
 
 | ID | 작업 | 상태 |
@@ -299,6 +302,52 @@
 | ID | 작업 | 파일 | 상태 |
 |----|------|------|------|
 | T-148 | 대시보드 탭에 **두 손가락 핀치 줌**과 **데스크톱 모드 토글** 추가(사용자 요청 — 모바일 화면에서 작아서 안 눌리거나 레이아웃에 숨겨져 접근 안 되는 버튼 대응). 대시보드 페이지(:8000)는 맥미니가 서빙해 HTML 직접 수정 불가 → 앱에서 보조. **핀치 줌**: 페이지의 `<meta viewport>`가 보통 `user-scalable=no`라 막혀 있어, `WKUserScript`(.atDocumentEnd) + 네비 완료 시 `evaluateJavaScript`로 viewport를 `user-scalable=yes, maximum-scale=10`으로 덮어씀. **데스크톱 모드**: 우상단 툴바 토글(iphone/desktopcomputer 아이콘) → `customUserAgent`를 macOS Safari로 바꾸고 viewport `width=1024`로 전체 데스크톱 레이아웃을 불러옴(숨겨진 버튼 노출) + 핀치 줌으로 탐색. 상태는 `@AppStorage("dashboardDesktopMode")`로 영속화. 모드 전환 시 UA 교체 후 `reload()`, 기존 host/port 변경 재로드 로직 보존. 기존 파일만 수정 → **pbxproj 무수정**. **빌드 검증 필요(맥)** | `Views/DashboardWebView.swift` | NEEDS-BUILD |
+
+## Phase 22 — 채팅 코어 (스트리밍·중단·빠른 전환)
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-149 | SSE 이름 있는 이벤트(`assistant.delta` 등) 파싱 — 실시간 스트리밍 복구. OpenAI 청크 경로는 호환 유지 | `Services/HermesAPIClient.swift` | NEEDS-BUILD |
+| T-150 | 응답 중단 버튼 — `send()` 래퍼 + `cancelSend()`, 취소 시 폴링·알림·에러 버블 없음, 부분 응답 보존 | `ViewModels/ChatViewModel.swift`, `Views/ChatView.swift` | NEEDS-BUILD |
+| T-151 | 채팅 내 프로필 빠른 전환(툴바 메뉴 → 다른 프로필의 새 대화) | `Views/ChatView.swift` | NEEDS-BUILD |
+
+## Phase 23 — Live(핸즈프리 음성) 전체화면
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-152 | `LiveVoiceView` 신규(상태 원·실시간 자막·응답 자막·바로 보내기/끼어들기/응답 중단) + 컨트롤러 `primaryAction()`·`interrupt()` 공개 | `Views/LiveVoiceView.swift`(신규), `Services/VoiceConversationController.swift` | NEEDS-BUILD |
+| T-153 | 핸즈프리 on/off 에 따른 cover 자동 표시, 최소화 후 배너로 복귀, cover 표시 중 음성 정리 가드(`cleanupVoice()`) | `Views/ChatView.swift` | NEEDS-BUILD |
+
+## Phase 24 — Hermes Bot 연동 (Hermes-bot 서버 :8900 을 백엔드로)
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-154 | BotModels + BotClient(REST + job SSE) | `Models/BotModels.swift`, `Services/BotClient.swift`(신규) | NEEDS-BUILD |
+| T-155 | `botHost`/`botToken`(Keychain) + 설정 "Hermes Bot" 섹션·연결 테스트 | `Services/AppDefaults.swift`, `Views/SettingsView.swift` | NEEDS-BUILD |
+| T-156 | BotsView — 봇 목록·채널 목록·승인 배지·새 채널, 미설정 시 안내 | `Views/BotsView.swift`(신규) | NEEDS-BUILD |
+| T-157 | BotChatView + BotChatViewModel — DM/채널 공용, 잡 스트림 구독·재구독, @멘션 칩 | `Views/BotChatView.swift`, `ViewModels/BotChatViewModel.swift`(신규) | NEEDS-BUILD |
+| T-158 | 승인 목록(승인/거절 + 메모) | `Views/BotApprovalsView.swift`(신규) | NEEDS-BUILD |
+| T-159 | 탭 재구성: 봇 / 보드 / 세션 / 칸반 / 설정 (대시보드는 설정 > "대시보드 열기"), 봇 서버 미설정 시 첫 탭은 보드 | `HermesChatApp.swift`, `Views/SettingsView.swift`, `Views/DashboardWebView.swift` | NEEDS-BUILD |
+| T-160 | 봇 채팅 첨부 업로드(multipart `/api/channels/{id}/attachments`)·봇 채팅 음성 | — | TODO |
+
+**Phase 22~24 실기기 검증 체크리스트** (맥 빌드 후 실기기):
+1. 실시간 토큰 스트리밍: 전송 후 2초 폴링 없이 토큰 단위로 답이 흐르는지 (T-149)
+2. 응답 중단 후 부분 응답이 보존되고 재전송 가능한지, 중단 시 에러 버블·알림이 없는지 (T-150)
+3. 채팅 툴바 프로필 빠른 전환: 다른 프로필의 새 대화로 바로 이동하는지 (T-151)
+4. waveform 버튼·Siri 진입 시 Live cover 자동 표시, 최소화 후 배너 복귀, 백그라운드에서 음성 유지 (T-152, T-153)
+5. 글라스 탭 동작 불변: 싱글=시작/전송/바지-인, 더블탭 기존 동작 유지 (T-134 회귀)
+6. 봇 탭: DM 스트리밍, 채널 @멘션·연쇄 응답, 승인/거절 (T-154~158)
+7. 설정 > Hermes Bot 연결 테스트 (T-155)
+8. 설정 > 대시보드 열기 (T-159)
+
+## Phase 25 — Android MVP (`android/`, Kotlin + Jetpack Compose)
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-161 | 스캐폴드 + 데이터/네트워크 계층 + 공용 UI + JVM 단위 테스트 | `android/` | NEEDS-BUILD |
+| T-162 | 온보딩·프로필 보드·세션 목록·설정 화면 | `android/app/src/main/java/com/hermes/chatandroid/ui/{onboarding,profiles,sessions,settings}` | NEEDS-BUILD |
+| T-163 | 스트리밍 채팅(think 은닉·첨부 업로드·중단·빈 스트림 폴링 회수) | `…/ui/chat` | NEEDS-BUILD |
+| T-164 | 봇 탭(목록·DM/채널·승인·새 채널) | `…/ui/bots` | NEEDS-BUILD |
 
 ## Phase A — 앱스토어 상품화 Phase 0: 컴플라이언스 + 다국어 기반
 

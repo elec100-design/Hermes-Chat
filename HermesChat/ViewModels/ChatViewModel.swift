@@ -150,7 +150,28 @@ final class ChatViewModel: ObservableObject {
         lastGlassesPhotoName = nil
     }
 
+    /// 진행 중인 전송 Task — cancelSend()의 대상 (T-150)
+    private var sendTask: Task<Void, Never>?
+
+    /// 전송 래퍼 — 음성 컨트롤러 등 모든 호출 경로가 이 Task를 거치므로 전부 취소 대상이 된다 (T-150).
+    /// 이미 진행 중이면 기존 가드와 같이 음성 루프에 완료만 알리고 무시한다.
     func send() async {
+        if sendTask != nil {
+            voiceStreamHandler?("", true)
+            return
+        }
+        let task = Task { await performSend() }
+        sendTask = task
+        await task.value
+        sendTask = nil
+    }
+
+    /// 응답 중단 — 수신만 끊는다(게이트웨이 run 취소 API는 없음). 부분 응답은 보존 (T-150)
+    func cancelSend() {
+        sendTask?.cancel()
+    }
+
+    private func performSend() async {
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty || !attachments.isEmpty, !isWorking else {
             voiceStreamHandler?("", true)
@@ -170,6 +191,10 @@ final class ChatViewModel: ObservableObject {
             do {
                 outgoing = try await uploadAttachmentsAndPrepend(to: text)
             } catch {
+                if Task.isCancelled {
+                    voiceStreamHandler?("", true)
+                    return
+                }
                 messages.append(ChatMessage(
                     role: .assistant,
                     content: "[에러] 첨부 업로드 실패: \(error.localizedDescription)",
@@ -223,7 +248,8 @@ final class ChatViewModel: ObservableObject {
             let streamedVisible = MarkdownLite.strippingThink(assistant.content)
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             let hasTool = !(messages[assistantIndex].toolCalls?.isEmpty ?? true)
-            if streamedVisible.isEmpty && !hasTool {
+            // 취소됐으면 폴링하지 않는다 — 중단 직후 늦게 도착한 답이 되살아나면 안 됨 (T-150)
+            if streamedVisible.isEmpty && !hasTool && !Task.isCancelled {
                 // 내용이 아예 안 왔으면 게이트웨이가 생성 중일 수 있어 길게(300초), 내용은 왔지만
                 // think 제거 후 비면 세션 기록도 think-only일 확률이 높아 짧게(6초)만 시도.
                 let deadline: TimeInterval = assistant.content.isEmpty ? 300 : 6
@@ -239,12 +265,23 @@ final class ChatViewModel: ObservableObject {
                 messages.remove(at: assistantIndex)
             }
 
-            notifyCompletionIfBackground(startedAt: startedAt, responseText: assistant.content)
+            if !Task.isCancelled {
+                notifyCompletionIfBackground(startedAt: startedAt, responseText: assistant.content)
+            }
 
-            if isFirstMessage {
+            if isFirstMessage && !Task.isCancelled {
                 await updateAutoTitle(from: text)
             }
         } catch {
+            if Task.isCancelled {
+                // 사용자 중단 — 에러 버블 없이 부분 응답 보존, 비어 있는 버블만 제거 (T-150)
+                if let last = messages.last, last.role == .assistant,
+                   last.content.isEmpty, last.toolCalls?.isEmpty ?? true {
+                    messages.removeLast()
+                }
+                voiceStreamHandler?("", true)
+                return
+            }
             messages.append(ChatMessage(
                 role: .assistant,
                 content: "[에러] \(error.localizedDescription)",
@@ -346,6 +383,7 @@ final class ChatViewModel: ObservableObject {
         // 스트리밍처럼 보이게 단어 단위로 삽입
         let words = response.split(separator: " ", omittingEmptySubsequences: false).map(String.init)
         for word in words {
+            if Task.isCancelled { break }  // 응답 중단 (T-150)
             try? await Task.sleep(for: .milliseconds(30))
             assistant.content += (assistant.content.isEmpty ? "" : " ") + word
             messages[assistantIndex] = assistant

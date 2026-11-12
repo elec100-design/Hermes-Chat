@@ -9,6 +9,10 @@ struct SettingsView: View {
     @State private var isTesting = false
     @State private var showApiKeyInput = false
     @State private var showBridgeTokenInput = false
+    @State private var showBotTokenInput = false
+    @State private var botTestResult: ConnectionTestResult? = nil
+    @State private var isTestingBot = false
+    @State private var showDashboard = false
     @State private var showSubscriptionSheet = false
     @State private var newProfileName = ""
     @State private var newProfilePort = ""
@@ -285,6 +289,51 @@ struct SettingsView: View {
                 Text("settings.bridge.desc")
             }
 
+            Section {
+                TextField("settings.bot.url.placeholder", text: $appSettings.botHost)
+                    .textContentType(.URL)
+                    .keyboardType(.URL)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                HStack {
+                    if showBotTokenInput {
+                        TextField("Bot Token", text: $appSettings.botToken)
+                    } else {
+                        SecureField("Bot Token", text: $appSettings.botToken)
+                    }
+                    Button {
+                        showBotTokenInput.toggle()
+                    } label: {
+                        Image(systemName: showBotTokenInput ? "eye" : "eye.slash")
+                    }
+                    .buttonStyle(.plain)
+                }
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                Button("settings.bot.test") {
+                    testBotConnection()
+                }
+                .disabled(isTestingBot || appSettings.botClient == nil)
+
+                if let result = botTestResult {
+                    HStack(spacing: 6) {
+                        switch result {
+                        case .success:
+                            Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                            Text("settings.bot.test.success").foregroundStyle(.green)
+                        case .failure(let msg):
+                            Image(systemName: "xmark.circle.fill").foregroundStyle(.red)
+                            Text(verbatim: msg).foregroundStyle(.red)
+                        }
+                    }
+                    .font(.footnote)
+                }
+            } header: {
+                Text("settings.bot")
+            } footer: {
+                Text("settings.bot.desc")
+            }
+
             Section("settings.model.default") {
                 TextField("Model", text: $appSettings.selectedModel)
             }
@@ -299,6 +348,12 @@ struct SettingsView: View {
                     FileBrowserView(appSettings: appSettings)
                 } label: {
                     Label("settings.filebrowser", systemImage: "folder")
+                }
+                Button {
+                    showDashboard = true
+                } label: {
+                    Label("settings.dashboard.open", systemImage: "gauge.with.dots.needle.50percent")
+                        .foregroundStyle(.primary)
                 }
             } footer: {
                 Text(verbatim: String(format: NSLocalizedString("settings.skills.footer", comment: ""), appSettings.selectedProfile.name))
@@ -330,6 +385,10 @@ struct SettingsView: View {
         .navigationDestination(item: $detailProfile) { profile in
             ProfileDetailView(appSettings: appSettings, profileID: profile.id)
         }
+        // 대시보드는 탭에서 빠지고 설정 안에서 전체 화면으로 연다 (T-159)
+        .fullScreenCover(isPresented: $showDashboard) {
+            DashboardWebView(appSettings: appSettings)
+        }
         .alert("settings.profile.rename.title", isPresented: $showEditAlert, presenting: editingProfile) { profile in
             TextField("settings.profile.rename.placeholder", text: $editingProfileName)
             Button("common.cancel", role: .cancel) { }
@@ -340,6 +399,25 @@ struct SettingsView: View {
             }
         } message: { _ in
             Text("settings.profile.rename.message")
+        }
+    }
+
+    /// 봇 서버 연결 테스트 — /health 로 서버 확인 후 /api/bots 로 토큰·응답 확인
+    private func testBotConnection() {
+        guard let client = appSettings.botClient else { return }
+        isTestingBot = true
+        botTestResult = nil
+        Task {
+            do {
+                try await client.health()
+                _ = try await client.fetchBots()
+                botTestResult = .success
+            } catch BotError.unauthorized {
+                botTestResult = .failure(NSLocalizedString("settings.bot.test.unauthorized", comment: ""))
+            } catch {
+                botTestResult = .failure(error.localizedDescription)
+            }
+            isTestingBot = false
         }
     }
 
