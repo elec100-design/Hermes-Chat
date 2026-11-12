@@ -300,6 +300,18 @@ final class HermesAPIClient {
     // MARK: Streaming Chat
 
     /// 실시간 SSE 스트리밍: `URLSession.bytes`로 라인 단위 수신 — 토큰이 도착하는 대로 UI에 반영된다.
+    ///
+    /// 현재 Hermes 게이트웨이는 네이티브 이벤트를 흘린다 —
+    /// `assistant.delta`(`{delta}`), `tool.started/completed`, `assistant.completed`(`{content}`),
+    /// `run.completed`, `done`. 예전 OpenAI 호환 배포는 무명 `data:` 라인에 `choices` 청크를 흘려
+    /// 왔기 때문에 두 형식을 모두 파싱한다. 파싱 자체는 `SSEParser`로 분리해 테스트 가능하다 (T-149).
+    ///
+    /// **에러 분류**(T-149):
+    /// - `HermesAPIError`(401/serverError/파서 에러)는 원본 그대로 상위로 표면화 — 회수 폴링 대상이 아님
+    /// - `URLError.cancelled`(사용자 중지, 상위 Task 취소)는 조용히 finish
+    /// - 그 외 URLSession 에러는 `HermesAPIError.network`로 감싸 상위(`ChatViewModel`)가
+    ///   좁은 화이트리스트(`networkConnectionLost`/`timedOut`)에 한해 폴링 회수를 시도한다
+    /// - 바이트 EOF가 `run.completed` 없이 오면 조기 절단으로 판정해 `networkConnectionLost`로 승격
     func streamChat(sessionId: String, message: String) -> AsyncThrowingStream<StreamUpdate, Error> {
         let encoded = Self.encodeSegment(sessionId)
         let streamURL = URL(string: baseURL.absoluteString.trimmingCharacters(in: .init(charactersIn: "/")) + "/api/sessions/\(encoded)/chat/stream") ?? baseURL
@@ -316,56 +328,50 @@ final class HermesAPIClient {
                 do {
                     let (bytes, response) = try await URLSession.shared.bytes(for: urlRequest)
                     guard let http = response as? HTTPURLResponse else {
-                        continuation.finish(throwing: HermesAPIError.serverError("응답 없음"))
-                        return
+                        throw HermesAPIError.serverError("응답 없음")
                     }
                     guard http.statusCode == 200 else {
                         if http.statusCode == 401 {
-                            continuation.finish(throwing: HermesAPIError.unauthorized)
+                            throw HermesAPIError.unauthorized
                         } else {
-                            continuation.finish(throwing: HermesAPIError.serverError("HTTP \(http.statusCode)"))
+                            throw HermesAPIError.serverError("HTTP \(http.statusCode)")
                         }
-                        return
                     }
 
-                    // SSE 이벤트명 추적 — `event: error`의 data는 StreamChunk가 아니라
-                    // {"message": ...}라서 조용히 버려지던 것을 에러로 표면화한다 (T-122).
-                    // 게이트웨이 코드 불일치(import 오류) 같은 서버 장애가 "무반응"으로 보이던 원인.
-                    var currentEvent = ""
+                    var parser = SSEParser()
                     for try await line in bytes.lines {
-                        if line.hasPrefix("event:") {
-                            currentEvent = line.dropFirst(6).trimmingCharacters(in: .whitespaces)
+                        switch parser.feed(line) {
+                        case .none:
                             continue
-                        }
-                        guard line.hasPrefix("data:") else { continue }
-                        let payload = line.dropFirst(5).trimmingCharacters(in: .whitespaces)
-                        let eventName = currentEvent
-                        currentEvent = ""  // SSE 규격: event는 바로 다음 data에만 적용
-                        if payload == "[DONE]" {
+                        case .emit(let updates):
+                            for update in updates {
+                                continuation.yield(update)
+                            }
+                        case .finish:
                             continuation.finish()
                             return
-                        }
-                        if eventName == "error" {
-                            let message = (try? JSONDecoder().decode(
-                                StreamErrorPayload.self, from: Data(payload.utf8)
-                            ))?.message ?? payload
-                            continuation.finish(throwing: HermesAPIError.serverError(message))
-                            return
-                        }
-                        guard let chunkData = payload.data(using: .utf8),
-                              let chunk = try? JSONDecoder().decode(StreamChunk.self, from: chunkData),
-                              let choice = chunk.choices?.first else { continue }
-                        if let content = choice.delta.content, !content.isEmpty {
-                            continuation.yield(.content(content))
-                        }
-                        for tool in choice.delta.toolCalls ?? [] {
-                            continuation.yield(.toolCallUpdate(
-                                id: tool.id ?? UUID().uuidString,
-                                name: tool.name ?? "",
-                                argumentsDelta: tool.argumentsChunk ?? ""
-                            ))
+                        case .fail(let err):
+                            // catch 블록에서 HermesAPIError 채널로 원형 보존한다
+                            throw err
                         }
                     }
+                    // 바이트 EOF. `run.completed`를 봤으면 프로토콜상 정상 종료; 못 봤으면
+                    // 조기 절단이다 — `networkConnectionLost`로 승격해 상위가 회수 폴링을
+                    // 시도하게 한다 (부분 본문/도구 이벤트가 있었더라도 마찬가지).
+                    if parser.sawRunCompleted {
+                        continuation.finish()
+                    } else {
+                        throw URLError(.networkConnectionLost)
+                    }
+                } catch is CancellationError {
+                    // 상위 Task 취소는 에러로 승격하지 않는다 — 사용자 중지가 "네트워크 오류"로
+                    // 보이지 않도록 소비자(send)가 정상 종료로 인식하게 한다 (T-149).
+                    continuation.finish()
+                } catch let apiErr as HermesAPIError {
+                    // 401/서버 오류/`event: error`/파서 에러 — 원본 타입 보존.
+                    // 이 경로는 상위 `ChatViewModel`이 회수 대상에서 제외해 즉시 표면화한다.
+                    continuation.finish(throwing: apiErr)
+                } catch let urlError as URLError where urlError.code == .cancelled {
                     continuation.finish()
                 } catch {
                     continuation.finish(throwing: HermesAPIError.network(error))
