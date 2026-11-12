@@ -344,10 +344,10 @@
 
 | ID | 작업 | 파일 | 상태 |
 |----|------|------|------|
-| T-161 | 스캐폴드 + 데이터/네트워크 계층 + 공용 UI + JVM 단위 테스트 | `android/` | NEEDS-BUILD |
-| T-162 | 온보딩·프로필 보드·세션 목록·설정 화면 | `android/app/src/main/java/com/hermes/chatandroid/ui/{onboarding,profiles,sessions,settings}` | NEEDS-BUILD |
-| T-163 | 스트리밍 채팅(think 은닉·첨부 업로드·중단·빈 스트림 폴링 회수) | `…/ui/chat` | NEEDS-BUILD |
-| T-164 | 봇 탭(목록·DM/채널·승인·새 채널) | `…/ui/bots` | NEEDS-BUILD |
+| T-161 | 스캐폴드 + 데이터/네트워크 계층 + 공용 UI + JVM 단위 테스트 | `android/` | NEEDS-BUILD (11-13 로컬 빌드·단위테스트 통과 d374c43, 실기기 미검증) |
+| T-162 | 온보딩·프로필 보드·세션 목록·설정 화면 | `android/app/src/main/java/com/hermes/chatandroid/ui/{onboarding,profiles,sessions,settings}` | NEEDS-BUILD (11-13 로컬 빌드·단위테스트 통과 d374c43, 실기기 미검증) |
+| T-163 | 스트리밍 채팅(think 은닉·첨부 업로드·중단·빈 스트림 폴링 회수) | `…/ui/chat` | NEEDS-BUILD (11-13 로컬 빌드·단위테스트 통과 d374c43, 실기기 미검증) |
+| T-164 | 봇 탭(목록·DM/채널·승인·새 채널) | `…/ui/bots` | NEEDS-BUILD (11-13 로컬 빌드·단위테스트 통과 d374c43, 실기기 미검증) |
 
 ## Phase A — 앱스토어 상품화 Phase 0: 컴플라이언스 + 다국어 기반
 
@@ -413,3 +413,4 @@
 | 06-20 | claude/hopeful-edison-1p5q91 @ 6ce0852 | DOCKER BUILD SUCCEEDED | 사용자 확인 — T-B03 DONE (cloud_gateway.py Dockerfile + 컨테이너 프록시) |
 | 06-20 | claude/hopeful-edison-1p5q91 @ 767df1e | DOCKER BUILD SUCCEEDED | 사용자 확인 — T-B05 DONE (플랜 제한 + Bridge 프록시 + 메시지 카운팅) |
 | 06-21 | claude/sleepy-bardeen-x86kpk @ 98ad910 | BUILD SUCCEEDED + 실기기 설치 완료 | 사용자 Xcode 빌드 + iPhone17,4(iOS 26.5) 설치 확인 — T-C01~C05 Phase C 전체 (유료 Apple Developer C4LUZYK8L5, 빌드 오류 5개 수정 포함). 런타임 검증은 Sign in with Apple(T-C01)·StoreKit(T-C03) 대기. |
+| 11-13 | ccr-29d493c3-z8tex2 @ d374c43 | ANDROID BUILD SUCCESSFUL | Claude Code 맥미니 로컬 검증 — `cd android && ./gradlew :app:testDebugUnitTest :app:assembleDebug` 통과(JDK 17, Gradle 8.11.1, AGP 8.7.3, compileSdk 35). JVM 단위 테스트 29개(SseParser 7·ThinkFilter 7·Parsers 10·HermesApiStream 4·BotSubscription 1) 전부 통과, `app-debug.apk` 생성. T-161~T-164 실기기/에뮬레이터 미검증 |
