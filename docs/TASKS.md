@@ -348,6 +348,10 @@
 | T-162 | 온보딩·프로필 보드·세션 목록·설정 화면 | `android/app/src/main/java/com/hermes/chatandroid/ui/{onboarding,profiles,sessions,settings}` | NEEDS-BUILD (11-13 로컬 빌드·단위테스트 통과 d374c43, 실기기 미검증) |
 | T-163 | 스트리밍 채팅(think 은닉·첨부 업로드·중단·빈 스트림 폴링 회수) | `…/ui/chat` | NEEDS-BUILD (11-13 로컬 빌드·단위테스트 통과 d374c43, 실기기 미검증) |
 | T-164 | 봇 탭(목록·DM/채널·승인·새 채널) | `…/ui/bots` | NEEDS-BUILD (11-13 로컬 빌드·단위테스트 통과 d374c43, 실기기 미검증) |
+| T-165 | 데모 모드(서버 없이 둘러보기 — Play 심사용)·개인정보 처리방침 링크·버전 표시 | `…/data/DemoData.kt`, `…/data/DemoApis.kt`, `…/ui/{onboarding,settings}` | NEEDS-BUILD (11-13 로컬 빌드·단위테스트 통과 b579721, 실기기 미검증) |
+| T-166 | 릴리스 빌드: targetSdk/compileSdk 36·AGP 8.9.3·서명(HERMES_KEYSTORE_* 또는 keystore.properties, 커밋 금지)·R8·AAB·edge-to-edge | `android/app/build.gradle.kts`, `android/app/proguard-rules.pro`, `android/README.md` | NEEDS-BUILD (11-13 bundleRelease 통과 b579721, 실기기 미검증) |
+
+**Play Store 출시 남은 일 (사용자)**: Play 개발자 계정($25·신원 확인) → 업로드 키 생성(README "릴리스 빌드") → Play App Signing 등록 → 비공개 테스트(신규 개인 계정은 테스터 12명·14일) → 데이터 보안·콘텐츠 등급·앱 액세스(데모 모드 안내)·개인정보 처리방침 URL 입력 → 그래픽(512 아이콘·1024×500·스크린샷) → 프로덕션 제출. 패키지명 `com.hermes.chatandroid` 은 등록 후 변경 불가.
 
 ## Phase A — 앱스토어 상품화 Phase 0: 컴플라이언스 + 다국어 기반
 
@@ -414,3 +418,4 @@
 | 06-20 | claude/hopeful-edison-1p5q91 @ 767df1e | DOCKER BUILD SUCCEEDED | 사용자 확인 — T-B05 DONE (플랜 제한 + Bridge 프록시 + 메시지 카운팅) |
 | 06-21 | claude/sleepy-bardeen-x86kpk @ 98ad910 | BUILD SUCCEEDED + 실기기 설치 완료 | 사용자 Xcode 빌드 + iPhone17,4(iOS 26.5) 설치 확인 — T-C01~C05 Phase C 전체 (유료 Apple Developer C4LUZYK8L5, 빌드 오류 5개 수정 포함). 런타임 검증은 Sign in with Apple(T-C01)·StoreKit(T-C03) 대기. |
 | 11-13 | ccr-29d493c3-z8tex2 @ d374c43 | ANDROID BUILD SUCCESSFUL | Claude Code 맥미니 로컬 검증 — `cd android && ./gradlew :app:testDebugUnitTest :app:assembleDebug` 통과(JDK 17, Gradle 8.11.1, AGP 8.7.3, compileSdk 35). JVM 단위 테스트 29개(SseParser 7·ThinkFilter 7·Parsers 10·HermesApiStream 4·BotSubscription 1) 전부 통과, `app-debug.apk` 생성. T-161~T-164 실기기/에뮬레이터 미검증 |
+| 11-13 | ccr-29d493c3-z8tex2 @ b579721 | ANDROID BUILD SUCCESSFUL | Claude Code 맥미니 로컬 — `./gradlew clean :app:testDebugUnitTest :app:assembleDebug :app:bundleRelease` 통과(AGP 8.9.3, compileSdk/targetSdk 36). 단위 테스트 34개 통과(DemoMode 5 추가), `app-release.aab` 생성(미서명). 임시 키스토어로 assembleRelease 서명 확인 후 삭제. 실기기 미검증 |
