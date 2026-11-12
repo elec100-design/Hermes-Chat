@@ -54,6 +54,15 @@
 		PRIV001A00000000000PRIV01 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = PRIV001A00000000000PRIV02 /* PrivacyInfo.xcprivacy */; };
 		SUBS001A00000000000SUBS01 /* SubscriptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = SUBS001A00000000000SUBS02 /* SubscriptionService.swift */; };
 		DEMO001A00000000000DEMO01 /* DemoData.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEMO001A00000000000DEMO02 /* DemoData.swift */; };
+		CC15F345F2A22BB6FCB56EC7 /* MockTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39AE8BE9D7048F344163E3B2 /* MockTransport.swift */; };
+		08AA3FB410DAC72089BB18E2 /* ProfileStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 148BD9980419ABBDD436DF24 /* ProfileStoreTests.swift */; };
+		1BD904A0AAAE0845E10CF0AF /* SessionStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC21FAAF56A59414962C721D /* SessionStoreTests.swift */; };
+		2196AE1EE8225054D5E0F238 /* CloudAuthStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29A58B38A86B94E439A8057D /* CloudAuthStoreTests.swift */; };
+		3FBE3182A2F0742D6260DEAD /* DiscussionOrchestratorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A448504F985DDDAF81802C4 /* DiscussionOrchestratorTests.swift */; };
+		29BD3A92B23A0BE45880E01D /* ProfileStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1EB3DE5D6A6E1F79456E57 /* ProfileStore.swift */; };
+		DEDCBDD640E7A9AFF9921FCC /* SessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25B5BD4CD61C1897AB146A6D /* SessionStore.swift */; };
+		2D5441BD3E9F31A1270B0B73 /* CloudAuthStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37FA117DD61AB43F4357EBE5 /* CloudAuthStore.swift */; };
+		5350E6B2DDE4B62C97694085 /* DiscussionOrchestrator.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF3A5F9BC652CD2BC0F376F9 /* DiscussionOrchestrator.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -111,9 +120,51 @@
 		PRIV001A00000000000PRIV02 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		SUBS001A00000000000SUBS02 /* SubscriptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionService.swift; sourceTree = "<group>"; };
 		DEMO001A00000000000DEMO02 /* DemoData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoData.swift; sourceTree = "<group>"; };
+		148BD9980419ABBDD436DF24 /* ProfileStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileStoreTests.swift; sourceTree = "<group>"; };
+		29A58B38A86B94E439A8057D /* CloudAuthStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudAuthStoreTests.swift; sourceTree = "<group>"; };
+		39AE8BE9D7048F344163E3B2 /* MockTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockTransport.swift; sourceTree = "<group>"; };
+		63517FCAA22F79A5EE39FBE7 /* HermesChatTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HermesChatTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		8A448504F985DDDAF81802C4 /* DiscussionOrchestratorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscussionOrchestratorTests.swift; sourceTree = "<group>"; };
+		AC21FAAF56A59414962C721D /* SessionStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStoreTests.swift; sourceTree = "<group>"; };
+		AA1EB3DE5D6A6E1F79456E57 /* ProfileStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileStore.swift; sourceTree = "<group>"; };
+		25B5BD4CD61C1897AB146A6D /* SessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStore.swift; sourceTree = "<group>"; };
+		37FA117DD61AB43F4357EBE5 /* CloudAuthStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudAuthStore.swift; sourceTree = "<group>"; };
+		EF3A5F9BC652CD2BC0F376F9 /* DiscussionOrchestrator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscussionOrchestrator.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXContainerItemProxy section */
+		32D61D3199F628FF3A18ABCD /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = BD8AF0C259AF7A97636A68F7 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = DB97AA5A8FBBD54B6F05AC0F;
+			remoteInfo = HermesChat;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		09B82E3CB080BC6CAED347D5 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
 /* Begin PBXGroup section */
+		0FCD7B3F2BE3EB2A95CDB609 /* HermesChatTests */ = {
+			isa = PBXGroup;
+			children = (
+				39AE8BE9D7048F344163E3B2 /* MockTransport.swift */,
+				148BD9980419ABBDD436DF24 /* ProfileStoreTests.swift */,
+				AC21FAAF56A59414962C721D /* SessionStoreTests.swift */,
+				29A58B38A86B94E439A8057D /* CloudAuthStoreTests.swift */,
+				8A448504F985DDDAF81802C4 /* DiscussionOrchestratorTests.swift */,
+			);
+			path = HermesChatTests;
+			sourceTree = "<group>";
+		};
 		2DBCD9AC0F176525E1C50AB6 /* Components */ = {
 			isa = PBXGroup;
 			children = (
@@ -145,6 +196,7 @@
 			isa = PBXGroup;
 			children = (
 				23245B6E8F2A9A7A394852E9 /* HermesChat.app */,
+				63517FCAA22F79A5EE39FBE7 /* HermesChatTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -153,6 +205,9 @@
 			isa = PBXGroup;
 			children = (
 				8E3D771DF194DC8DF1975A78 /* AppDefaults.swift */,
+				AA1EB3DE5D6A6E1F79456E57 /* ProfileStore.swift */,
+				25B5BD4CD61C1897AB146A6D /* SessionStore.swift */,
+				37FA117DD61AB43F4357EBE5 /* CloudAuthStore.swift */,
 				0B1D6E02C3A94F20B81DDE02 /* BridgeClient.swift */,
 				7E785976044540D5051D9A8C /* HermesAPIClient.swift */,
 				2B7DCE02C9A55B86BE7DDD02 /* KeychainHelper.swift */,
@@ -215,6 +270,7 @@
 			children = (
 				DEC3DC1D7345FE8A30F5F63E /* ChatViewModel.swift */,
 				DD17000400000000000DEE04 /* DiscussionViewModel.swift */,
+				EF3A5F9BC652CD2BC0F376F9 /* DiscussionOrchestrator.swift */,
 			);
 			path = ViewModels;
 			sourceTree = "<group>";
@@ -223,6 +279,7 @@
 			isa = PBXGroup;
 			children = (
 				36A99B5720D58F1B3DB28FFB /* HermesChat */,
+				0FCD7B3F2BE3EB2A95CDB609 /* HermesChatTests */,
 				44F68EE33E19F15B8A6EF68B /* Products */,
 			);
 			sourceTree = "<group>";
@@ -263,6 +320,25 @@
 			productReference = 23245B6E8F2A9A7A394852E9 /* HermesChat.app */;
 			productType = "com.apple.product-type.application";
 		};
+		1756A38FF52CB13DA2B86936 /* HermesChatTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8E9922B9FE1783D9C612B4C3 /* Build configuration list for PBXNativeTarget "HermesChatTests" */;
+			buildPhases = (
+				6F28C8C78C196B64BA4B82B0 /* Sources */,
+				09B82E3CB080BC6CAED347D5 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				34479F92943796A8F7F84B9E /* PBXTargetDependency */,
+			);
+			name = HermesChatTests;
+			packageProductDependencies = (
+			);
+			productName = HermesChatTests;
+			productReference = 63517FCAA22F79A5EE39FBE7 /* HermesChatTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -274,6 +350,9 @@
 				TargetAttributes = {
 					DB97AA5A8FBBD54B6F05AC0F = {
 						ProvisioningStyle = Automatic;
+					};
+					1756A38FF52CB13DA2B86936 = {
+						TestTargetID = DB97AA5A8FBBD54B6F05AC0F;
 					};
 				};
 			};
@@ -294,6 +373,7 @@
 			projectRoot = "";
 			targets = (
 				DB97AA5A8FBBD54B6F05AC0F /* HermesChat */,
+				1756A38FF52CB13DA2B86936 /* HermesChatTests */,
 			);
 		};
 /* End PBXProject section */
@@ -318,6 +398,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				5A89F158C9FB5779ECF4BB54 /* AppDefaults.swift in Sources */,
+				29BD3A92B23A0BE45880E01D /* ProfileStore.swift in Sources */,
+				DEDCBDD640E7A9AFF9921FCC /* SessionStore.swift in Sources */,
+				2D5441BD3E9F31A1270B0B73 /* CloudAuthStore.swift in Sources */,
 				0B1D6E01C3A94F20B81DDE01 /* BridgeClient.swift in Sources */,
 				000000000000000000009000 /* ProfileDetailView.swift in Sources */,
 				C0F0000000000000000000A1 /* CronModels.swift in Sources */,
@@ -332,6 +415,7 @@
 				1A6CBD01B8F49E75AD6CCC01 /* DashboardWebView.swift in Sources */,
 				DD17000100000000000DEE01 /* DiscussionModels.swift in Sources */,
 				DD17000300000000000DEE03 /* DiscussionViewModel.swift in Sources */,
+				5350E6B2DDE4B62C97694085 /* DiscussionOrchestrator.swift in Sources */,
 				DD17000500000000000DEE05 /* DiscussionView.swift in Sources */,
 				3C8EDF01DAB66C97CF8EEE01 /* FileBrowserView.swift in Sources */,
 				0D9CC9C9B49F82C246E793D9 /* HermesAPIClient.swift in Sources */,
@@ -364,6 +448,29 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		6F28C8C78C196B64BA4B82B0 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CC15F345F2A22BB6FCB56EC7 /* MockTransport.swift in Sources */,
+				08AA3FB410DAC72089BB18E2 /* ProfileStoreTests.swift in Sources */,
+				1BD904A0AAAE0845E10CF0AF /* SessionStoreTests.swift in Sources */,
+				2196AE1EE8225054D5E0F238 /* CloudAuthStoreTests.swift in Sources */,
+				3FBE3182A2F0742D6260DEAD /* DiscussionOrchestratorTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		34479F92943796A8F7F84B9E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = DB97AA5A8FBBD54B6F05AC0F /* HermesChat */;
+			targetProxy = 32D61D3199F628FF3A18ABCD /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		L10N001A00000000000L10002 /* Localizable.strings */ = {
@@ -552,9 +659,60 @@
 			};
 			name = Debug;
 		};
+		7BB6D8C282631974B81BF333 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.hermes.chatios.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/HermesChat.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/HermesChat";
+			};
+			name = Debug;
+		};
+		9434E4E1E08BFF80E722C639 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.hermes.chatios.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/HermesChat.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/HermesChat";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		8E9922B9FE1783D9C612B4C3 /* Build configuration list for PBXNativeTarget "HermesChatTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7BB6D8C282631974B81BF333 /* Debug */,
+				9434E4E1E08BFF80E722C639 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		41FFABF6DF1B39B1D967CB88 /* Build configuration list for PBXProject "HermesChat" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

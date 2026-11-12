@@ -34,9 +34,11 @@ cat > ~/Library/LaunchAgents/ai.hermes.bridge.plist <<EOF
   <key>EnvironmentVariables</key><dict>
     <key>HERMES_BRIDGE_TOKEN</key><string>${BRIDGE_TOKEN}</string>
   </dict>
-  <!-- 게이트웨이 재시작이 "hermes 실행파일을 찾지 못했습니다"로 실패하면 위 dict에 추가:
-       <key>HERMES_BIN</key><string>$(which hermes 결과 경로)</string>
-       기본으로 ~/.local/bin, /opt/homebrew/bin, /usr/local/bin은 자동 탐색한다. -->
+       <!-- 게이트웨이 재시작이 "hermes 실행파일을 찾지 못했습니다"로 실패하면 위 dict에 추가:
+            <key>HERMES_BIN</key><string>$(which hermes 결과 경로)</string>
+            기본으로 ~/.local/bin, /opt/homebrew/bin, /usr/local/bin은 자동 탐색한다. -->
+       <!-- 폐기 보류: 실제 EXTRA_BIN_DIRS는 ~/.local/bin, /opt/homebrew/bin, /usr/local/bin, ~/bin 4개 (hermes_bridge.py:45-50) -->
+
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
   <key>StandardErrorPath</key><string>/tmp/hermes-bridge.log</string>
@@ -60,8 +62,12 @@ curl -H "Authorization: Bearer $BRIDGE_TOKEN" http://127.0.0.1:8765/profiles
 | 메서드/경로 | 설명 |
 |---|---|
 | `GET /health` | 헬스체크 (인증 불필요) |
+<!-- 폐기 보류: 실제 응답은 {"data": [...]} (hermes_bridge.py:593)
 | `GET /profiles` | 프로필 목록 `[{name, port, api_enabled}]` |
+-->
+<!-- 폐기 보류: 실제 폴링은 8초 (hermes_bridge.py:754)
 | `POST /profiles/{name}/restart` | 해당 프로필 게이트웨이 재시작 (백그라운드 분리 실행 후 최대 10초 헬스 폴링) |
+-->
 | `GET /profiles/{name}/soul` | SOUL.md 내용 `{content}` |
 | `PUT /profiles/{name}/soul` | SOUL.md 저장 (body: `{"content": "..."}`, 이전본 .bak 백업) |
 | `POST /upload/{profile}` | 파일 업로드 (raw body + `X-Filename` 헤더) → `{path}` |

@@ -236,7 +236,10 @@ def increment_usage(user_id: str) -> int:
 # ── T-B05: Bridge 프로필 수 조회 ─────────────────────────────────────────────
 
 def count_bridge_profiles(user_id: str) -> int:
-    """컨테이너 Bridge(포트 8765)에서 프로필 수 조회. 실패 시 0 반환."""
+    """컨테이너 Bridge(포트 8765)에서 프로필 수 조회. 실패 시 0 반환.
+
+    브리지 GET /profiles는 {"data": [{name, api_enabled, port}, ...]} 반환 —
+    dict에서 data를 꺼내 세어야 한다 (구버전 최상위 리스트도 수용)."""
     try:
         conn = http.client.HTTPConnection(
             container_name(user_id), CONTAINER_BRIDGE_PORT, timeout=10
@@ -246,8 +249,9 @@ def count_bridge_profiles(user_id: str) -> int:
         })
         resp = conn.getresponse()
         if resp.status == 200:
-            profiles = json.loads(resp.read())
+            body = json.loads(resp.read())
             conn.close()
+            profiles = body.get("data", []) if isinstance(body, dict) else body
             return len(profiles) if isinstance(profiles, list) else 0
         conn.close()
     except Exception:  # noqa: BLE001
