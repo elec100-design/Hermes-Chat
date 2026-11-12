@@ -18,6 +18,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Card
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -29,6 +30,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -37,6 +40,8 @@ import com.hermes.chatandroid.AppContainer
 import com.hermes.chatandroid.data.ProfileEntry
 import com.hermes.chatandroid.ui.components.ErrorBanner
 import kotlinx.coroutines.launch
+
+private const val PRIVACY_URL = "https://hermeschat.app/privacy"
 
 @Composable
 private fun Field(
@@ -69,11 +74,17 @@ private fun Section(title: String, content: @Composable () -> Unit) {
 fun SettingsScreen(
     container: AppContainer,
     onRerunOnboarding: () -> Unit,
+    onExitDemo: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val repo = container.settingsRepository
     val settings by repo.settings.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
+    val uriHandler = LocalUriHandler.current
+    val context = LocalContext.current
+    val versionName = remember {
+        runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: "-"
+    }
 
     var newName by remember { mutableStateOf("") }
     var newPort by remember { mutableStateOf("") }
@@ -88,6 +99,18 @@ fun SettingsScreen(
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
         Text("설정", style = MaterialTheme.typography.headlineSmall)
+        if (settings.demoMode) {
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("데모 모드", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "샘플 데이터로 앱을 체험 중입니다. 서버에는 연결하지 않습니다.",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Button(onExitDemo, Modifier.fillMaxWidth()) { Text("데모 모드 종료") }
+                }
+            }
+        }
         error?.let { ErrorBanner(it) }
         message?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
 
@@ -177,6 +200,11 @@ fun SettingsScreen(
                     Text(msg, color = if (ok) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
                 }
             }
+        }
+
+        Section("정보") {
+            OutlinedButton({ uriHandler.openUri(PRIVACY_URL) }, Modifier.fillMaxWidth()) { Text("개인정보 처리방침") }
+            Text("버전 $versionName", style = MaterialTheme.typography.bodySmall)
         }
 
         HorizontalDivider()

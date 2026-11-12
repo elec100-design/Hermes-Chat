@@ -10,20 +10,20 @@ import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
 
 /** Hermes Bridge(:8765) — 프로필 목록과 첨부 업로드만. [token] 비어 있으면 인증 헤더 없음. */
-class BridgeApi(
+open class BridgeApi(
     private val baseUrl: String,
     private val token: String,
     client: OkHttpClient = defaultHttpClient(),
 ) {
     private val http = client.newBuilder().readTimeout(60, TimeUnit.SECONDS).build()
 
-    suspend fun fetchProfiles(): List<BridgeProfile> {
+    open suspend fun fetchProfiles(): List<BridgeProfile> {
         val req = Request.Builder().url(joinUrl(baseUrl, "profiles")).bearer(token).build()
         return Parsers.parseBridgeProfiles(http.fetchText(req))
     }
 
     /** 파일을 프로필 uploads 폴더에 올리고 맥미니 절대경로를 돌려준다. */
-    suspend fun upload(bytes: ByteArray, filename: String, profile: String): String {
+    open suspend fun upload(bytes: ByteArray, filename: String, profile: String): String {
         // HTTP 헤더는 ASCII 만 안전 — 서버도 [A-Za-z0-9._-가-힣] 외에는 _ 로 치환한다.
         val name = filename.replace(Regex("[^A-Za-z0-9._-]"), "_")
         val req = Request.Builder()

@@ -64,7 +64,7 @@ fun ProfileBoardScreen(
         refreshing = true
         // 1) Bridge 에서 목록 갱신 (실패해도 조용히 기존 목록 유지)
         val bridge = container.bridgeApi()
-        if (bridge != null) {
+        if (bridge != null && !repo.current.demoMode) {
             try {
                 val list = bridge.fetchProfiles().filter { it.apiEnabled }.map { ProfileEntry(it.name, it.port) }
                 if (list.isNotEmpty()) repo.update { it.copy(profiles = list) }
@@ -73,12 +73,12 @@ fun ProfileBoardScreen(
             } catch (e: Exception) { /* Bridge 미도달 → 폴백 */ }
         }
         // 2) 여전히 비었으면 포트 스캔
-        if (repo.current.profiles.isEmpty() && repo.current.cleanHost.isNotEmpty()) {
+        if (!repo.current.demoMode && repo.current.profiles.isEmpty() && repo.current.cleanHost.isNotEmpty()) {
             val found = container.profileDiscovery.scan(repo.current.host, repo.current.apiKey)
             if (found.isNotEmpty()) repo.update { it.copy(profiles = found) }
         }
         // 3) 헬스 점
-        val ps = repo.current.profiles
+        val ps = repo.current.visibleProfiles
         coroutineScope {
             ps.map { p ->
                 async { health[p.name] = container.hermesApi(p)?.health() ?: false }
@@ -97,7 +97,7 @@ fun ProfileBoardScreen(
             onRefresh = { scope.launch { refresh() } },
             modifier = Modifier.fillMaxSize(),
         ) {
-            if (settings.profiles.isEmpty()) {
+            if (settings.visibleProfiles.isEmpty()) {
                 EmptyState(
                     "프로필이 없습니다",
                     subtitle = "설정에서 호스트를 입력하고 자동 검색하세요. 당겨서 새로고침할 수 있습니다.",
@@ -110,7 +110,7 @@ fun ProfileBoardScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    items(settings.profiles, key = { it.name }) { p ->
+                    items(settings.visibleProfiles, key = { it.name }) { p ->
                         Card(
                             Modifier.fillMaxWidth().clickable(enabled = creating == null) {
                                 creating = p.name; error = null

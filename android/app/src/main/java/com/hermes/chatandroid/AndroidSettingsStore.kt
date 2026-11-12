@@ -33,6 +33,7 @@ class AndroidSettingsStore(context: Context) : SettingsStore {
         bridgeToken = secure.getString("bridgeToken", "") ?: "",
         botToken = secure.getString("botToken", "") ?: "",
         onboardingComplete = plain.getBoolean("onboardingComplete", false),
+        demoMode = plain.getBoolean("demoMode", false),
     )
 
     override fun save(settings: Settings) {
@@ -43,6 +44,7 @@ class AndroidSettingsStore(context: Context) : SettingsStore {
             .putString("bridgeUrl", settings.bridgeUrl)
             .putString("botHost", settings.botHost)
             .putBoolean("onboardingComplete", settings.onboardingComplete)
+            .putBoolean("demoMode", settings.demoMode)
             .apply()
         secure.edit()
             .putString("apiKey", settings.apiKey)

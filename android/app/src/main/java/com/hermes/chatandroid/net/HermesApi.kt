@@ -20,7 +20,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 
 /** 프로필별 hermes-agent 게이트웨이 REST + SSE 클라이언트. [baseUrl] = "http://host:port". */
-class HermesApi(
+open class HermesApi(
     private val baseUrl: String,
     private val apiKey: String,
     client: OkHttpClient = defaultHttpClient(),
@@ -34,32 +34,32 @@ class HermesApi(
 
     private fun seg(id: String): String = URLEncoder.encode(id, "UTF-8").replace("+", "%20")
 
-    suspend fun health(): Boolean = try {
+    open suspend fun health(): Boolean = try {
         http.fetchText(Request.Builder().url(joinUrl(baseUrl, "health")).build()); true
     } catch (e: Exception) { false }
 
-    suspend fun fetchModelIds(): List<String> =
+    open suspend fun fetchModelIds(): List<String> =
         Parsers.parseModelIds(http.fetchText(req("v1/models").build()))
 
-    suspend fun fetchSessions(limit: Int = 50, offset: Int = 0): SessionPage =
+    open suspend fun fetchSessions(limit: Int = 50, offset: Int = 0): SessionPage =
         Parsers.parseSessionList(http.fetchText(req("api/sessions?limit=$limit&offset=$offset").build()))
 
-    suspend fun createSession(title: String? = null): Session {
+    open suspend fun createSession(title: String? = null): Session {
         val body = buildJsonObject { if (!title.isNullOrBlank()) put("title", title) }
         val text = http.fetchText(req("api/sessions").post(jsonBody(body.toString())).build())
         return Parsers.parseSessionResponse(text)
             ?: throw ApiException(0, "세션 응답을 해석할 수 없습니다: ${text.take(300)}")
     }
 
-    suspend fun fetchMessages(sessionId: String): List<ChatMessage> =
+    open suspend fun fetchMessages(sessionId: String): List<ChatMessage> =
         Parsers.parseMessages(http.fetchText(req("api/sessions/${seg(sessionId)}/messages").build()))
 
-    suspend fun renameSession(sessionId: String, title: String) {
+    open suspend fun renameSession(sessionId: String, title: String) {
         val body = buildJsonObject { put("title", title) }
         http.fetchText(req("api/sessions/${seg(sessionId)}").patch(jsonBody(body.toString())).build())
     }
 
-    suspend fun deleteSession(sessionId: String) {
+    open suspend fun deleteSession(sessionId: String) {
         http.fetchText(req("api/sessions/${seg(sessionId)}").delete().build())
     }
 
@@ -67,7 +67,7 @@ class HermesApi(
      * 채팅 스트림. 수집 취소 = 연결 종료. [attachments] 는 Bridge 업로드로 받은 서버 경로 목록이며
      * iOS 와 동일하게 "[첨부: 경로]" 줄로 메시지 앞에 붙는다.
      */
-    fun streamChat(
+    open fun streamChat(
         sessionId: String,
         message: String,
         attachments: List<String> = emptyList(),
@@ -88,7 +88,7 @@ class HermesApi(
      * 스트림이 빈 채 끝났을 때(게이트웨이가 SSE 로 안 보내는 버그 대응) 세션 기록을 2초 간격으로 폴링해
      * [expectedUserCount] 번째 user 메시지 뒤의 보이는 assistant 답을 회수. 시간 초과 시 null.
      */
-    suspend fun pollForMissedReply(sessionId: String, expectedUserCount: Int, deadlineMs: Long): String? {
+    open suspend fun pollForMissedReply(sessionId: String, expectedUserCount: Int, deadlineMs: Long): String? {
         val end = System.currentTimeMillis() + deadlineMs
         while (System.currentTimeMillis() < end) {
             currentCoroutineContext().ensureActive()

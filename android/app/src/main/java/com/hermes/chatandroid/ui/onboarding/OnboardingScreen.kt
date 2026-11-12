@@ -41,6 +41,7 @@ import kotlinx.coroutines.launch
 fun OnboardingScreen(
     container: AppContainer,
     onFinished: () -> Unit,
+    onDemo: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val repo = container.settingsRepository
@@ -69,6 +70,11 @@ fun OnboardingScreen(
                     style = MaterialTheme.typography.bodyLarge,
                 )
                 Button({ step = 1 }, Modifier.fillMaxWidth()) { Text("시작하기") }
+                OutlinedButton(onDemo, Modifier.fillMaxWidth()) { Text("데모 모드로 둘러보기") }
+                Text(
+                    "서버 없이 샘플 데이터로 모든 화면을 체험할 수 있습니다.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
             }
             1 -> {
                 Text("서버 연결", style = MaterialTheme.typography.headlineSmall)

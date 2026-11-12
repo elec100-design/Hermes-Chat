@@ -66,6 +66,7 @@ fun AppNav(container: AppContainer) {
         OnboardingScreen(
             container = container,
             onFinished = { repo.update { it.copy(onboardingComplete = true) } },
+            onDemo = { repo.update { it.copy(demoMode = true, onboardingComplete = true) } },
         )
         return
     }
@@ -123,6 +124,7 @@ fun AppNav(container: AppContainer) {
                 SettingsScreen(
                     container,
                     onRerunOnboarding = { repo.update { it.copy(onboardingComplete = false) } },
+                    onExitDemo = { repo.update { it.copy(demoMode = false, onboardingComplete = false) } },
                     modifier = mod,
                 )
             }

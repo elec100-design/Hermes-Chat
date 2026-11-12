@@ -18,8 +18,13 @@ data class Settings(
     val bridgeToken: String = "",
     val botToken: String = "",
     val onboardingComplete: Boolean = false,
+    /** 심사/체험용 데모 모드 — 네트워크 없이 [DemoData] 사용. */
+    val demoMode: Boolean = false,
 ) {
-    val currentProfile: ProfileEntry? get() = profiles.firstOrNull { it.name == selectedProfile } ?: profiles.firstOrNull()
+    /** 화면에 보이는 프로필. 데모 모드에서는 저장된 실제 프로필 대신 데모 프로필. */
+    val visibleProfiles: List<ProfileEntry> get() = if (demoMode) DemoData.profiles else profiles
+
+    val currentProfile: ProfileEntry? get() = visibleProfiles.firstOrNull { it.name == selectedProfile } ?: visibleProfiles.firstOrNull()
 
     val cleanHost: String get() = host.trim().removePrefix("http://").removePrefix("https://").trimEnd('/').substringBefore('/')
 
@@ -31,7 +36,7 @@ data class Settings(
 
     val botBaseUrl: String? get() = normalizeUrl(botHost, 8900)
 
-    val botConfigured: Boolean get() = botHost.isNotBlank()
+    val botConfigured: Boolean get() = demoMode || botHost.isNotBlank()
 
     companion object {
         /** "host" -> http://host:defaultPort, "host:1234" -> http://host:1234, 스킴 있으면 그대로. */

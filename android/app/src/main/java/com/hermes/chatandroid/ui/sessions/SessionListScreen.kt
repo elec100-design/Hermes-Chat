@@ -82,7 +82,7 @@ fun SessionListScreen(
                 Box {
                     Row0(onClick = { menuOpen = true }, label = profile?.name ?: "프로필 없음")
                     DropdownMenu(menuOpen, { menuOpen = false }) {
-                        settings.profiles.forEach { p ->
+                        settings.visibleProfiles.forEach { p ->
                             DropdownMenuItem(
                                 text = { Text("${p.name} (:${p.port})") },
                                 onClick = {
