@@ -389,6 +389,11 @@ final class ChatViewModel: ObservableObject {
             messages[assistantIndex] = assistant
             voiceStreamHandler?(assistant.content, false)
         }
+        // 취소로 빈 말풍선이 남으면 제거
+        if assistant.content.isEmpty, messages.indices.contains(assistantIndex),
+           messages[assistantIndex].content.isEmpty {
+            messages.remove(at: assistantIndex)
+        }
         voiceStreamHandler?(assistant.content, true)
     }
 }

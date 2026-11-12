@@ -231,6 +231,7 @@ struct ChatView: View {
     private func switchProfile(to profile: HermesProfile) {
         guard !isForking, !viewModel.isWorking else { return }
         isForking = true
+        let previous = appSettings.selectedProfile  // 실패 시 복원용
         Task {
             do {
                 appSettings.selectProfile(profile)
@@ -238,6 +239,7 @@ struct ChatView: View {
                 coordinator.sessionsPath = NavigationPath()
                 coordinator.sessionsPath.append(session)
             } catch {
+                if previous.id != profile.id { appSettings.selectProfile(previous) }
                 forkError = error.localizedDescription
             }
             isForking = false

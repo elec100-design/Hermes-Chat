@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 /// 봇 DM/채널 대화 하나의 상태 — 메시지 목록과 진행 중인 봇 응답(잡 SSE) 추적.
 ///
