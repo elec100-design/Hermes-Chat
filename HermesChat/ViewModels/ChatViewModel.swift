@@ -112,13 +112,33 @@ final class ChatViewModel: ObservableObject {
         attachments.append(PendingAttachment(filename: filename, data: data, thumbnail: thumbnail))
     }
 
-    /// HEIC/HEIF 이미지를 JPEG로 변환하고 확장자를 `.jpg`로 바꾼다 (T-130).
-    /// HEIC가 아니거나 변환 실패면 원본을 그대로 돌려준다(방어). PNG/JPEG/WebP/GIF·비이미지는 무변환.
-    /// UIImage가 EXIF 방향을 반영해 디코드하고 jpegData가 정방향으로 기록하므로 회전 문제는 없다.
+    /// 업로드용 이미지 정규화 (T-130 + T-159).
+    /// - HEIC/HEIF → JPEG
+    /// - 긴 변 2048px 초과 시 축소 + JPEG q=0.82 (iPhone 원본 수 MB가 LTE/Tailscale에서 15~60초 타임아웃 나던 문제 완화)
+    /// - 비이미지·디코드 실패는 원본 유지
     private static func normalizedImageForUpload(data: Data, filename: String) -> (Data, String) {
         let ext = (filename as NSString).pathExtension.lowercased()
-        guard ext == "heic" || ext == "heif" else { return (data, filename) }
-        guard let jpeg = UIImage(data: data)?.jpegData(compressionQuality: 0.85) else {
+        let imageExts: Set<String> = ["heic", "heif", "jpg", "jpeg", "png", "webp", "gif", "tif", "tiff", "bmp"]
+        guard imageExts.contains(ext) || ChatImageSource.isImagePath(filename) else {
+            return (data, filename)
+        }
+        guard let image = UIImage(data: data) else { return (data, filename) }
+
+        let maxSide: CGFloat = 2048
+        let longest = max(image.size.width, image.size.height)
+        let scaled: UIImage
+        if longest > maxSide, longest > 0 {
+            let scale = maxSide / longest
+            let newSize = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+            let renderer = UIGraphicsImageRenderer(size: newSize)
+            scaled = renderer.image { _ in image.draw(in: CGRect(origin: .zero, size: newSize)) }
+        } else {
+            scaled = image
+        }
+
+        guard let jpeg = scaled.jpegData(compressionQuality: 0.82) else { return (data, filename) }
+        // 이미 충분히 작으면 원본 유지(품질 손실 최소화). 원본이 더 클 때만 축소본 사용.
+        if jpeg.count >= data.count, ext == "jpg" || ext == "jpeg" {
             return (data, filename)
         }
         let base = (filename as NSString).deletingPathExtension
