@@ -38,11 +38,18 @@
 >   KanbanView·ChatViewModel). 브랜치 `claude/epic-hopper-ayax9p`. NEEDS-BUILD.
 >   **사용자 조치 필요**: App Store Connect 심사 노트에 비즈니스 모델 답변 + Demo Mode 안내 입력.
 >
+> **2026-07-27 현황 (프로필 model/SOUL 401 + 첨부 타임아웃)**:
+> - **T-158**: 프로필 상세 model/SOUL "API Key 무효" 오진 — Bridge 토큰 401 메시지 분리·토큰 필수.
+> - **T-159**: Safety 채팅 사진 첨부 "요청한 시간이 초과되었습니다" — upload 타임아웃 15s→120s,
+>   이미지 2048px/JPEG 압축, Bridge URL 포트 8765 자동 보정, 네트워크 오류 안내 강화.
+>   브랜치 `claude/fix-profile-model-soul-auth-20260727`. **앱 재빌드·실기기 재설치 필수**
+>   (구 빌드에는 Bridge 테스트 버튼/타임아웃 수정이 없음).
+>
 > **다음 세션 예정 작업**:
-> 1. T-REV01 맥 빌드 검증 → DONE으로 갱신
-> 2. App Store Connect Review Notes 업데이트 후 재제출
-> 3. T-C01 Sign in with Apple 실기기 런타임 검증 (Supabase id_token 흐름)
-> 4. T-C03 StoreKit 샌드박스 테스트 (App Store Connect 제품 등록 후)
+> 1. T-158 맥 빌드 + 실기기: 설정 → Hermes Bridge Token = 맥미니 HERMES_BRIDGE_TOKEN 후 model/SOUL 확인
+> 2. T-REV01 맥 빌드 검증 → DONE으로 갱신
+> 3. App Store Connect Review Notes 업데이트 후 재제출
+> 4. T-C01 Sign in with Apple 실기기 런타임 검증 (Supabase id_token 흐름)
 
 ## 즉시 (사람 또는 맥미니 Hermes가 1회 수행)
 
@@ -275,6 +282,13 @@
 |----|------|------|------|
 | T-138 | 프로필별 크론잡 조회·편집 — hermes-agent 대시보드(:8000)의 Cron 화면을 네이티브로 재현. 프로필 보드 카드의 시계 버튼 → 잡 목록(시트) → 잡 편집(프롬프트·스케줄·전달대상·스킬·활성화). **Bridge 신규 엔드포인트** `GET /profiles/<name>/cron`(cron/jobs.json 잡 목록), `PUT /profiles/<name>/cron/<job_id>`(편집된 필드만 read-modify-write, id·mode·script·실행상태 등 나머지 필드 보존, .bak 백업 + 원자적 교체). 쓰기 CLI 미확인이라 파일 직접 수정. 신규 3파일 pbxproj 등록. **빌드 검증 필요(맥)**. 후속: 생성/삭제/즉시실행/실행리포트 뷰어 | `server/hermes_bridge.py`, `Models/CronModels.swift`(신규), `Services/BridgeClient.swift`, `Views/CronJobsView.swift`(신규), `Views/CronJobEditView.swift`(신규), `Views/ProfileBoardView.swift`, `HermesChat.xcodeproj/project.pbxproj` | NEEDS-BUILD |
 | T-146 | **크론 중앙 관리 화면** (T-138 후속, 사용자 요청 + 대시보드 스크린샷 참고). 프로필마다 흩어져 있던 크론 시트를 **한 화면(`CronManagerView`)**으로 통합 — 상단 **드롭다운으로 프로필 필터링**, 각 잡에 **재개/일시정지 · 지금 실행 · 편집 · 삭제** 버튼 + **상태 배지(scheduled/paused/running)** + **사람이 읽는 스케줄("매일 08:00")** + **최근/다음 실행 시각**(대시보드 :8000 Cron 화면 재현). 우상단 **CREATE(+)** 로 새 잡 생성(프로필 선택 포함). 전 프로필 jobs.json을 동시 로드해 프로필별 섹션으로 표시. 일시정지/재개=`enabled` 토글(PUT), 편집/생성=`CronJobEditView`(생성·편집 양용, 시트). **Bridge 신규**: `POST /profiles/<n>/cron`(새 잡 추가 — 기존 잡을 구조 템플릿 삼아 스키마 적응, id=이름 슬러그), `POST /profiles/<n>/cron/<id>/run`(즉시 실행 — `hermes [--profile <n>] cron run <id>`, ⚠️CLI 형태 버전별 상이 가능·실패 시 stdout/stderr 노출), `DELETE /profiles/<n>/cron/<id>`(제거), PUT 화이트리스트에 `name` 추가. 모두 .bak+원자적. 진입: 프로필 보드 툴바 "크론 관리"(전체) + 카드 시계 버튼(해당 프로필 필터). **기존 파일만 수정 → pbxproj 무수정**(`CronJobsView.swift`→`CronManagerView` 재작성). **빌드 검증 필요(맥)** + **브리지 재배포 필요** | `server/hermes_bridge.py`, `Models/CronModels.swift`, `Services/BridgeClient.swift`, `Views/CronJobsView.swift`, `Views/CronJobEditView.swift`, `Views/ProfileBoardView.swift` | NEEDS-BUILD |
+
+## Phase 24 — 프로필 model/SOUL Bridge 인증 오류 (2026-07-27)
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-158 | 프로필 상세 model/SOUL "API Key 무효" 오진 수정. **원인**: model·SOUL은 게이트웨이 API Key가 아니라 Bridge(`:8765`) Bearer 토큰을 쓰는데, Bridge 401을 `HermesAPIError.unauthorized`("API Key가 유효하지 않습니다")로 매핑해 원인 파악이 어려웠고, Bridge URL만 있으면 토큰 없이도 `bridgeClient`가 생성돼 즉시 401. **수정**: ①Bridge 401을 "Bridge Token…" 메시지로 분리 ②`bridgeClient`는 URL+토큰 모두 있을 때만 생성·trim ③설정에 Bridge 연결 테스트(`/profiles`) ④게이트웨이 연결 테스트는 `/health`+인증된 `/api/sessions`로 API Key 실제 검증 ⑤브리지 `authorized()`가 Bearer 대소문자·공백 허용. **브리지 맥미니 재배포 완료**. 앱 빌드·실기기(Bridge Token=HERMES_BRIDGE_TOKEN) 검증 대기 | `Services/BridgeClient.swift`, `Services/AppDefaults.swift`, `Views/SettingsView.swift`, `Resources/{ko,en,zh-Hans}.lproj/Localizable.strings`, `server/hermes_bridge.py` | NEEDS-BUILD (브리지 재배포 DONE) |
+| T-159 | 채팅 사진 첨부 타임아웃 수정 + Bridge 연결 견고화. **증상**: Safety 등에서 사진 첨부 전송 시 `[에러] 첨부 업로드 실패: 요청한 시간이 초과되었습니다` (LTE/Tailscale). **수정**: ①`BridgeClient.upload` 타임아웃 15→**120초** + octet-stream Content-Type ②이미지 긴 변 **2048px·JPEG 0.82** 축소(HEIC 포함, 비이미지는 유지) ③`bridgeClient` URL에 **포트 없으면 8765** 자동 부여(포트 80 타임아웃 방지) ④URLSession 실패를 "Bridge 응답 시간 초과/연결 불가/Tailscale" 안내로 매핑. **구 빌드에는 미포함 — 재설치 필수** | `Services/BridgeClient.swift`, `Services/AppDefaults.swift`, `ViewModels/ChatViewModel.swift` | NEEDS-BUILD |
 
 ## Phase 19 — 프로필 추가('+' 카드) + 모델 카탈로그 선택
 
