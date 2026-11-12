@@ -332,6 +332,9 @@ final class HermesAPIClient {
                     // {"message": ...}라서 조용히 버려지던 것을 에러로 표면화한다 (T-122).
                     // 게이트웨이 코드 불일치(import 오류) 같은 서버 장애가 "무반응"으로 보이던 원인.
                     var currentEvent = ""
+                    // 델타를 한 번이라도 받았는지 — assistant.completed 의 전체 본문은
+                    // 델타가 0건일 때만 쓴다(중복 방지, T-149)
+                    var sawContent = false
                     for try await line in bytes.lines {
                         if line.hasPrefix("event:") {
                             currentEvent = line.dropFirst(6).trimmingCharacters(in: .whitespaces)
@@ -352,10 +355,38 @@ final class HermesAPIClient {
                             continuation.finish(throwing: HermesAPIError.serverError(message))
                             return
                         }
+                        // 게이트웨이 실제 포맷: 이름 있는 SSE 이벤트 (T-149).
+                        // run.started → message.started → assistant.delta* → tool.* →
+                        // assistant.completed → run.completed → done
+                        switch eventName {
+                        case "done":
+                            continuation.finish()
+                            return
+                        case "assistant.delta":
+                            if let d = Self.jsonString(payload, key: "delta"), !d.isEmpty {
+                                sawContent = true
+                                continuation.yield(.content(d))
+                            }
+                            continue
+                        case "assistant.completed":
+                            // 델타를 하나도 못 받았을 때만 전체 본문을 사용
+                            if !sawContent, let full = Self.jsonString(payload, key: "content"), !full.isEmpty {
+                                sawContent = true
+                                continuation.yield(.content(full))
+                            }
+                            continue
+                        case "run.started", "message.started", "run.completed",
+                             "tool.progress", "tool.started", "tool.completed", "tool.failed":
+                            // tool payload 형식은 미확인 — .toolCallUpdate 로 매핑하지 않고 무시
+                            continue
+                        default:
+                            break  // 이름 없음/모르는 이름 → 아래 OpenAI 청크 경로(호환)
+                        }
                         guard let chunkData = payload.data(using: .utf8),
                               let chunk = try? JSONDecoder().decode(StreamChunk.self, from: chunkData),
                               let choice = chunk.choices?.first else { continue }
                         if let content = choice.delta.content, !content.isEmpty {
+                            sawContent = true
                             continuation.yield(.content(content))
                         }
                         for tool in choice.delta.toolCalls ?? [] {
@@ -373,6 +404,13 @@ final class HermesAPIClient {
             }
             continuation.onTermination = { _ in task.cancel() }
         }
+    }
+
+    /// JSON 객체 payload에서 문자열 키 하나를 뽑는다 (SSE 이름 있는 이벤트용, T-149)
+    nonisolated static func jsonString(_ payload: String, key: String) -> String? {
+        guard let data = payload.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+        return object[key] as? String
     }
 
     // MARK: - Private HTTP Helpers
