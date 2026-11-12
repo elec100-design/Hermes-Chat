@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -7,19 +9,48 @@ plugins {
 
 android {
     namespace = "com.hermes.chatandroid"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.hermes.chatandroid"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
+        // versionCode must increase on every Play Console upload.
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = "1.0.0"
+    }
+
+    // Release signing: env vars first, then android/keystore.properties (gitignored).
+    // If neither is present the release build is left unsigned.
+    val keystoreProps = Properties().apply {
+        val f = rootProject.file("keystore.properties")
+        if (f.exists()) f.inputStream().use { load(it) }
+    }
+    fun signingValue(env: String, prop: String): String? =
+        System.getenv(env)?.takeIf { it.isNotBlank() } ?: keystoreProps.getProperty(prop)?.takeIf { it.isNotBlank() }
+    val ksFile = signingValue("HERMES_KEYSTORE_FILE", "storeFile")
+    val ksPassword = signingValue("HERMES_KEYSTORE_PASSWORD", "storePassword")
+    val ksAlias = signingValue("HERMES_KEY_ALIAS", "keyAlias")
+    val ksKeyPassword = signingValue("HERMES_KEY_PASSWORD", "keyPassword")
+    val hasSigning = ksFile != null && ksPassword != null && ksAlias != null && ksKeyPassword != null
+
+    signingConfigs {
+        if (hasSigning) {
+            create("release") {
+                storeFile = rootProject.file(ksFile!!)
+                storePassword = ksPassword
+                keyAlias = ksAlias
+                keyPassword = ksKeyPassword
+            }
+        }
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (hasSigning) signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {
