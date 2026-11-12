@@ -112,6 +112,10 @@ final class BotChatViewModel: ObservableObject {
                 self.errorMessage = error.localizedDescription
             }
             if Task.isCancelled { return }
+            // end 직후에는 서버가 메시지 확정·연쇄 잡 생성을 마치지 않았을 수 있다(구버전 서버 포함).
+            // 곧바로 다시 읽으면 아직 running 으로 보여 재구독 횟수를 헛되이 쓴다 — 잠깐 기다린다.
+            try? await Task.sleep(for: .milliseconds(700))
+            if Task.isCancelled { return }
             self.followTasks[jobId] = nil
             // 확정본으로 교체하고(연쇄로 생긴 새 잡은 load 안에서 재구독), 버퍼 제거
             await self.load()

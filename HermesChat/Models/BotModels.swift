@@ -16,7 +16,7 @@ struct BotMember: Identifiable, Decodable, Equatable, Hashable {
     let name: String?
     let avatar: String?
     let health: String?
-    let tone: String?
+    let tone: Int?  // 서버는 정체색 번호를 정수(1~6)로 준다 — String 으로 받으면 멤버 배열 전체가 디코딩에 실패한다
 
     var displayName: String { (name?.isEmpty == false ? name : nil) ?? slug }
     var avatarText: String { (avatar?.isEmpty == false ? avatar : nil) ?? "🤖" }
@@ -33,7 +33,7 @@ struct Bot: Identifiable, Decodable, Equatable, Hashable {
     let status: String?
     let dmChannelId: Int?
     let preview: String?
-    let tone: String?
+    let tone: Int?  // 서버는 정체색 번호를 정수(1~6)로 준다 — String 으로 받으면 멤버 배열 전체가 디코딩에 실패한다
     let readOnly: Int?
 
     enum CodingKeys: String, CodingKey {
@@ -56,7 +56,7 @@ struct Bot: Identifiable, Decodable, Equatable, Hashable {
         status = c.lenient(String.self, .status)
         dmChannelId = c.lenient(Int.self, .dmChannelId)
         preview = c.lenient(String.self, .preview)
-        tone = c.lenient(String.self, .tone)
+        tone = c.lenient(Int.self, .tone)
         readOnly = c.lenient(Int.self, .readOnly)
     }
 

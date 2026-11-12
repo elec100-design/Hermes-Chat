@@ -32,7 +32,8 @@ final class BotClient {
 
     init(baseURL: URL, token: String) {
         self.baseURL = baseURL
-        self.token = token
+        // 붙여넣기에 섞인 공백·줄바꿈 때문에 401 이 나지 않게
+        self.token = token.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     // MARK: - Health
