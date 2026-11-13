@@ -76,6 +76,17 @@ xcodebuild -project HermesChat.xcodeproj -scheme HermesChat \
     해당 태스크를 `BLOCKED(빌드에러: <요약>)`로 기록 후 커밋·푸시. 수정은 Claude Code 담당.
   - Claude Code/Grok: 직접 수정 시도, 3회 실패 시 위와 동일하게 BLOCKED 처리.
 
+### Android 빌드 (`android/`, 2026-11-12)
+
+- 위치: `android/` — 단일 `:app` 모듈, 패키지 `com.hermes.chatandroid`.
+- 필요: JDK 17+, Android SDK. SDK 경로는 `android/local.properties`의 `sdk.dir`에 적는다 (gitignore 대상 — 커밋 금지).
+- 명령:
+  ```bash
+  cd android && ./gradlew :app:testDebugUnitTest :app:assembleDebug
+  ```
+- APK: `android/app/build/outputs/apk/debug/`
+- Google Maven(`dl.google.com`) 접근이 필요하다. 상세는 `android/README.md` 참조.
+
 ## 4. 새 Swift 파일 추가 절차 (중요!)
 
 `project.pbxproj`는 objectVersion 77, **명시적 파일 참조** 방식이다 (폴더 자동 동기화 아님).

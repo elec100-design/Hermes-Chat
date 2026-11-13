@@ -317,6 +317,12 @@ alert(TextField)로 연결(SettingsView 프로필 rename 패턴 재사용). **�
 자동 삭제를 끔**(`allowsFullSwipe: false`) — 버튼을 확인하려 길게 민 것만으로 세션이 삭제되던
 사고를 막고, 삭제 버튼을 눌러야만 삭제되게 한다. 기존 파일만 수정(pbxproj 무수정).
 
+### Phase 25 — Android MVP (`android/`, Kotlin + Jetpack Compose, 2026-11-12, TASKS T-161~164)
+단일 `:app` 모듈(`com.hermes.chatandroid`). 스캐폴드·데이터/네트워크 계층·JVM 단위 테스트, 온보딩·프로필 보드·세션·설정, 스트리밍 채팅(think 은닉·첨부·중단), 봇 탭. 빌드 절차는 HANDOFF §3 "Android 빌드". NEEDS-BUILD.
+
+### Phase 26 — Android 봇 중심 재구성 (2026-11-13, TASKS T-170~174)
+사용자 결정(11-13): 세션보다 봇을 주로 쓰므로 Android 앱을 **봇 중심**으로 재구성한다. Hermes-bot 서버(:8900)가 1차 백엔드, 홈 = 봇 목록(봇 1개 = DM 대화 1개, 최근 활동순) + 채널. 하단 탭은 대화 / 승인 / 더보기. 게이트웨이 직결 세션(프로필 보드·세션 목록)은 홈에서 빼고 **봇 프로필 화면의 "지난 세션"**으로 흡수(봇 = 프로필이므로 그 봇의 게이트웨이 포트로 직결). 칸반·크론·대시보드 등은 2차 부가 기능. iOS 는 Android 구조 확정 후 같은 구조로 따라간다. 1차 범위: 봇 홈·DM·채널·승인, 봇 채팅 첨부·실행 단계(steps), 봇 프로필 편집·헬스·발견, 채널 관리, 워크스페이스. 서버 API 는 Hermes-bot `app/main.py`(P31 이후 라우트 포함)를 따른다. 멀티플렉스 게이트웨이(/p/<profile>/) 미대응 유지.
+
 ### Phase A — App Store 컴플라이언스 (2026-06-20, T-A01~A08)
 App Store 제출을 위한 필수 요건 정비. T-A01~A06 DONE, T-A07/A08 NEEDS-BUILD (PR #12 대기).
 

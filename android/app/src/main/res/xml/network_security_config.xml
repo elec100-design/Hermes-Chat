@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Tailscale 사설망(100.x) HTTP 접속용 -->
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

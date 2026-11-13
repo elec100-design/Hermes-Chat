@@ -320,6 +320,30 @@
 |----|------|------|------|
 | T-148 | 대시보드 탭에 **두 손가락 핀치 줌**과 **데스크톱 모드 토글** 추가(사용자 요청 — 모바일 화면에서 작아서 안 눌리거나 레이아웃에 숨겨져 접근 안 되는 버튼 대응). 대시보드 페이지(:8000)는 맥미니가 서빙해 HTML 직접 수정 불가 → 앱에서 보조. **핀치 줌**: 페이지의 `<meta viewport>`가 보통 `user-scalable=no`라 막혀 있어, `WKUserScript`(.atDocumentEnd) + 네비 완료 시 `evaluateJavaScript`로 viewport를 `user-scalable=yes, maximum-scale=10`으로 덮어씀. **데스크톱 모드**: 우상단 툴바 토글(iphone/desktopcomputer 아이콘) → `customUserAgent`를 macOS Safari로 바꾸고 viewport `width=1024`로 전체 데스크톱 레이아웃을 불러옴(숨겨진 버튼 노출) + 핀치 줌으로 탐색. 상태는 `@AppStorage("dashboardDesktopMode")`로 영속화. 모드 전환 시 UA 교체 후 `reload()`, 기존 host/port 변경 재로드 로직 보존. 기존 파일만 수정 → **pbxproj 무수정**. **빌드 검증 필요(맥)** | `Views/DashboardWebView.swift` | NEEDS-BUILD |
 
+## Phase 25 — Android MVP (`android/`, Kotlin + Jetpack Compose)
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-161 | 스캐폴드 + 데이터/네트워크 계층 + 공용 UI + JVM 단위 테스트 | `android/` | NEEDS-BUILD (11-13 로컬 빌드·단위테스트 통과 d374c43, 실기기 미검증) |
+| T-162 | 온보딩·프로필 보드·세션 목록·설정 화면 | `android/app/src/main/java/com/hermes/chatandroid/ui/{onboarding,profiles,sessions,settings}` | NEEDS-BUILD (11-13 로컬 빌드·단위테스트 통과 d374c43, 실기기 미검증) |
+| T-163 | 스트리밍 채팅(think 은닉·첨부 업로드·중단·빈 스트림 폴링 회수) | `…/ui/chat` | NEEDS-BUILD (11-13 로컬 빌드·단위테스트 통과 d374c43, 실기기 미검증) |
+| T-164 | 봇 탭(목록·DM/채널·승인·새 채널) | `…/ui/bots` | NEEDS-BUILD (11-13 로컬 빌드·단위테스트 통과 d374c43, 실기기 미검증) |
+| T-165 | 데모 모드(서버 없이 둘러보기 — Play 심사용)·개인정보 처리방침 링크·버전 표시 | `…/data/DemoData.kt`, `…/data/DemoApis.kt`, `…/ui/{onboarding,settings}` | NEEDS-BUILD (11-13 로컬 빌드·단위테스트 통과 b579721, 실기기 미검증) |
+| T-166 | 릴리스 빌드: targetSdk/compileSdk 36·AGP 8.9.3·서명(HERMES_KEYSTORE_* 또는 keystore.properties, 커밋 금지)·R8·AAB·edge-to-edge | `android/app/build.gradle.kts`, `android/app/proguard-rules.pro`, `android/README.md` | NEEDS-BUILD (11-13 bundleRelease 통과 b579721, 실기기 미검증) |
+
+**Play Store 출시 남은 일 (사용자)**: Play 개발자 계정($25·신원 확인) → 업로드 키 생성(README "릴리스 빌드") → Play App Signing 등록 → 비공개 테스트(신규 개인 계정은 테스터 12명·14일) → 데이터 보안·콘텐츠 등급·앱 액세스(데모 모드 안내)·개인정보 처리방침 URL 입력 → 그래픽(512 아이콘·1024×500·스크린샷) → 프로덕션 제출. 패키지명 `com.hermes.chatandroid` 은 등록 후 변경 불가.
+
+## Phase 26 — Android 봇 중심 재구성 (`android/`, 2026-11-13)
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-170 | 봇 홈(대화/승인/더보기 탭)·온보딩(봇 서버 우선)·설정 재구성 + BotApi 전 엔드포인트(봇 수정·발견·헬스·steps·첨부·채널 관리·워크스페이스) + 프로필 검색 401 안내 | `android/…/net/BotApi.kt`, `…/ui/AppNav.kt`, `…/ui/{onboarding,settings,bots}` | NEEDS-BUILD (11-13 로컬 빌드·단위테스트 통과 6953ba1, 폴드 설치됨·봇 서버 미기동으로 실서버 미검증) |
+| T-171 | 봇 채팅 고도화 — 첨부 업로드·실행 단계(steps) 표시·마크다운·정체색 말풍선 | `…/ui/bots/chat` | NEEDS-BUILD (11-13 로컬 빌드·단위테스트 통과 6953ba1, 폴드 설치됨·봇 서버 미기동으로 실서버 미검증) |
+| T-172 | 봇 프로필 — 이름·아바타·페르소나·승인 정책 편집, 보관, 헬스·발견 (지난 세션은 T-175로 이관) | `…/ui/bots/profile` | NEEDS-BUILD (11-13 로컬 빌드·단위테스트 통과 6953ba1, 폴드 설치됨·봇 서버 미기동으로 실서버 미검증) |
+| T-173 | 채널 관리 — 제목·주제·봇끼리 대화 수정, 멤버 추가/제거, 삭제 | `…/ui/bots/channel` | NEEDS-BUILD (11-13 로컬 빌드·단위테스트 통과 6953ba1, 폴드 설치됨·봇 서버 미기동으로 실서버 미검증) |
+| T-174 | 워크스페이스 — 목록·폴더 추가·리포 클론·상태·커밋·푸시·삭제 | `…/ui/workspaces` | NEEDS-BUILD (11-13 로컬 빌드·단위테스트 통과 6953ba1, 폴드 설치됨·봇 서버 미기동으로 실서버 미검증) |
+| T-175 | 2차: 칸반·크론·대시보드·봇별 지난 세션(게이트웨이 세션 — 멀티플렉스는 Hermes-bot 경유 프록시 필요) 부가 기능 | — | TODO |
+
 ## Phase A — 앱스토어 상품화 Phase 0: 컴플라이언스 + 다국어 기반
 
 > 상업화 전체 계획은 `docs/COMMERCIALIZATION.md` 참조. Phase B~D 태스크는 이 파일 하단에 추가됨.
@@ -385,3 +409,6 @@
 | 06-20 | claude/hopeful-edison-1p5q91 @ 767df1e | DOCKER BUILD SUCCEEDED | 사용자 확인 — T-B05 DONE (플랜 제한 + Bridge 프록시 + 메시지 카운팅) |
 | 06-21 | claude/sleepy-bardeen-x86kpk @ 98ad910 | BUILD SUCCEEDED + 실기기 설치 완료 | 사용자 Xcode 빌드 + iPhone17,4(iOS 26.5) 설치 확인 — T-C01~C05 Phase C 전체 (유료 Apple Developer C4LUZYK8L5, 빌드 오류 5개 수정 포함). 런타임 검증은 Sign in with Apple(T-C01)·StoreKit(T-C03) 대기. |
 | 08-05 | claude/t149-stream-recovery @ 2ea79f9 | BUILD SUCCEEDED | Hermes가 Mac Xcode 26.3에서 iOS Simulator 빌드 검증. T-149 실기기 스트림 리셋 시나리오와 XCTest 타깃 등록은 대기. |
+| 11-13 | ccr-29d493c3-z8tex2 @ d374c43 | ANDROID BUILD SUCCESSFUL | Claude Code 맥미니 로컬 검증 — `cd android && ./gradlew :app:testDebugUnitTest :app:assembleDebug` 통과(JDK 17, Gradle 8.11.1, AGP 8.7.3, compileSdk 35). JVM 단위 테스트 29개(SseParser 7·ThinkFilter 7·Parsers 10·HermesApiStream 4·BotSubscription 1) 전부 통과, `app-debug.apk` 생성. T-161~T-164 실기기/에뮬레이터 미검증 |
+| 11-13 | ccr-29d493c3-z8tex2 @ b579721 | ANDROID BUILD SUCCESSFUL | Claude Code 맥미니 로컬 — `./gradlew clean :app:testDebugUnitTest :app:assembleDebug :app:bundleRelease` 통과(AGP 8.9.3, compileSdk/targetSdk 36). 단위 테스트 34개 통과(DemoMode 5 추가), `app-release.aab` 생성(미서명). 임시 키스토어로 assembleRelease 서명 확인 후 삭제. 실기기 미검증 |
+| 11-13 | ccr-29d493c3-z8tex2 @ 6953ba1 | ANDROID BUILD SUCCESSFUL | Claude Code 맥미니 로컬 — Phase 26 봇 중심 재구성(T-170~174) `clean :app:testDebugUnitTest :app:assembleDebug` 통과, 단위 테스트 58개. Galaxy Z Fold(SM-F971N)에 adb 설치·실행 확인. 맥미니 Hermes-bot LaunchAgent(`ai.hermes.bot`)가 빈 배포 폴더(`~/Documents/Hermes-bot`)를 가리켜 :8900 미기동 → 실서버 검증 대기 |
