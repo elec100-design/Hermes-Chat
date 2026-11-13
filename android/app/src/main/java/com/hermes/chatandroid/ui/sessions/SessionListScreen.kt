@@ -4,31 +4,36 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.automirrored.rounded.Chat
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.ArrowDropDown
+import androidx.compose.material.icons.rounded.DeleteOutline
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -45,7 +50,10 @@ import com.hermes.chatandroid.AppContainer
 import com.hermes.chatandroid.data.Session
 import com.hermes.chatandroid.ui.components.EmptyState
 import com.hermes.chatandroid.ui.components.ErrorBanner
+import com.hermes.chatandroid.ui.components.HermesCard
+import com.hermes.chatandroid.ui.components.HermesTextField
 import com.hermes.chatandroid.ui.components.LoadingBox
+import com.hermes.chatandroid.ui.components.SearchPillField
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -68,7 +76,6 @@ fun SessionListScreen(
     var renaming by remember { mutableStateOf<Session?>(null) }
     var deleting by remember { mutableStateOf<Session?>(null) }
 
-    // 프로필/호스트/키가 바뀌면 재로딩
     LaunchedEffect(profile, settings.host, settings.apiKey) { vm.load(profile) }
 
     val filtered = remember(state.sessions, query) {
@@ -77,35 +84,52 @@ fun SessionListScreen(
 
     Scaffold(
         modifier = modifier,
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(title = {
-                Box {
-                    Row0(onClick = { menuOpen = true }, label = profile?.name ?: "프로필 없음")
-                    DropdownMenu(menuOpen, { menuOpen = false }) {
-                        settings.visibleProfiles.forEach { p ->
-                            DropdownMenuItem(
-                                text = { Text("${p.name} (:${p.port})") },
-                                onClick = {
-                                    menuOpen = false
-                                    repo.update { it.copy(selectedProfile = p.name) }
-                                },
-                            )
+            TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
+                title = {
+                    Box {
+                        Row(
+                            Modifier.clickable(onClick = { menuOpen = true }),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Text(profile?.name ?: "프로필 없음", style = MaterialTheme.typography.headlineSmall)
+                            Icon(Icons.Rounded.ArrowDropDown, contentDescription = "프로필 선택")
+                        }
+                        DropdownMenu(menuOpen, { menuOpen = false }) {
+                            settings.visibleProfiles.forEach { p ->
+                                DropdownMenuItem(
+                                    text = { Text("${p.name} (:${p.port})") },
+                                    onClick = {
+                                        menuOpen = false
+                                        repo.update { it.copy(selectedProfile = p.name) }
+                                    },
+                                )
+                            }
                         }
                     }
-                }
-            })
+                },
+            )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { vm.create(onOpenSession) }) {
-                Icon(Icons.Filled.Add, contentDescription = "새 세션")
+            FloatingActionButton(
+                onClick = { vm.create(onOpenSession) },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                shape = CircleShape,
+            ) {
+                Icon(Icons.Rounded.Add, contentDescription = "새 세션")
             }
         },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
-            OutlinedTextField(
-                query, { query = it },
-                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
-                placeholder = { Text("세션 검색") }, singleLine = true,
+            SearchPillField(
+                value = query,
+                onValueChange = { query = it },
+                placeholder = "세션 검색",
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
             )
             state.error?.let { ErrorBanner(it, onRetry = { vm.dismissError(); vm.refresh() }) }
             PullToRefreshBox(
@@ -114,28 +138,42 @@ fun SessionListScreen(
                 modifier = Modifier.fillMaxSize(),
             ) {
                 when {
-                    state.loading && state.sessions.isEmpty() -> LoadingBox()
+                    state.loading && state.sessions.isEmpty() -> LoadingBox(label = "세션 목록을 불러오는 중…")
                     filtered.isEmpty() -> EmptyState(
                         if (state.sessions.isEmpty()) "세션이 없습니다" else "검색 결과가 없습니다",
                         subtitle = if (state.sessions.isEmpty()) "+ 버튼으로 새 대화를 시작하세요" else null,
+                        icon = Icons.AutoMirrored.Rounded.Chat,
                     )
-                    else -> LazyColumn(Modifier.fillMaxSize()) {
+                    else -> LazyColumn(
+                        Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 96.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
                         itemsIndexed(filtered, key = { _, s -> s.id }) { i, s ->
                             if (query.isBlank() && i >= filtered.size - 5) LaunchedEffect(filtered.size) { vm.loadMore() }
-                            ListItem(
-                                headlineContent = { Text(s.displayTitle, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                                supportingContent = {
-                                    if (s.updatedAt > 0) Text(formatTime(s.updatedAt))
-                                },
-                                trailingContent = {
-                                    Row0Actions(
-                                        onRename = { renaming = s },
-                                        onDelete = { deleting = s },
-                                    )
-                                },
-                                modifier = Modifier.clickable { onOpenSession(s.id) },
-                            )
-                            HorizontalDivider()
+                            HermesCard(
+                                onClick = { onOpenSession(s.id) },
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
+                            ) {
+                                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                        Text(s.displayTitle, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        if (s.updatedAt > 0) {
+                                            Text(
+                                                formatTime(s.updatedAt),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                    }
+                                    IconButton({ renaming = s }) {
+                                        Icon(Icons.Rounded.Edit, contentDescription = "이름 변경", modifier = Modifier.size(19.dp))
+                                    }
+                                    IconButton({ deleting = s }) {
+                                        Icon(Icons.Rounded.DeleteOutline, contentDescription = "삭제", modifier = Modifier.size(19.dp))
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -148,9 +186,9 @@ fun SessionListScreen(
         AlertDialog(
             onDismissRequest = { renaming = null },
             title = { Text("이름 변경") },
-            text = { OutlinedTextField(text, { text = it }, singleLine = true) },
+            text = { HermesTextField(text, { text = it }, label = "세션 제목") },
             confirmButton = {
-                TextButton(onClick = { vm.rename(s.id, text.trim()); renaming = null }, enabled = text.isNotBlank()) { Text("저장") }
+                Button(onClick = { vm.rename(s.id, text.trim()); renaming = null }, enabled = text.isNotBlank(), shape = CircleShape) { Text("저장") }
             },
             dismissButton = { TextButton({ renaming = null }) { Text("취소") } },
         )
@@ -160,29 +198,11 @@ fun SessionListScreen(
             onDismissRequest = { deleting = null },
             title = { Text("세션 삭제") },
             text = { Text("\"${s.displayTitle}\" 세션을 삭제할까요? 되돌릴 수 없습니다.") },
-            confirmButton = { TextButton({ vm.delete(s.id); deleting = null }) { Text("삭제") } },
+            confirmButton = {
+                TextButton({ vm.delete(s.id); deleting = null }) { Text("삭제", color = MaterialTheme.colorScheme.error) }
+            },
             dismissButton = { TextButton({ deleting = null }) { Text("취소") } },
         )
-    }
-}
-
-@Composable
-private fun Row0(onClick: () -> Unit, label: String) {
-    androidx.compose.foundation.layout.Row(
-        Modifier.clickable(onClick = onClick),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Text(label)
-        Icon(Icons.Filled.ArrowDropDown, contentDescription = "프로필 선택")
-    }
-}
-
-@Composable
-private fun Row0Actions(onRename: () -> Unit, onDelete: () -> Unit) {
-    androidx.compose.foundation.layout.Row {
-        IconButton(onRename) { Icon(Icons.Filled.Edit, contentDescription = "이름 변경") }
-        IconButton(onDelete) { Icon(Icons.Filled.Delete, contentDescription = "삭제") }
     }
 }
 

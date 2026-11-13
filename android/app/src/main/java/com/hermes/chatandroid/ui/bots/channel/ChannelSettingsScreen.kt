@@ -1,5 +1,6 @@
 package com.hermes.chatandroid.ui.bots.channel
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -7,13 +8,19 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -24,12 +31,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -38,6 +46,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -53,7 +63,10 @@ import com.hermes.chatandroid.data.ChannelPatch
 import com.hermes.chatandroid.ui.bots.BotAvatar
 import com.hermes.chatandroid.ui.bots.botErrorText
 import com.hermes.chatandroid.ui.components.ErrorBanner
+import com.hermes.chatandroid.ui.components.HermesCard
+import com.hermes.chatandroid.ui.components.HermesTextField
 import com.hermes.chatandroid.ui.components.LoadingBox
+import com.hermes.chatandroid.ui.theme.hermesColors
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -211,87 +224,143 @@ fun ChannelSettingsScreen(
     var removing by remember { mutableStateOf<BotMember?>(null) }
     var showAdd by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
+    val hc = MaterialTheme.hermesColors
 
     Scaffold(
         modifier = modifier,
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
-                title = { Text("채널 설정") },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
+                title = { Text("채널 설정", style = MaterialTheme.typography.titleLarge) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "뒤로") }
+                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "뒤로") }
                 },
             )
         },
     ) { padding ->
         val channel = state.channel
         when {
-            state.loading -> LoadingBox(Modifier.padding(padding).fillMaxSize())
+            state.loading -> LoadingBox(Modifier.padding(padding).fillMaxSize(), "채널 설정을 불러오는 중…")
             channel == null -> Column(Modifier.padding(padding).fillMaxSize().padding(16.dp)) {
                 ErrorBanner(state.error ?: "채널을 불러오지 못했습니다.", onRetry = vm::load)
             }
             else -> Column(
                 Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 state.error?.let { ErrorBanner(it) }
-                OutlinedTextField(
-                    value = state.title, onValueChange = { vm.edit(title = it) },
-                    label = { Text("제목") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
-                    isError = state.title.isBlank(),
-                )
-                OutlinedTextField(
-                    value = state.topic, onValueChange = { vm.edit(topic = it) },
-                    label = { Text("주제") }, minLines = 2, maxLines = 6, modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = state.workdir, onValueChange = { vm.edit(workdir = it) },
-                    label = { Text("작업 폴더") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text("봇끼리 대화(연쇄)", style = MaterialTheme.typography.titleSmall)
+
+                HermesCard {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text("채널 정보", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                        HermesTextField(
+                            value = state.title,
+                            onValueChange = { vm.edit(title = it) },
+                            label = "제목",
+                            isError = state.title.isBlank(),
+                        )
+                        HermesTextField(
+                            value = state.topic,
+                            onValueChange = { vm.edit(topic = it) },
+                            label = "주제",
+                            singleLine = false,
+                            minLines = 2,
+                            maxLines = 6,
+                        )
+                        HermesTextField(
+                            value = state.workdir,
+                            onValueChange = { vm.edit(workdir = it) },
+                            label = "작업 폴더",
+                        )
+                        HorizontalDivider(color = hc.subtleDivider)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Column(Modifier.weight(1f)) {
+                                Text("봇끼리 대화(연쇄)", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                                Text(
+                                    "켜면 봇의 답변에 다른 봇이 이어서 반응합니다.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            Switch(checked = state.botChat, onCheckedChange = { vm.edit(botChat = it) })
+                        }
+                        Button(
+                            onClick = vm::save,
+                            enabled = state.dirty && !state.saving && state.title.isNotBlank(),
+                            shape = CircleShape,
+                            modifier = Modifier.fillMaxWidth().height(46.dp),
+                        ) { Text(if (state.saving) "저장 중…" else "변경 사항 저장") }
+                    }
+                }
+
+                HermesCard {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                "참여 멤버 (${channel.members.size})",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.weight(1f),
+                            )
+                            TextButton(onClick = { vm.loadCandidates(); showAdd = true }, enabled = !state.busy) {
+                                Icon(Icons.Rounded.Add, null, Modifier.size(17.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("추가")
+                            }
+                        }
+                        if (channel.members.isEmpty()) {
+                            Text("참여 중인 봇이 없습니다.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        } else {
+                            channel.members.forEachIndexed { idx, m ->
+                                if (idx > 0) HorizontalDivider(color = hc.subtleDivider)
+                                Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    BotAvatar(
+                                        m.avatar?.takeIf { it.isNotEmpty() } ?: "🤖",
+                                        m.tone,
+                                        size = 38.dp,
+                                        online = m.health == "online",
+                                    )
+                                    Spacer(Modifier.width(12.dp))
+                                    Column(Modifier.weight(1f)) {
+                                        Text(m.displayName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                                        Text("@${m.slug}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                    IconButton(onClick = { removing = m }, enabled = !state.busy) {
+                                        Icon(Icons.Rounded.Close, contentDescription = "${m.displayName} 제거")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                HermesCard(
+                    containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f),
+                    borderColor = MaterialTheme.colorScheme.error.copy(alpha = 0.25f),
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("위험 구역", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.error)
                         Text(
-                            "켜면 봇의 답변에 다른 봇이 이어서 반응합니다.",
+                            "채널을 삭제하면 대화 기록도 함께 사라지며 되돌릴 수 없습니다.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                    }
-                    Switch(checked = state.botChat, onCheckedChange = { vm.edit(botChat = it) })
-                }
-                Button(
-                    onClick = vm::save,
-                    enabled = state.dirty && !state.saving && state.title.isNotBlank(),
-                    modifier = Modifier.fillMaxWidth(),
-                ) { Text(if (state.saving) "저장 중…" else "저장") }
-
-                HorizontalDivider()
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("멤버 (${channel.members.size})", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                    TextButton(onClick = { vm.loadCandidates(); showAdd = true }, enabled = !state.busy) { Text("멤버 추가") }
-                }
-                channel.members.forEach { m ->
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        BotAvatar(m.avatar?.takeIf { it.isNotEmpty() } ?: "🤖", m.tone, size = 36.dp)
-                        Spacer(Modifier.width(12.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(m.displayName, style = MaterialTheme.typography.bodyLarge)
-                            m.health?.let {
-                                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        }
-                        IconButton(onClick = { removing = m }, enabled = !state.busy) {
-                            Icon(Icons.Default.Close, contentDescription = "${m.displayName} 제거")
+                        OutlinedButton(
+                            onClick = { confirmDelete = true },
+                            enabled = !state.busy,
+                            shape = CircleShape,
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f)),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                            modifier = Modifier.fillMaxWidth().height(44.dp),
+                        ) {
+                            Icon(Icons.Rounded.DeleteOutline, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("채널 삭제")
                         }
                     }
                 }
-
-                HorizontalDivider()
-                Text("위험 구역", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.error)
-                OutlinedButton(
-                    onClick = { confirmDelete = true }, enabled = !state.busy,
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                    modifier = Modifier.fillMaxWidth(),
-                ) { Text("채널 삭제") }
+                Spacer(Modifier.height(12.dp))
             }
         }
     }
@@ -321,20 +390,31 @@ fun ChannelSettingsScreen(
     if (showAdd) {
         val memberIds = state.channel?.members?.map { it.id }?.toSet().orEmpty()
         val available = state.candidates.filter { it.id !in memberIds }
-        ModalBottomSheet(onDismissRequest = { showAdd = false }) {
-            Column(Modifier.padding(bottom = 24.dp)) {
-                Text("멤버 추가", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+        ModalBottomSheet(onDismissRequest = { showAdd = false }, containerColor = MaterialTheme.colorScheme.surface) {
+            Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("멤버 추가", style = MaterialTheme.typography.titleLarge)
                 if (available.isEmpty()) {
-                    Text("추가할 수 있는 봇이 없습니다.", modifier = Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("추가할 수 있는 봇이 없습니다.", modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 available.forEach { b ->
-                    Row(
-                        Modifier.fillMaxWidth().clickable { vm.addMember(b.id); showAdd = false }.padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .clickable { vm.addMember(b.id); showAdd = false },
+                        shape = RoundedCornerShape(14.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerLow,
+                        border = BorderStroke(1.dp, hc.cardBorder),
                     ) {
-                        BotAvatar(b.avatar?.takeIf { it.isNotEmpty() } ?: "🤖", b.tone, size = 36.dp)
-                        Spacer(Modifier.width(12.dp))
-                        Text(b.name?.takeIf { it.isNotEmpty() } ?: b.slug)
+                        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            BotAvatar(b.avatar?.takeIf { it.isNotEmpty() } ?: "🤖", b.tone, size = 38.dp, online = b.isOnline)
+                            Spacer(Modifier.width(12.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(b.displayName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                                Text("@${b.slug}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Icon(Icons.Rounded.Add, null, tint = MaterialTheme.colorScheme.primary)
+                        }
                     }
                 }
             }

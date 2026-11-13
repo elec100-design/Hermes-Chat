@@ -1,25 +1,36 @@
 package com.hermes.chatandroid.ui.workspaces
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.Code
+import androidx.compose.material.icons.rounded.DeleteOutline
+import androidx.compose.material.icons.rounded.Folder
+import androidx.compose.material.icons.rounded.FolderOpen
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -34,11 +45,12 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -48,6 +60,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
@@ -65,7 +80,12 @@ import com.hermes.chatandroid.data.WorkspaceStatus
 import com.hermes.chatandroid.ui.bots.botErrorText
 import com.hermes.chatandroid.ui.components.EmptyState
 import com.hermes.chatandroid.ui.components.ErrorBanner
+import com.hermes.chatandroid.ui.components.HermesCard
+import com.hermes.chatandroid.ui.components.HermesTextField
+import com.hermes.chatandroid.ui.components.IconBadge
 import com.hermes.chatandroid.ui.components.LoadingBox
+import com.hermes.chatandroid.ui.components.StatusPill
+import com.hermes.chatandroid.ui.theme.hermesColors
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -274,26 +294,38 @@ fun WorkspacesScreen(
 
     Scaffold(
         modifier = modifier,
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
-                title = { Text("워크스페이스") },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
+                title = { Text("워크스페이스", style = MaterialTheme.typography.headlineSmall) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "뒤로") }
+                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "뒤로") }
+                },
+                actions = {
+                    IconButton(onClick = { vm.refresh() }, enabled = !state.refreshing) {
+                        Icon(Icons.Rounded.Refresh, contentDescription = "새로고침")
+                    }
                 },
             )
         },
         floatingActionButton = {
             Box {
-                FloatingActionButton(onClick = { menuOpen = true }) { Icon(Icons.Filled.Add, contentDescription = "추가") }
+                FloatingActionButton(
+                    onClick = { menuOpen = true },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    shape = CircleShape,
+                ) { Icon(Icons.Rounded.Add, contentDescription = "추가") }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                     DropdownMenuItem(
                         text = { Text("폴더 추가") },
-                        leadingIcon = { Icon(Icons.Filled.Folder, null) },
+                        leadingIcon = { Icon(Icons.Rounded.Folder, null) },
                         onClick = { menuOpen = false; vm.clearAddError(); vm.browse(null); showBrowse = true },
                     )
                     DropdownMenuItem(
                         text = { Text("리포 클론") },
-                        leadingIcon = { Icon(Icons.Filled.Code, null) },
+                        leadingIcon = { Icon(Icons.Rounded.Code, null) },
                         onClick = { menuOpen = false; vm.clearAddError(); showClone = true },
                     )
                 }
@@ -303,29 +335,37 @@ fun WorkspacesScreen(
         Column(Modifier.padding(padding).fillMaxSize()) {
             state.error?.let { ErrorBanner(it, onRetry = { vm.refresh() }) }
             removeNote?.let {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(it, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-                    TextButton(onClick = { vm.lastRemoveNote.value = null }) { Text("확인") }
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerLow,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                ) {
+                    Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(it, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                        TextButton(onClick = { vm.lastRemoveNote.value = null }) { Text("확인") }
+                    }
                 }
             }
             when {
-                state.loading -> LoadingBox()
+                state.loading -> LoadingBox(label = "워크스페이스를 불러오는 중…")
                 else -> PullToRefreshBox(isRefreshing = state.refreshing, onRefresh = { vm.refresh() }, modifier = Modifier.weight(1f)) {
                     if (state.items.isEmpty()) {
-                        EmptyState("등록된 작업 위치가 없습니다", subtitle = "+ 버튼으로 폴더를 추가하거나 리포를 클론하세요")
+                        EmptyState(
+                            title = "등록된 작업 위치가 없습니다",
+                            subtitle = "오른쪽 아래 + 버튼으로 서버 폴더를 추가하거나 Git 리포지토리를 클론하세요.",
+                            icon = Icons.Rounded.FolderOpen,
+                        )
                     } else {
-                        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 88.dp)) {
+                        LazyColumn(
+                            Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
                             items(state.items, key = { it.id }) { ws ->
-                                ListItem(
-                                    modifier = Modifier.clickable { vm.lastRemoveNote.value = null; vm.openDetail(ws) },
-                                    leadingContent = { Icon(if (ws.isRepo) Icons.Filled.Code else Icons.Filled.Folder, null) },
-                                    headlineContent = { Text(ws.label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                                    supportingContent = { Text(ws.path, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                                    trailingContent = {
-                                        if (ws.isRepo) AssistChip(onClick = { vm.openDetail(ws) }, label = { Text(ws.defaultBranch ?: "repo") })
-                                    },
-                                )
-                                HorizontalDivider()
+                                WorkspaceCard(ws) {
+                                    vm.lastRemoveNote.value = null
+                                    vm.openDetail(ws)
+                                }
                             }
                         }
                     }
@@ -334,14 +374,60 @@ fun WorkspacesScreen(
         }
     }
 
-    if (showBrowse) {
-        BrowseDialog(vm, onDismiss = { showBrowse = false })
-    }
-    if (showClone) {
-        CloneDialog(vm, onDismiss = { showClone = false })
-    }
-    detail?.let { d ->
-        DetailSheet(d, vm)
+    if (showBrowse) BrowseDialog(vm, onDismiss = { showBrowse = false })
+    if (showClone) CloneDialog(vm, onDismiss = { showClone = false })
+    detail?.let { d -> DetailSheet(d, vm) }
+}
+
+@Composable
+private fun WorkspaceCard(ws: Workspace, onClick: () -> Unit) {
+    val tint = if (ws.isRepo) MaterialTheme.colorScheme.primary else Color(0xFF0EA5E9)
+    HermesCard(
+        onClick = onClick,
+        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
+    ) {
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            IconBadge(
+                icon = if (ws.isRepo) Icons.Rounded.Code else Icons.Rounded.Folder,
+                tint = tint,
+                size = 44.dp,
+            )
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        ws.label,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    if (ws.isRepo) {
+                        StatusPill(
+                            text = ws.defaultBranch ?: "repo",
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+                Text(
+                    ws.path,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontFamily = FontFamily.Monospace,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Icon(
+                Icons.Rounded.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+            )
+        }
     }
 }
 
@@ -354,12 +440,18 @@ private fun BrowseDialog(vm: WorkspacesViewModel, onDismiss: () -> Unit) {
         onDismissRequest = { if (!state.adding) onDismiss() },
         title = { Text("폴더 추가") },
         text = {
-            Column {
-                Text(b.result?.path ?: "서버 폴더 탐색", style = MaterialTheme.typography.labelMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    b.result?.path ?: "서버 폴더 탐색",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontFamily = FontFamily.Monospace,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 (b.error ?: state.addError)?.let {
-                    Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(vertical = 4.dp))
+                    Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
-                Box(Modifier.fillMaxWidth().heightIn(min = 120.dp, max = 280.dp)) {
+                Box(Modifier.fillMaxWidth().heightIn(min = 120.dp, max = 260.dp)) {
                     when {
                         b.loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
                         else -> LazyColumn {
@@ -368,7 +460,7 @@ private fun BrowseDialog(vm: WorkspacesViewModel, onDismiss: () -> Unit) {
                                 item {
                                     ListItem(
                                         modifier = Modifier.clickable { vm.browse(r.parent) },
-                                        leadingContent = { Icon(Icons.Filled.Folder, null) },
+                                        leadingContent = { Icon(Icons.Rounded.Folder, null) },
                                         headlineContent = { Text("..") },
                                     )
                                 }
@@ -376,23 +468,23 @@ private fun BrowseDialog(vm: WorkspacesViewModel, onDismiss: () -> Unit) {
                             items(r?.entries ?: emptyList(), key = { it.path }) { e ->
                                 ListItem(
                                     modifier = Modifier.clickable { vm.browse(e.path) },
-                                    leadingContent = { Icon(Icons.Filled.Folder, null) },
+                                    leadingContent = { Icon(Icons.Rounded.Folder, null) },
                                     headlineContent = { Text(e.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                                 )
                             }
-                            if (r != null && r.entries.isEmpty()) item { Text("하위 폴더가 없습니다", Modifier.padding(12.dp), style = MaterialTheme.typography.bodySmall) }
+                            if (r != null && r.entries.isEmpty()) {
+                                item { Text("하위 폴더가 없습니다", Modifier.padding(12.dp), style = MaterialTheme.typography.bodySmall) }
+                            }
                         }
                     }
                 }
-                OutlinedTextField(
-                    value = label, onValueChange = { label = it }, singleLine = true,
-                    label = { Text("이름 (선택)") }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                )
+                HermesTextField(value = label, onValueChange = { label = it }, label = "표시 이름 (선택)")
             }
         },
         confirmButton = {
             Button(
                 enabled = b.result != null && !state.adding,
+                shape = CircleShape,
                 onClick = { b.result?.let { vm.addFolder(it.path, label, onDismiss) } },
             ) { Text(if (state.adding) "추가 중…" else "이 폴더 선택") }
         },
@@ -410,13 +502,10 @@ private fun CloneDialog(vm: WorkspacesViewModel, onDismiss: () -> Unit) {
         onDismissRequest = { if (!state.adding) onDismiss() },
         title = { Text("리포 클론") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(repo, { repo = it }, singleLine = true, enabled = !state.adding,
-                    label = { Text("리포 URL (예: https://github.com/…)") }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(branch, { branch = it }, singleLine = true, enabled = !state.adding,
-                    label = { Text("브랜치 (선택)") }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(label, { label = it }, singleLine = true, enabled = !state.adding,
-                    label = { Text("이름 (선택)") }, modifier = Modifier.fillMaxWidth())
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                HermesTextField(repo, { repo = it }, label = "리포 URL", placeholder = "https://github.com/…", enabled = !state.adding)
+                HermesTextField(branch, { branch = it }, label = "브랜치 (선택)", enabled = !state.adding)
+                HermesTextField(label, { label = it }, label = "표시 이름 (선택)", enabled = !state.adding)
                 if (state.adding) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
@@ -429,6 +518,7 @@ private fun CloneDialog(vm: WorkspacesViewModel, onDismiss: () -> Unit) {
         confirmButton = {
             Button(
                 enabled = repo.isNotBlank() && !state.adding,
+                shape = CircleShape,
                 onClick = { vm.clone(repo, branch, label, onDismiss) },
             ) { Text("클론") }
         },
@@ -436,7 +526,7 @@ private fun CloneDialog(vm: WorkspacesViewModel, onDismiss: () -> Unit) {
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun DetailSheet(d: DetailUiState, vm: WorkspacesViewModel) {
     var showCommit by remember { mutableStateOf(false) }
@@ -444,51 +534,96 @@ private fun DetailSheet(d: DetailUiState, vm: WorkspacesViewModel) {
     var showRemove by remember { mutableStateOf(false) }
     val ws = d.workspace
     val isRepo = d.status?.isRepo ?: ws.isRepo
+    val hc = MaterialTheme.hermesColors
 
-    ModalBottomSheet(onDismissRequest = { vm.closeDetail() }) {
-        Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    ModalBottomSheet(onDismissRequest = { vm.closeDetail() }, containerColor = MaterialTheme.colorScheme.surface) {
+        Column(
+            Modifier.padding(horizontal = 20.dp).padding(bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
             Text(ws.label, style = MaterialTheme.typography.titleLarge)
-            Text(ws.path, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            ws.repoUrl?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            Text(ws.path, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            ws.repoUrl?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary) }
             d.error?.let { ErrorBanner(it, onRetry = { vm.loadStatus() }) }
-            d.info?.let { Text(it, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium) }
+            d.info?.let { Text(it, color = hc.online, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium) }
             d.push?.let { p ->
-                Column {
-                    Text("승인 탭에서 승인하면 푸시됩니다", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
-                    Text(
-                        "승인 #${p.approvalId ?: "?"} · 상태 ${p.status ?: "대기"}" + (p.note?.let { " · $it" } ?: ""),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text("승인 탭에서 승인하면 푸시됩니다", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            "승인 #${p.approvalId ?: "?"} · 상태 ${p.status ?: "대기"}" + (p.note?.let { " · $it" } ?: ""),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
                 }
             }
-            HorizontalDivider()
+            HorizontalDivider(color = hc.subtleDivider)
             when {
-                d.statusLoading && d.status == null -> Box(Modifier.fillMaxWidth().padding(8.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-                d.status != null && !d.status.isRepo -> Text("git 저장소가 아닌 폴더입니다. 커밋/푸시를 쓸 수 없습니다.", style = MaterialTheme.typography.bodyMedium)
+                d.statusLoading && d.status == null -> Box(Modifier.fillMaxWidth().padding(12.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                d.status != null && !d.status.isRepo -> Text(
+                    "git 저장소가 아닌 폴더입니다. 커밋/푸시를 쓸 수 없습니다.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 d.status != null -> {
                     val s = d.status
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        AssistChip(onClick = {}, label = { Text("브랜치 ${s.branch ?: "?"}") })
-                        FilterChip(selected = s.dirty, onClick = {}, label = { Text(if (s.dirty) "변경 있음" else "깨끗함") })
+                        StatusPill(
+                            text = "브랜치 ${s.branch ?: "?"}",
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.primary,
+                        )
+                        StatusPill(
+                            text = if (s.dirty) "변경 있음" else "깨끗함",
+                            containerColor = if (s.dirty) hc.warningContainer else hc.online.copy(alpha = 0.14f),
+                            contentColor = if (s.dirty) hc.onWarningContainer else hc.online,
+                            dotColor = if (s.dirty) hc.warning else hc.online,
+                        )
                     }
                     if (s.files.isNotEmpty()) {
                         Text("변경된 파일 (${s.files.size})", style = MaterialTheme.typography.labelLarge)
-                        Column(Modifier.heightIn(max = 180.dp)) {
-                            LazyColumn {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = hc.codeSurface,
+                            border = BorderStroke(1.dp, hc.cardBorder),
+                            modifier = Modifier.fillMaxWidth().heightIn(max = 170.dp),
+                        ) {
+                            LazyColumn(contentPadding = PaddingValues(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 items(s.files) { f ->
-                                    Text(f, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    Text(f, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 }
                             }
                         }
                     }
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(enabled = isRepo && !d.busy && d.status?.dirty == true, onClick = { showCommit = true }) { Text("커밋") }
-                OutlinedButton(enabled = isRepo && !d.busy, onClick = { showPush = true }) { Text("푸시 요청") }
-                if (d.busy) CircularProgressIndicator(Modifier.size(24.dp).align(Alignment.CenterVertically), strokeWidth = 2.dp)
+            Spacer(Modifier.height(2.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Button(
+                    enabled = isRepo && !d.busy && d.status?.dirty == true,
+                    onClick = { showCommit = true },
+                    shape = CircleShape,
+                    modifier = Modifier.weight(1f).height(44.dp),
+                ) { Text("커밋") }
+                OutlinedButton(
+                    enabled = isRepo && !d.busy,
+                    onClick = { showPush = true },
+                    shape = CircleShape,
+                    modifier = Modifier.weight(1f).height(44.dp),
+                ) { Text("푸시 요청") }
             }
-            TextButton(enabled = !d.busy, onClick = { showRemove = true }) {
+            if (d.busy) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                    CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+                }
+            }
+            TextButton(enabled = !d.busy, onClick = { showRemove = true }, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Rounded.DeleteOutline, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.error)
+                Spacer(Modifier.width(4.dp))
                 Text("목록에서 제거", color = MaterialTheme.colorScheme.error)
             }
         }
@@ -499,9 +634,9 @@ private fun DetailSheet(d: DetailUiState, vm: WorkspacesViewModel) {
         AlertDialog(
             onDismissRequest = { showCommit = false },
             title = { Text("커밋") },
-            text = { OutlinedTextField(msg, { msg = it }, label = { Text("커밋 메시지") }, modifier = Modifier.fillMaxWidth()) },
+            text = { HermesTextField(msg, { msg = it }, label = "커밋 메시지", singleLine = false, maxLines = 3) },
             confirmButton = {
-                Button(enabled = msg.isNotBlank(), onClick = { showCommit = false; vm.commit(msg) }) { Text("커밋") }
+                Button(enabled = msg.isNotBlank(), shape = CircleShape, onClick = { showCommit = false; vm.commit(msg) }) { Text("커밋") }
             },
             dismissButton = { TextButton(onClick = { showCommit = false }) { Text("취소") } },
         )
@@ -513,12 +648,16 @@ private fun DetailSheet(d: DetailUiState, vm: WorkspacesViewModel) {
             onDismissRequest = { showPush = false },
             title = { Text("푸시 요청") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("바로 푸시되지 않고 승인 항목이 만들어집니다. 승인 탭에서 승인하면 푸시됩니다.", style = MaterialTheme.typography.bodySmall)
-                    OutlinedTextField(branch, { branch = it }, singleLine = true, label = { Text("브랜치 (선택)") }, modifier = Modifier.fillMaxWidth())
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        "바로 푸시되지 않고 승인 항목이 만들어집니다. 승인 탭에서 승인하면 푸시됩니다.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    HermesTextField(branch, { branch = it }, label = "브랜치 (선택)")
                     if (d.bots.isNotEmpty()) {
                         Text("요청 봇 (선택)", style = MaterialTheme.typography.labelMedium)
-                        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             d.bots.forEach { b ->
                                 FilterChip(
                                     selected = botId == b.id,
@@ -530,7 +669,7 @@ private fun DetailSheet(d: DetailUiState, vm: WorkspacesViewModel) {
                     }
                 }
             },
-            confirmButton = { Button(onClick = { showPush = false; vm.requestPush(branch, botId) }) { Text("요청") } },
+            confirmButton = { Button(shape = CircleShape, onClick = { showPush = false; vm.requestPush(branch, botId) }) { Text("요청") } },
             dismissButton = { TextButton(onClick = { showPush = false }) { Text("취소") } },
         )
     }

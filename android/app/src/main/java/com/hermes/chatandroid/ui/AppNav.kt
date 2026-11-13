@@ -1,27 +1,45 @@
 package com.hermes.chatandroid.ui
 
 import android.net.Uri
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Chat
-import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.automirrored.outlined.Chat
+import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.outlined.GridView
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -35,12 +53,13 @@ import com.hermes.chatandroid.R
 import com.hermes.chatandroid.ui.bots.ApprovalsScreen
 import com.hermes.chatandroid.ui.bots.BotChatScreen
 import com.hermes.chatandroid.ui.bots.BotsScreen
-import com.hermes.chatandroid.ui.chat.ChatScreen
-import com.hermes.chatandroid.ui.onboarding.OnboardingScreen
 import com.hermes.chatandroid.ui.bots.channel.ChannelSettingsScreen
 import com.hermes.chatandroid.ui.bots.profile.BotProfileScreen
+import com.hermes.chatandroid.ui.chat.ChatScreen
 import com.hermes.chatandroid.ui.more.MoreScreen
+import com.hermes.chatandroid.ui.onboarding.OnboardingScreen
 import com.hermes.chatandroid.ui.settings.SettingsScreen
+import com.hermes.chatandroid.ui.theme.hermesColors
 import com.hermes.chatandroid.ui.workspaces.WorkspacesScreen
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
@@ -65,12 +84,18 @@ object Routes {
     fun channelSettings(channelId: Int) = "channelSettings/$channelId"
 }
 
-private data class Tab(val route: String, val labelRes: Int, val icon: ImageVector)
+private data class Tab(
+    val route: String,
+    val labelRes: Int,
+    val selectedIcon: ImageVector,
+    val unselectedIcon: ImageVector,
+)
 
-private val ChatsTab = Tab(Routes.BOTS, R.string.tab_chats, Icons.Filled.Chat)
-private val ApprovalsTab = Tab(Routes.APPROVALS, R.string.tab_approvals, Icons.Filled.Notifications)
-private val MoreTab = Tab(Routes.MORE, R.string.tab_more, Icons.Filled.MoreHoriz)
+private val ChatsTab = Tab(Routes.BOTS, R.string.tab_chats, Icons.AutoMirrored.Filled.Chat, Icons.AutoMirrored.Outlined.Chat)
+private val ApprovalsTab = Tab(Routes.APPROVALS, R.string.tab_approvals, Icons.Filled.Notifications, Icons.Outlined.Notifications)
+private val MoreTab = Tab(Routes.MORE, R.string.tab_more, Icons.Filled.GridView, Icons.Outlined.GridView)
 private val Tabs = listOf(ChatsTab, ApprovalsTab, MoreTab)
+private val TopRoutes = Tabs.map { it.route }.toSet()
 
 /** 탭 바가 보이는 화면(설정은 더보기의 하위라 더보기 탭이 선택된 채 표시). */
 private fun tabOf(route: String?): Tab? = when (route) {
@@ -98,6 +123,7 @@ fun AppNav(container: AppContainer) {
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route
     val currentTab = tabOf(currentRoute)
+    var selectedBotChannelId by rememberSaveable { mutableStateOf<Int?>(null) }
 
     // 승인 탭 배지: 화면 이동마다 + 30초마다 대기 건수 갱신
     var pendingCount by remember { mutableIntStateOf(0) }
@@ -115,40 +141,101 @@ fun AppNav(container: AppContainer) {
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             if (currentTab != null) {
-                NavigationBar {
-                    Tabs.forEach { tab ->
-                        NavigationBarItem(
-                            selected = currentTab == tab,
-                            onClick = {
-                                navController.navigate(tab.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            },
-                            icon = {
-                                if (tab == ApprovalsTab && pendingCount > 0) {
-                                    BadgedBox(badge = { Badge { Text("$pendingCount") } }) { Icon(tab.icon, contentDescription = null) }
-                                } else {
-                                    Icon(tab.icon, contentDescription = null)
-                                }
-                            },
-                            label = { Text(stringResource(tab.labelRes)) },
-                        )
+                Column {
+                    HorizontalDivider(thickness = 0.7.dp, color = MaterialTheme.hermesColors.cardBorder)
+                    NavigationBar(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        tonalElevation = 0.dp,
+                    ) {
+                        Tabs.forEach { tab ->
+                            val selected = currentTab == tab
+                            NavigationBarItem(
+                                selected = selected,
+                                onClick = {
+                                    navController.navigate(tab.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                },
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = MaterialTheme.colorScheme.primary,
+                                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                                    indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                ),
+                                icon = {
+                                    val icon = if (selected) tab.selectedIcon else tab.unselectedIcon
+                                    if (tab == ApprovalsTab && pendingCount > 0) {
+                                        BadgedBox(
+                                            badge = {
+                                                Badge(
+                                                    containerColor = MaterialTheme.colorScheme.error,
+                                                    contentColor = MaterialTheme.colorScheme.onError,
+                                                ) { Text("$pendingCount") }
+                                            },
+                                        ) { Icon(icon, contentDescription = null) }
+                                    } else {
+                                        Icon(icon, contentDescription = null)
+                                    }
+                                },
+                                label = {
+                                    Text(
+                                        stringResource(tab.labelRes),
+                                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                                    )
+                                },
+                            )
+                        }
                     }
                 }
             }
         },
     ) { padding ->
-        val mod = Modifier.padding(padding)
-        NavHost(navController, startDestination = Routes.BOTS) {
+        val mod = Modifier.padding(padding).consumeWindowInsets(padding)
+        NavHost(
+            navController,
+            startDestination = Routes.BOTS,
+            enterTransition = {
+                if (targetState.destination.route in TopRoutes && initialState.destination.route in TopRoutes) {
+                    fadeIn(tween(180))
+                } else {
+                    slideInHorizontally(tween(240)) { it / 5 } + fadeIn(tween(220))
+                }
+            },
+            exitTransition = {
+                if (targetState.destination.route in TopRoutes && initialState.destination.route in TopRoutes) {
+                    fadeOut(tween(140))
+                } else {
+                    fadeOut(tween(180))
+                }
+            },
+            popEnterTransition = {
+                if (targetState.destination.route in TopRoutes && initialState.destination.route in TopRoutes) {
+                    fadeIn(tween(180))
+                } else {
+                    fadeIn(tween(200))
+                }
+            },
+            popExitTransition = {
+                if (targetState.destination.route in TopRoutes && initialState.destination.route in TopRoutes) {
+                    fadeOut(tween(140))
+                } else {
+                    slideOutHorizontally(tween(220)) { it / 5 } + fadeOut(tween(180))
+                }
+            },
+        ) {
             composable(Routes.BOTS) {
                 BotsScreen(
                     container,
-                    onOpenChannel = { navController.navigate(Routes.botChat(it)) },
+                    selectedChannelId = selectedBotChannelId,
+                    onSelectChannel = { selectedBotChannelId = it },
                     onOpenBotProfile = { navController.navigate(Routes.botProfile(it)) },
+                    onOpenChannelSettings = { navController.navigate(Routes.channelSettings(it)) },
                     modifier = mod,
                 )
             }
@@ -157,6 +244,7 @@ fun AppNav(container: AppContainer) {
             }
             composable(Routes.MORE) {
                 MoreScreen(
+                    container = container,
                     onOpenSettings = { navController.navigate(Routes.SETTINGS) },
                     onOpenWorkspaces = { navController.navigate(Routes.WORKSPACES) },
                     modifier = mod,
@@ -211,7 +299,10 @@ fun AppNav(container: AppContainer) {
                     botId = entry.arguments?.getInt("botId") ?: 0,
                     onBack = { navController.popBackStack() },
                     onOpenSession = { port, sessionId -> navController.navigate(Routes.chat(sessionId, port)) },
-                    onOpenChannel = { navController.navigate(Routes.botChat(it)) },
+                    onOpenChannel = { chId ->
+                        selectedBotChannelId = chId
+                        navController.popBackStack(Routes.BOTS, inclusive = false)
+                    },
                     modifier = mod,
                 )
             }
@@ -219,11 +310,15 @@ fun AppNav(container: AppContainer) {
                 Routes.CHANNEL_SETTINGS,
                 arguments = listOf(navArgument("channelId") { type = NavType.IntType }),
             ) { entry ->
+                val chId = entry.arguments?.getInt("channelId") ?: 0
                 ChannelSettingsScreen(
                     container,
-                    channelId = entry.arguments?.getInt("channelId") ?: 0,
+                    channelId = chId,
                     onBack = { navController.popBackStack() },
-                    onDeleted = { navController.popBackStack(Routes.BOTS, inclusive = false) },
+                    onDeleted = {
+                        if (selectedBotChannelId == chId) selectedBotChannelId = null
+                        navController.popBackStack(Routes.BOTS, inclusive = false)
+                    },
                     modifier = mod,
                 )
             }
