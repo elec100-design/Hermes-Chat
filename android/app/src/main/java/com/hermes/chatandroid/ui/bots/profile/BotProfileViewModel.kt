@@ -53,6 +53,7 @@ data class BotProfileState(
     val message: String? = null,
     // 세션
     val gatewayReady: Boolean = true,
+    val multiplex: Boolean = false,
     val sessions: List<Session> = emptyList(),
     val hasMore: Boolean = false,
     val sessionsLoading: Boolean = false,
@@ -80,8 +81,15 @@ class BotProfileViewModel(private val container: AppContainer, private val botId
         if (api == null) { _state.update { it.copy(loading = false, error = "봇 서버가 설정되지 않았습니다") }; return }
         viewModelScope.launch {
             try {
-                val b = api.fetchBots(activeOnly = false).firstOrNull { it.id == botId }
-                if (b == null) _state.update { it.copy(loading = false, error = "봇을 찾을 수 없습니다") } else mergeBot(b)
+                val all = api.fetchBots(activeOnly = false)
+                val b = all.firstOrNull { it.id == botId }
+                if (b == null) _state.update { it.copy(loading = false, error = "봇을 찾을 수 없습니다") } else {
+                    // 기본 프로필이 아니고 포트를 다른 봇과 공유하면 멀티플렉스 게이트웨이(타 프로필 키 필요).
+                    val isDefault = (b.profileName ?: b.slug) == "default"
+                    val shared = b.gatewayPort != null && all.any { it.id != botId && it.gatewayPort == b.gatewayPort }
+                    mergeBot(b)
+                    _state.update { it.copy(multiplex = !isDefault && shared) }
+                }
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) { _state.update { it.copy(loading = false, error = botErrorText(e)) } }
         }
@@ -177,6 +185,10 @@ class BotProfileViewModel(private val container: AppContainer, private val botId
             // 봇 정보가 아직 없으면 포트를 모른다 — 짧게 대기하지 않고 loadBot 이후 다시 호출되게 한다.
             _state.update { it.copy(sessionsLoading = true, sessionsError = null) }
             val api = gatewayAfterBot()
+            if (_state.value.multiplex) {
+                if (my == gen) _state.update { it.copy(sessionsLoading = false, sessions = emptyList(), hasMore = false) }
+                return@launch
+            }
             if (api == null) {
                 if (my == gen) _state.update { it.copy(sessionsLoading = false, gatewayReady = false, sessions = emptyList(), hasMore = false) }
                 return@launch

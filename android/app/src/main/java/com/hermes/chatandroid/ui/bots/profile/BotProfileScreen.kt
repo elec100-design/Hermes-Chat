@@ -114,7 +114,7 @@ fun BotProfileScreen(
                 item {
                     Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text("지난 세션", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                        if (st.gatewayReady) {
+                        if (st.gatewayReady && !st.multiplex) {
                             TextButton(onClick = { vm.createSession { port, id -> onOpenSession(port, id) } }) {
                                 Icon(Icons.Default.Add, null, Modifier.size(18.dp)); Text(" 새 세션")
                             }
@@ -257,6 +257,10 @@ private fun androidx.compose.foundation.lazy.LazyListScope.sessionsSection(
     onRename: (Session) -> Unit,
     onDelete: (Session) -> Unit,
 ) {
+    if (st.multiplex) {
+        item { ListItem(headlineContent = { Text("이 봇은 통합(멀티플렉스) 게이트웨이를 써서 지난 세션을 앱에서 아직 볼 수 없어요. 대화는 위 '대화하기'로 하세요.") }) }
+        return
+    }
     if (!st.gatewayReady) {
         item { ListItem(headlineContent = { Text("더보기 > 설정에서 게이트웨이 키를 넣으면 지난 세션을 볼 수 있어요") }) }
         return
