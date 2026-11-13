@@ -1,6 +1,7 @@
 package com.hermes.chatandroid.ui.bots
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -48,6 +49,29 @@ import com.hermes.chatandroid.data.BotMessage
 import com.hermes.chatandroid.ui.components.ErrorBanner
 import com.hermes.chatandroid.ui.components.LoadingBox
 import com.hermes.chatandroid.ui.components.MessageBubble
+import com.hermes.chatandroid.data.BotStep
+import com.hermes.chatandroid.ui.bots.chat.BotAttachmentChips
+import com.hermes.chatandroid.ui.bots.chat.BotStepsSection
+import com.hermes.chatandroid.ui.bots.chat.PendingBotFile
+import com.hermes.chatandroid.ui.bots.chat.TypingDots
+import com.hermes.chatandroid.ui.bots.chat.readPendingFile
+import android.content.ContentResolver
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.InputChip
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.style.TextOverflow
+import android.widget.Toast
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.emptyFlow
@@ -64,6 +88,9 @@ data class BotChatUiState(
     val streaming: Map<Int, String> = emptyMap(),
     val streamErrors: Map<Int, String> = emptyMap(),
     val sending: Boolean = false,
+    val pending: List<PendingBotFile> = emptyList(),
+    /** messageId → 실행 단계(라이브는 스냅샷 통째 교체, 완료 메시지는 펼칠 때 로드). */
+    val steps: Map<Int, List<BotStep>> = emptyMap(),
     val error: String? = null,
     val info: String? = null,
 )
@@ -88,7 +115,46 @@ class BotChatViewModel(private val container: AppContainer, private val channelI
         onDelta = { id, t -> _state.update { it.copy(streaming = it.streaming + (id to (it.streaming[id].orEmpty() + t))) } },
         onStreamError = { id, m -> _state.update { it.copy(streamErrors = it.streamErrors + (id to m)) } },
         onReloadError = { e -> _state.update { it.copy(error = botErrorText(e)) } },
+        onSteps = { id, st -> _state.update { it.copy(steps = it.steps + (id to st)) } },
     )
+
+    private var nextFileId = 0L
+    private val loadingSteps = HashSet<Int>()
+
+    fun addAttachments(resolver: ContentResolver, uris: List<Uri>) {
+        viewModelScope.launch {
+            for (uri in uris) {
+                try {
+                    val f = withContext(Dispatchers.IO) { readPendingFile(resolver, uri, nextFileId++) }
+                    _state.update { it.copy(pending = it.pending + f) }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    _state.update { it.copy(error = e.message ?: "첨부 파일을 읽지 못했습니다") }
+                }
+            }
+        }
+    }
+
+    fun removeAttachment(id: Long) = _state.update { s -> s.copy(pending = s.pending.filter { it.id != id }) }
+
+    /** 완료된 메시지의 단계를 한 번만 가져온다(라이브로 이미 있으면 생략). */
+    fun loadSteps(messageId: Int) {
+        val api = container.botApi() ?: return
+        if (_state.value.steps.containsKey(messageId) || !loadingSteps.add(messageId)) return
+        viewModelScope.launch {
+            try {
+                val st = api.fetchSteps(messageId)
+                _state.update { it.copy(steps = it.steps + (messageId to st)) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _state.update { it.copy(error = botErrorText(e)) }
+            } finally {
+                loadingSteps.remove(messageId)
+            }
+        }
+    }
 
     init { load() }
 
@@ -114,11 +180,17 @@ class BotChatViewModel(private val container: AppContainer, private val channelI
     fun send(text: String, onSent: () -> Unit) {
         val api = container.botApi() ?: return
         val body = text.trim()
-        if (body.isEmpty() || _state.value.sending) return
+        val files = _state.value.pending
+        // 서버는 본문이 비어도 첨부가 있으면 받는다(main.py api_post_message).
+        if ((body.isEmpty() && files.isEmpty()) || _state.value.sending) return
         _state.update { it.copy(sending = true, info = null, error = null) }
         viewModelScope.launch {
             try {
-                val r = api.postMessage(channelId, body)
+                val uploaded = withContext(Dispatchers.IO) {
+                    files.map { api.uploadAttachment(channelId, it.name, it.bytes, it.mime) }
+                }
+                val r = api.postMessage(channelId, body, uploaded)
+                _state.update { it.copy(pending = emptyList()) }
                 onSent()
                 _state.value.dmBot?.let { container.touchBotActivity(it.id) }
                 val msgs = api.fetchMessages(channelId)
@@ -163,10 +235,27 @@ fun BotChatScreen(
     val state by vm.state.collectAsStateWithLifecycle()
     var input by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
-    val lastLen = state.messages.size to state.streaming.values.sumOf { it.length }
-
+    val lastLen = Triple(state.messages.size, state.streaming.values.sumOf { it.length }, state.steps.values.sumOf { it.size })
+    val context = LocalContext.current
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
+        vm.addAttachments(context.contentResolver, uris)
+    }
+    // 하단 근처일 때만 따라간다(위로 올려 읽는 중이면 방해하지 않음). 첫 로드는 항상 맨 아래.
+    val nearBottom by remember {
+        derivedStateOf {
+            val info = listState.layoutInfo
+            val last = info.visibleItemsInfo.lastOrNull()?.index ?: -1
+            last >= info.totalItemsCount - 2
+        }
+    }
+    var initialScrolled by remember { mutableStateOf(false) }
     LaunchedEffect(lastLen) {
-        if (state.messages.isNotEmpty()) listState.animateScrollToItem(state.messages.lastIndex)
+        if (state.messages.isEmpty()) return@LaunchedEffect
+        if (!initialScrolled || nearBottom) {
+            listState.scrollToItem(state.messages.lastIndex)
+            listState.scrollBy(1_000_000f)
+            initialScrolled = true
+        }
     }
 
     val members = state.channel?.members.orEmpty()
@@ -214,7 +303,25 @@ fun BotChatScreen(
                         }
                     }
                 }
+                if (state.pending.isNotEmpty()) {
+                    Row(
+                        Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        state.pending.forEach { f ->
+                            InputChip(
+                                selected = false,
+                                onClick = { vm.removeAttachment(f.id) },
+                                label = { Text(f.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                trailingIcon = { Icon(Icons.Filled.Close, "첨부 제거", Modifier.size(16.dp)) },
+                            )
+                        }
+                    }
+                }
                 Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.Bottom) {
+                    IconButton(onClick = { picker.launch("*/*") }, enabled = !state.sending) {
+                        Icon(Icons.Filled.AttachFile, contentDescription = "첨부")
+                    }
                     OutlinedTextField(
                         value = input,
                         onValueChange = { input = it },
@@ -224,7 +331,7 @@ fun BotChatScreen(
                     )
                     IconButton(
                         onClick = { vm.send(input) { input = "" } },
-                        enabled = input.isNotBlank() && !state.sending,
+                        enabled = (input.isNotBlank() || state.pending.isNotEmpty()) && !state.sending,
                     ) { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "보내기") }
                 }
             }
@@ -241,7 +348,7 @@ fun BotChatScreen(
                     contentPadding = PaddingValues(12.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    items(state.messages, key = { it.id }) { m -> MessageRow(m, state) }
+                    items(state.messages, key = { it.id }) { m -> MessageRow(m, state, vm) }
                 }
             }
         }
@@ -249,7 +356,7 @@ fun BotChatScreen(
 }
 
 @Composable
-private fun MessageRow(m: BotMessage, state: BotChatUiState) {
+private fun MessageRow(m: BotMessage, state: BotChatUiState, vm: BotChatViewModel) {
     if (m.isSystem) {
         Text(
             m.body,
@@ -259,8 +366,18 @@ private fun MessageRow(m: BotMessage, state: BotChatUiState) {
         )
         return
     }
+    val clipboard = LocalClipboardManager.current
+    val context = LocalContext.current
+    fun copy(t: String) {
+        clipboard.setText(AnnotatedString(t))
+        Toast.makeText(context, "복사했습니다", Toast.LENGTH_SHORT).show()
+    }
+    val attachments = m.attachmentItems
     if (m.isUser) {
-        MessageBubble(text = m.body, isUser = true)
+        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            MessageBubble(text = m.body, isUser = true, onLongClick = { copy(m.body) })
+            BotAttachmentChips(attachments)
+        }
         return
     }
     val streamed = state.streaming[m.id]
@@ -277,11 +394,22 @@ private fun MessageRow(m: BotMessage, state: BotChatUiState) {
                 color = accent ?: MaterialTheme.colorScheme.primary,
             )
             when {
-                text.isNotEmpty() -> MessageBubble(text = text, isUser = false)
-                m.isInFlight -> Text(
-                    if (m.status == "queued") "대기 중…" else "생각 중…",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                text.isNotEmpty() -> MessageBubble(
+                    text = text,
+                    isUser = false,
+                    containerColor = accent?.copy(alpha = 0.14f),
+                    borderColor = accent?.copy(alpha = 0.55f),
+                    onLongClick = { copy(text) },
+                )
+                m.isInFlight -> TypingDots(if (m.status == "queued") "대기 중" else "생각 중")
+            }
+            BotAttachmentChips(attachments)
+            if (m.jobId != null || state.steps.containsKey(m.id)) {
+                BotStepsSection(
+                    messageId = m.id,
+                    steps = state.steps[m.id],
+                    running = m.isInFlight,
+                    onExpand = { if (!m.isInFlight) vm.loadSteps(m.id) },
                 )
             }
             errText?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }

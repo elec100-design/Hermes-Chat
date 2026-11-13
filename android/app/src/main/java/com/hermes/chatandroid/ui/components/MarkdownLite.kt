@@ -81,3 +81,18 @@ fun inlineMarkdown(text: String, codeBackground: Color = Color(0x22888888)): Ann
             }
         }
     }
+
+private val BulletRe = Regex("^(\\s*)[-*+]\\s+(.*)$")
+private val NumberedRe = Regex("^(\\s*)(\\d{1,3})[.)]\\s+(.*)$")
+
+/** 목록 줄(`- x`, `* x`, `1. x`)을 들여쓰기 + 글머리(`•`/`1.`)로 바꾼다. 나머지 줄은 그대로. */
+fun normalizeMarkdownLists(text: String): String =
+    text.split("\n").joinToString("\n") { line ->
+        val b = BulletRe.matchEntire(line)
+        val n = NumberedRe.matchEntire(line)
+        when {
+            b != null -> "${b.groupValues[1]}  \u2022 ${b.groupValues[2]}"
+            n != null -> "${n.groupValues[1]}  ${n.groupValues[2]}. ${n.groupValues[3]}"
+            else -> line
+        }
+    }
