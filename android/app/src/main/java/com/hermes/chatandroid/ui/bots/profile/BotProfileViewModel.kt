@@ -6,8 +6,6 @@ import androidx.lifecycle.viewModelScope
 import com.hermes.chatandroid.AppContainer
 import com.hermes.chatandroid.data.Bot
 import com.hermes.chatandroid.data.BotPatch
-import com.hermes.chatandroid.data.Session
-import com.hermes.chatandroid.net.ApiException
 import com.hermes.chatandroid.ui.bots.botErrorText
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -51,14 +49,6 @@ data class BotProfileState(
     val saving: Boolean = false,
     val healthRefreshing: Boolean = false,
     val message: String? = null,
-    // 세션
-    val gatewayReady: Boolean = true,
-    val multiplex: Boolean = false,
-    val sessions: List<Session> = emptyList(),
-    val hasMore: Boolean = false,
-    val sessionsLoading: Boolean = false,
-    val loadingMore: Boolean = false,
-    val sessionsError: String? = null,
 ) {
     val dirty: Boolean get() = form != saved
 }
@@ -66,10 +56,8 @@ data class BotProfileState(
 class BotProfileViewModel(private val container: AppContainer, private val botId: Int) : ViewModel() {
     private val _state = MutableStateFlow(BotProfileState())
     val state: StateFlow<BotProfileState> = _state.asStateFlow()
-    private val pageSize = 30
-    private var gen = 0
 
-    init { loadBot(); loadSessions() }
+    init { loadBot() }
 
     private fun mergeBot(b: Bot, resetForm: Boolean = true) = _state.update {
         val f = BotForm.of(b)
@@ -84,11 +72,7 @@ class BotProfileViewModel(private val container: AppContainer, private val botId
                 val all = api.fetchBots(activeOnly = false)
                 val b = all.firstOrNull { it.id == botId }
                 if (b == null) _state.update { it.copy(loading = false, error = "봇을 찾을 수 없습니다") } else {
-                    // 기본 프로필이 아니고 포트를 다른 봇과 공유하면 멀티플렉스 게이트웨이(타 프로필 키 필요).
-                    val isDefault = (b.profileName ?: b.slug) == "default"
-                    val shared = b.gatewayPort != null && all.any { it.id != botId && it.gatewayPort == b.gatewayPort }
                     mergeBot(b)
-                    _state.update { it.copy(multiplex = !isDefault && shared) }
                 }
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) { _state.update { it.copy(loading = false, error = botErrorText(e)) } }
@@ -164,104 +148,6 @@ class BotProfileViewModel(private val container: AppContainer, private val botId
     }
 
     fun messageShown() = _state.update { it.copy(message = null) }
-
-    // ---- 지난 세션 (봇 게이트웨이 직접) ----
-
-    /** 이 봇 프로필의 게이트웨이. 설정(host/키)이 없거나 포트를 모르면 null. */
-    private fun gateway(): com.hermes.chatandroid.net.HermesApi? {
-        val s = container.settingsRepository.current
-        if (!s.demoMode && s.apiKey.isBlank()) return null
-        val b = _state.value.bot
-        val port = b?.gatewayPort
-        val profile = if (port != null) com.hermes.chatandroid.data.ProfileEntry(b.profileName ?: b.slug, port) else null
-        return container.hermesApi(profile)
-    }
-
-    fun gatewayPort(): Int? = _state.value.bot?.gatewayPort
-
-    fun loadSessions() {
-        val my = ++gen
-        viewModelScope.launch {
-            // 봇 정보가 아직 없으면 포트를 모른다 — 짧게 대기하지 않고 loadBot 이후 다시 호출되게 한다.
-            _state.update { it.copy(sessionsLoading = true, sessionsError = null) }
-            val api = gatewayAfterBot()
-            if (_state.value.multiplex) {
-                if (my == gen) _state.update { it.copy(sessionsLoading = false, sessions = emptyList(), hasMore = false) }
-                return@launch
-            }
-            if (api == null) {
-                if (my == gen) _state.update { it.copy(sessionsLoading = false, gatewayReady = false, sessions = emptyList(), hasMore = false) }
-                return@launch
-            }
-            try {
-                val page = api.fetchSessions(pageSize, 0)
-                if (my == gen) _state.update { it.copy(gatewayReady = true, sessionsLoading = false, sessions = page.sessions, hasMore = page.hasMore) }
-            } catch (e: CancellationException) { throw e }
-            catch (e: Exception) { if (my == gen) _state.update { it.copy(gatewayReady = true, sessionsLoading = false, sessionsError = gatewayError(e)) } }
-        }
-    }
-
-    private suspend fun gatewayAfterBot(): com.hermes.chatandroid.net.HermesApi? {
-        // loadBot 이 끝날 때까지(최대 ~10초) 기다린 뒤 게이트웨이를 만든다.
-        var tries = 0
-        while (_state.value.bot == null && _state.value.loading && tries < 100) {
-            kotlinx.coroutines.delay(100); tries++
-        }
-        return gateway()
-    }
-
-    fun loadMore() {
-        val s = _state.value
-        if (!s.hasMore || s.loadingMore || s.sessionsLoading) return
-        val api = gateway() ?: return
-        val my = gen
-        _state.update { it.copy(loadingMore = true) }
-        viewModelScope.launch {
-            try {
-                val page = api.fetchSessions(pageSize, s.sessions.size)
-                if (my != gen) return@launch
-                _state.update { cur ->
-                    val known = cur.sessions.map { it.id }.toSet()
-                    cur.copy(
-                        sessions = cur.sessions + page.sessions.filter { it.id !in known },
-                        hasMore = page.hasMore && page.sessions.isNotEmpty(),
-                        loadingMore = false,
-                    )
-                }
-            } catch (e: CancellationException) { throw e }
-            catch (e: Exception) { _state.update { it.copy(loadingMore = false, sessionsError = gatewayError(e)) } }
-        }
-    }
-
-    fun renameSession(id: String, title: String) = sessionOp { api ->
-        api.renameSession(id, title)
-        _state.update { cur -> cur.copy(sessions = cur.sessions.map { if (it.id == id) it.copy(title = title) else it }) }
-    }
-
-    fun deleteSession(id: String) = sessionOp { api ->
-        api.deleteSession(id)
-        _state.update { cur -> cur.copy(sessions = cur.sessions.filter { it.id != id }) }
-    }
-
-    fun createSession(onCreated: (port: Int, sessionId: String) -> Unit) = sessionOp { api ->
-        val id = api.createSession().id
-        onCreated(gatewayPort() ?: 0, id)
-    }
-
-    fun dismissSessionsError() = _state.update { it.copy(sessionsError = null) }
-
-    private fun sessionOp(block: suspend (com.hermes.chatandroid.net.HermesApi) -> Unit) {
-        val api = gateway() ?: return
-        viewModelScope.launch {
-            try { block(api) }
-            catch (e: CancellationException) { throw e }
-            catch (e: Exception) { _state.update { it.copy(sessionsError = gatewayError(e)) } }
-        }
-    }
-
-    private fun gatewayError(e: Throwable): String =
-        if (e is ApiException && e.code == 401) "인증 실패(401): 더보기 > 설정에서 게이트웨이 키를 확인하세요."
-        else e.message?.takeIf { it.isNotBlank() } ?: "세션 요청 실패"
 
     class Factory(private val container: AppContainer, private val botId: Int) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")

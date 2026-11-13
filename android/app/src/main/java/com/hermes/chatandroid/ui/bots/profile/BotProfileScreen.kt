@@ -12,13 +12,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -29,7 +25,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -56,20 +51,17 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hermes.chatandroid.AppContainer
 import com.hermes.chatandroid.data.Bot
-import com.hermes.chatandroid.data.Session
 import com.hermes.chatandroid.ui.bots.BotAvatar
 import com.hermes.chatandroid.ui.components.ErrorBanner
 import com.hermes.chatandroid.ui.components.LoadingBox
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 /**
  * 봇 프로필 화면 (T-172).
- * - [onOpenSession]: 이 봇 게이트웨이([port])의 과거 세션 보기 → 라우트 chat/{sessionId}?port={port}
+ * - [onOpenSession]: 미사용(지난 세션은 2단계 add-on으로 이후 복원)
  * - [onOpenChannel]: 봇 DM 등 채널 채팅 열기
  */
 @OptIn(ExperimentalMaterial3Api::class)
+@Suppress("UNUSED_PARAMETER")
 @Composable
 fun BotProfileScreen(
     container: AppContainer,
@@ -83,8 +75,6 @@ fun BotProfileScreen(
     val st by vm.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     var archiveDialog by remember { mutableStateOf(false) }
-    var renameTarget by remember { mutableStateOf<Session?>(null) }
-    var deleteTarget by remember { mutableStateOf<Session?>(null) }
 
     LaunchedEffect(st.message) {
         st.message?.let { snackbar.showSnackbar(it); vm.messageShown() }
@@ -111,17 +101,6 @@ fun BotProfileScreen(
             else -> LazyColumn(Modifier.padding(padding).fillMaxSize()) {
                 item { Header(bot, st.healthRefreshing, vm::refreshHealth, onOpenChannel) }
                 item { EditSection(st, vm, onArchive = { archiveDialog = true }) }
-                item {
-                    Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text("지난 세션", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                        if (st.gatewayReady && !st.multiplex) {
-                            TextButton(onClick = { vm.createSession { port, id -> onOpenSession(port, id) } }) {
-                                Icon(Icons.Default.Add, null, Modifier.size(18.dp)); Text(" 새 세션")
-                            }
-                        }
-                    }
-                }
-                sessionsSection(st, vm, onOpenSession, onRename = { renameTarget = it }, onDelete = { deleteTarget = it })
             }
         }
     }
@@ -135,27 +114,6 @@ fun BotProfileScreen(
             text = { Text(if (toArchive) "${b.displayName} 을(를) 보관할까요? 목록에서 숨겨지며 언제든 해제할 수 있습니다." else "${b.displayName} 의 보관을 해제할까요?") },
             confirmButton = { TextButton(onClick = { archiveDialog = false; vm.setArchived(toArchive) }) { Text(if (toArchive) "보관" else "해제") } },
             dismissButton = { TextButton(onClick = { archiveDialog = false }) { Text("취소") } },
-        )
-    }
-    renameTarget?.let { target ->
-        var text by remember(target.id) { mutableStateOf(target.title.orEmpty()) }
-        AlertDialog(
-            onDismissRequest = { renameTarget = null },
-            title = { Text("세션 이름 변경") },
-            text = { OutlinedTextField(text, { text = it }, singleLine = true, modifier = Modifier.fillMaxWidth()) },
-            confirmButton = {
-                TextButton(enabled = text.isNotBlank(), onClick = { vm.renameSession(target.id, text.trim()); renameTarget = null }) { Text("변경") }
-            },
-            dismissButton = { TextButton(onClick = { renameTarget = null }) { Text("취소") } },
-        )
-    }
-    deleteTarget?.let { target ->
-        AlertDialog(
-            onDismissRequest = { deleteTarget = null },
-            title = { Text("세션 삭제") },
-            text = { Text("\"${target.displayTitle}\" 세션을 삭제할까요? 되돌릴 수 없습니다.") },
-            confirmButton = { TextButton(onClick = { vm.deleteSession(target.id); deleteTarget = null }) { Text("삭제") } },
-            dismissButton = { TextButton(onClick = { deleteTarget = null }) { Text("취소") } },
         )
     }
 }
@@ -247,55 +205,5 @@ private fun SwitchRow(label: String, checked: Boolean, onChange: (Boolean) -> Un
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(label, Modifier.weight(1f))
         Switch(checked, onChange)
-    }
-}
-
-private fun androidx.compose.foundation.lazy.LazyListScope.sessionsSection(
-    st: BotProfileState,
-    vm: BotProfileViewModel,
-    onOpenSession: (Int, String) -> Unit,
-    onRename: (Session) -> Unit,
-    onDelete: (Session) -> Unit,
-) {
-    if (st.multiplex) {
-        item { ListItem(headlineContent = { Text("이 봇은 통합(멀티플렉스) 게이트웨이를 써서 지난 세션을 앱에서 아직 볼 수 없어요. 대화는 위 '대화하기'로 하세요.") }) }
-        return
-    }
-    if (!st.gatewayReady) {
-        item { ListItem(headlineContent = { Text("더보기 > 설정에서 게이트웨이 키를 넣으면 지난 세션을 볼 수 있어요") }) }
-        return
-    }
-    st.sessionsError?.let { err -> item { ErrorBanner(err, onRetry = { vm.dismissSessionsError(); vm.loadSessions() }) } }
-    if (st.sessionsLoading && st.sessions.isEmpty()) {
-        item { Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
-    } else if (st.sessions.isEmpty() && st.sessionsError == null) {
-        item { ListItem(headlineContent = { Text("지난 세션이 없습니다") }) }
-    }
-    items(st.sessions, key = { it.id }) { s ->
-        val port = st.bot?.gatewayPort
-        ListItem(
-            modifier = Modifier.clickable(enabled = port != null) { port?.let { onOpenSession(it, s.id) } },
-            headlineContent = { Text(s.displayTitle, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-            supportingContent = {
-                val time = if (s.updatedAt > 0) SimpleDateFormat("M월 d일 HH:mm", Locale.KOREA).format(Date((s.updatedAt * 1000).toLong())) else ""
-                val prev = s.preview?.takeIf { it.isNotBlank() && it != s.title }
-                Text(listOfNotNull(time.takeIf { it.isNotEmpty() }, prev).joinToString(" · "), maxLines = 1, overflow = TextOverflow.Ellipsis)
-            },
-            trailingContent = {
-                Row {
-                    IconButton(onClick = { onRename(s) }) { Icon(Icons.Default.Edit, "이름 변경") }
-                    IconButton(onClick = { onDelete(s) }) { Icon(Icons.Default.Delete, "삭제") }
-                }
-            },
-        )
-        HorizontalDivider()
-    }
-    if (st.hasMore) {
-        item {
-            Box(Modifier.fillMaxWidth().padding(8.dp), contentAlignment = Alignment.Center) {
-                if (st.loadingMore) CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
-                else TextButton(onClick = vm::loadMore) { Text("더 보기") }
-            }
-        }
     }
 }
