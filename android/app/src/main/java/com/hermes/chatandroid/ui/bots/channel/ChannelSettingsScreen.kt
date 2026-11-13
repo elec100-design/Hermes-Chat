@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -66,6 +67,7 @@ import com.hermes.chatandroid.ui.components.ErrorBanner
 import com.hermes.chatandroid.ui.components.HermesCard
 import com.hermes.chatandroid.ui.components.HermesTextField
 import com.hermes.chatandroid.ui.components.LoadingBox
+import com.hermes.chatandroid.ui.components.readableWidth
 import com.hermes.chatandroid.ui.theme.hermesColors
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -242,11 +244,11 @@ fun ChannelSettingsScreen(
         val channel = state.channel
         when {
             state.loading -> LoadingBox(Modifier.padding(padding).fillMaxSize(), "채널 설정을 불러오는 중…")
-            channel == null -> Column(Modifier.padding(padding).fillMaxSize().padding(16.dp)) {
+            channel == null -> Column(Modifier.padding(padding).fillMaxHeight().readableWidth().padding(16.dp)) {
                 ErrorBanner(state.error ?: "채널을 불러오지 못했습니다.", onRetry = vm::load)
             }
             else -> Column(
-                Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+                Modifier.padding(padding).fillMaxHeight().readableWidth().verticalScroll(rememberScrollState()).padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 state.error?.let { ErrorBanner(it) }

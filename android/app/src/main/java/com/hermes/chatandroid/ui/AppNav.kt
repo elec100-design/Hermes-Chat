@@ -6,6 +6,16 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.NavigationRailItemDefaults
+import androidx.compose.material3.VerticalDivider
+import com.hermes.chatandroid.ui.components.isWideWindow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -140,188 +150,228 @@ fun AppNav(container: AppContainer) {
         }
     }
 
-    Scaffold(
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        bottomBar = {
-            if (currentTab != null) {
-                Column {
-                    HorizontalDivider(thickness = 0.7.dp, color = MaterialTheme.hermesColors.cardBorder)
-                    NavigationBar(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        tonalElevation = 0.dp,
-                    ) {
-                        Tabs.forEach { tab ->
-                            val selected = currentTab == tab
-                            NavigationBarItem(
-                                selected = selected,
-                                onClick = {
-                                    navController.navigate(tab.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
-                                },
-                                colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = MaterialTheme.colorScheme.primary,
-                                    selectedTextColor = MaterialTheme.colorScheme.primary,
-                                    indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                ),
-                                icon = {
-                                    val icon = if (selected) tab.selectedIcon else tab.unselectedIcon
-                                    if (tab == ApprovalsTab && pendingCount > 0) {
-                                        BadgedBox(
-                                            badge = {
-                                                Badge(
-                                                    containerColor = MaterialTheme.colorScheme.error,
-                                                    contentColor = MaterialTheme.colorScheme.onError,
-                                                ) { Text("$pendingCount") }
-                                            },
-                                        ) { Icon(icon, contentDescription = null) }
-                                    } else {
-                                        Icon(icon, contentDescription = null)
-                                    }
-                                },
-                                label = {
-                                    Text(
-                                        stringResource(tab.labelRes),
-                                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-                                    )
-                                },
-                            )
+    val wide = isWideWindow()
+    // 좁은 창(커버 화면)에서 봇 채팅을 연 상태면 탭 바를 숨겨 채팅·키보드 공간을 확보한다.
+    val inCompactChat = !wide && currentRoute == Routes.BOTS && selectedBotChannelId != null &&
+        container.botApi() != null
+    val navigateTab: (Tab) -> Unit = { tab ->
+        navController.navigate(tab.route) {
+            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
+
+    Row(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        if (wide) {
+            // 넓은 창(폴드 내부 화면): 세로 공간을 아끼도록 왼쪽 내비게이션 레일. 상세 화면에서도 유지.
+            NavigationRail(
+                containerColor = MaterialTheme.colorScheme.surface,
+                header = { Spacer(Modifier.height(8.dp)) },
+            ) {
+                Tabs.forEach { tab ->
+                    val selected = currentTab == tab
+                    NavigationRailItem(
+                        selected = selected,
+                        onClick = { navigateTab(tab) },
+                        colors = NavigationRailItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        ),
+                        icon = { TabIcon(tab, selected, pendingCount) },
+                        label = { TabLabel(tab, selected) },
+                    )
+                }
+            }
+            VerticalDivider(thickness = 0.7.dp, color = MaterialTheme.hermesColors.cardBorder)
+        }
+        Scaffold(
+            modifier = Modifier.weight(1f),
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
+            bottomBar = {
+                if (currentTab != null && !wide && !inCompactChat) {
+                    Column {
+                        HorizontalDivider(thickness = 0.7.dp, color = MaterialTheme.hermesColors.cardBorder)
+                        NavigationBar(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            tonalElevation = 0.dp,
+                        ) {
+                            Tabs.forEach { tab ->
+                                val selected = currentTab == tab
+                                NavigationBarItem(
+                                    selected = selected,
+                                    onClick = { navigateTab(tab) },
+                                    colors = NavigationBarItemDefaults.colors(
+                                        selectedIconColor = MaterialTheme.colorScheme.primary,
+                                        selectedTextColor = MaterialTheme.colorScheme.primary,
+                                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    ),
+                                    icon = { TabIcon(tab, selected, pendingCount) },
+                                    label = { TabLabel(tab, selected) },
+                                )
+                            }
                         }
                     }
                 }
-            }
-        },
-    ) { padding ->
-        val mod = Modifier.padding(padding).consumeWindowInsets(padding)
-        NavHost(
-            navController,
-            startDestination = Routes.BOTS,
-            enterTransition = {
-                if (targetState.destination.route in TopRoutes && initialState.destination.route in TopRoutes) {
-                    fadeIn(tween(180))
-                } else {
-                    slideInHorizontally(tween(240)) { it / 5 } + fadeIn(tween(220))
-                }
             },
-            exitTransition = {
-                if (targetState.destination.route in TopRoutes && initialState.destination.route in TopRoutes) {
-                    fadeOut(tween(140))
-                } else {
-                    fadeOut(tween(180))
+        ) { padding ->
+            val mod = Modifier.padding(padding).consumeWindowInsets(padding)
+            NavHost(
+                navController,
+                startDestination = Routes.BOTS,
+                enterTransition = {
+                    if (targetState.destination.route in TopRoutes && initialState.destination.route in TopRoutes) {
+                        fadeIn(tween(180))
+                    } else {
+                        slideInHorizontally(tween(240)) { it / 5 } + fadeIn(tween(220))
+                    }
+                },
+                exitTransition = {
+                    if (targetState.destination.route in TopRoutes && initialState.destination.route in TopRoutes) {
+                        fadeOut(tween(140))
+                    } else {
+                        fadeOut(tween(180))
+                    }
+                },
+                popEnterTransition = {
+                    if (targetState.destination.route in TopRoutes && initialState.destination.route in TopRoutes) {
+                        fadeIn(tween(180))
+                    } else {
+                        fadeIn(tween(200))
+                    }
+                },
+                popExitTransition = {
+                    if (targetState.destination.route in TopRoutes && initialState.destination.route in TopRoutes) {
+                        fadeOut(tween(140))
+                    } else {
+                        slideOutHorizontally(tween(220)) { it / 5 } + fadeOut(tween(180))
+                    }
+                },
+            ) {
+                composable(Routes.BOTS) {
+                    BotsScreen(
+                        container,
+                        selectedChannelId = selectedBotChannelId,
+                        onSelectChannel = { selectedBotChannelId = it },
+                        onOpenBotProfile = { navController.navigate(Routes.botProfile(it)) },
+                        onOpenChannelSettings = { navController.navigate(Routes.channelSettings(it)) },
+                        modifier = mod,
+                    )
                 }
-            },
-            popEnterTransition = {
-                if (targetState.destination.route in TopRoutes && initialState.destination.route in TopRoutes) {
-                    fadeIn(tween(180))
-                } else {
-                    fadeIn(tween(200))
+                composable(Routes.APPROVALS) {
+                    ApprovalsScreen(container, modifier = mod)
                 }
-            },
-            popExitTransition = {
-                if (targetState.destination.route in TopRoutes && initialState.destination.route in TopRoutes) {
-                    fadeOut(tween(140))
-                } else {
-                    slideOutHorizontally(tween(220)) { it / 5 } + fadeOut(tween(180))
+                composable(Routes.MORE) {
+                    MoreScreen(
+                        container = container,
+                        onOpenSettings = { navController.navigate(Routes.SETTINGS) },
+                        onOpenWorkspaces = { navController.navigate(Routes.WORKSPACES) },
+                        modifier = mod,
+                    )
                 }
-            },
-        ) {
-            composable(Routes.BOTS) {
-                BotsScreen(
-                    container,
-                    selectedChannelId = selectedBotChannelId,
-                    onSelectChannel = { selectedBotChannelId = it },
-                    onOpenBotProfile = { navController.navigate(Routes.botProfile(it)) },
-                    onOpenChannelSettings = { navController.navigate(Routes.channelSettings(it)) },
-                    modifier = mod,
-                )
-            }
-            composable(Routes.APPROVALS) {
-                ApprovalsScreen(container, modifier = mod)
-            }
-            composable(Routes.MORE) {
-                MoreScreen(
-                    container = container,
-                    onOpenSettings = { navController.navigate(Routes.SETTINGS) },
-                    onOpenWorkspaces = { navController.navigate(Routes.WORKSPACES) },
-                    modifier = mod,
-                )
-            }
-            composable(Routes.SETTINGS) {
-                SettingsScreen(
-                    container,
-                    onRerunOnboarding = { repo.update { it.copy(onboardingComplete = false) } },
-                    onExitDemo = { repo.update { it.copy(demoMode = false, onboardingComplete = false) } },
-                    modifier = mod,
-                    onBack = { navController.popBackStack() },
-                )
-            }
-            composable(Routes.WORKSPACES) {
-                WorkspacesScreen(container, onBack = { navController.popBackStack() }, modifier = mod)
-            }
-            composable(
-                Routes.CHAT,
-                arguments = listOf(
-                    navArgument("sessionId") { type = NavType.StringType },
-                    navArgument("port") { type = NavType.IntType; defaultValue = -1 },
-                ),
-            ) { entry ->
-                ChatScreen(
-                    container,
-                    sessionId = entry.arguments?.getString("sessionId").orEmpty(),
-                    onBack = { navController.popBackStack() },
-                    modifier = mod,
-                    port = entry.arguments?.getInt("port")?.takeIf { it >= 0 },
-                )
-            }
-            composable(
-                Routes.BOT_CHAT,
-                arguments = listOf(navArgument("channelId") { type = NavType.IntType }),
-            ) { entry ->
-                BotChatScreen(
-                    container,
-                    channelId = entry.arguments?.getInt("channelId") ?: 0,
-                    onBack = { navController.popBackStack() },
-                    modifier = mod,
-                    onOpenBotProfile = { navController.navigate(Routes.botProfile(it)) },
-                    onOpenChannelSettings = { navController.navigate(Routes.channelSettings(it)) },
-                )
-            }
-            composable(
-                Routes.BOT_PROFILE,
-                arguments = listOf(navArgument("botId") { type = NavType.IntType }),
-            ) { entry ->
-                BotProfileScreen(
-                    container,
-                    botId = entry.arguments?.getInt("botId") ?: 0,
-                    onBack = { navController.popBackStack() },
-                    onOpenSession = { port, sessionId -> navController.navigate(Routes.chat(sessionId, port)) },
-                    onOpenChannel = { chId ->
-                        selectedBotChannelId = chId
-                        navController.popBackStack(Routes.BOTS, inclusive = false)
-                    },
-                    modifier = mod,
-                )
-            }
-            composable(
-                Routes.CHANNEL_SETTINGS,
-                arguments = listOf(navArgument("channelId") { type = NavType.IntType }),
-            ) { entry ->
-                val chId = entry.arguments?.getInt("channelId") ?: 0
-                ChannelSettingsScreen(
-                    container,
-                    channelId = chId,
-                    onBack = { navController.popBackStack() },
-                    onDeleted = {
-                        if (selectedBotChannelId == chId) selectedBotChannelId = null
-                        navController.popBackStack(Routes.BOTS, inclusive = false)
-                    },
-                    modifier = mod,
-                )
+                composable(Routes.SETTINGS) {
+                    SettingsScreen(
+                        container,
+                        onRerunOnboarding = { repo.update { it.copy(onboardingComplete = false) } },
+                        onExitDemo = { repo.update { it.copy(demoMode = false, onboardingComplete = false) } },
+                        modifier = mod,
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+                composable(Routes.WORKSPACES) {
+                    WorkspacesScreen(container, onBack = { navController.popBackStack() }, modifier = mod)
+                }
+                composable(
+                    Routes.CHAT,
+                    arguments = listOf(
+                        navArgument("sessionId") { type = NavType.StringType },
+                        navArgument("port") { type = NavType.IntType; defaultValue = -1 },
+                    ),
+                ) { entry ->
+                    ChatScreen(
+                        container,
+                        sessionId = entry.arguments?.getString("sessionId").orEmpty(),
+                        onBack = { navController.popBackStack() },
+                        modifier = mod,
+                        port = entry.arguments?.getInt("port")?.takeIf { it >= 0 },
+                    )
+                }
+                composable(
+                    Routes.BOT_CHAT,
+                    arguments = listOf(navArgument("channelId") { type = NavType.IntType }),
+                ) { entry ->
+                    BotChatScreen(
+                        container,
+                        channelId = entry.arguments?.getInt("channelId") ?: 0,
+                        onBack = { navController.popBackStack() },
+                        modifier = mod,
+                        onOpenBotProfile = { navController.navigate(Routes.botProfile(it)) },
+                        onOpenChannelSettings = { navController.navigate(Routes.channelSettings(it)) },
+                    )
+                }
+                composable(
+                    Routes.BOT_PROFILE,
+                    arguments = listOf(navArgument("botId") { type = NavType.IntType }),
+                ) { entry ->
+                    BotProfileScreen(
+                        container,
+                        botId = entry.arguments?.getInt("botId") ?: 0,
+                        onBack = { navController.popBackStack() },
+                        onOpenSession = { port, sessionId -> navController.navigate(Routes.chat(sessionId, port)) },
+                        onOpenChannel = { chId ->
+                            selectedBotChannelId = chId
+                            navController.popBackStack(Routes.BOTS, inclusive = false)
+                        },
+                        modifier = mod,
+                    )
+                }
+                composable(
+                    Routes.CHANNEL_SETTINGS,
+                    arguments = listOf(navArgument("channelId") { type = NavType.IntType }),
+                ) { entry ->
+                    val chId = entry.arguments?.getInt("channelId") ?: 0
+                    ChannelSettingsScreen(
+                        container,
+                        channelId = chId,
+                        onBack = { navController.popBackStack() },
+                        onDeleted = {
+                            if (selectedBotChannelId == chId) selectedBotChannelId = null
+                            navController.popBackStack(Routes.BOTS, inclusive = false)
+                        },
+                        modifier = mod,
+                    )
+                }
             }
         }
     }
+}
+
+@Composable
+private fun TabIcon(tab: Tab, selected: Boolean, pendingCount: Int) {
+    val icon = if (selected) tab.selectedIcon else tab.unselectedIcon
+    if (tab == ApprovalsTab && pendingCount > 0) {
+        BadgedBox(
+            badge = {
+                Badge(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError,
+                ) { Text("$pendingCount") }
+            },
+        ) { Icon(icon, contentDescription = null) }
+    } else {
+        Icon(icon, contentDescription = null)
+    }
+}
+
+@Composable
+private fun TabLabel(tab: Tab, selected: Boolean) {
+    Text(
+        stringResource(tab.labelRes),
+        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+    )
 }

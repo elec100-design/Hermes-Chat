@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -85,6 +86,7 @@ import com.hermes.chatandroid.ui.components.HermesTextField
 import com.hermes.chatandroid.ui.components.IconBadge
 import com.hermes.chatandroid.ui.components.LoadingBox
 import com.hermes.chatandroid.ui.components.StatusPill
+import com.hermes.chatandroid.ui.components.readableWidth
 import com.hermes.chatandroid.ui.theme.hermesColors
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -332,7 +334,7 @@ fun WorkspacesScreen(
             }
         },
     ) { padding ->
-        Column(Modifier.padding(padding).fillMaxSize()) {
+        Column(Modifier.padding(padding).fillMaxHeight().readableWidth()) {
             state.error?.let { ErrorBanner(it, onRetry = { vm.refresh() }) }
             removeNote?.let {
                 Surface(

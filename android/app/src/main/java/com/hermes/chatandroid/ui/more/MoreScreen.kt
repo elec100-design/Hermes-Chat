@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -39,6 +40,7 @@ import com.hermes.chatandroid.AppContainer
 import com.hermes.chatandroid.ui.components.HermesCard
 import com.hermes.chatandroid.ui.components.IconBadge
 import com.hermes.chatandroid.ui.components.StatusPill
+import com.hermes.chatandroid.ui.components.readableWidth
 import com.hermes.chatandroid.ui.theme.hermesColors
 
 /** 더보기 탭: 연결 요약, 설정, 워크스페이스, 그리고 2차 예정 기능 자리. */
@@ -66,7 +68,7 @@ fun MoreScreen(
         Column(
             Modifier
                 .padding(padding)
-                .fillMaxSize()
+                .fillMaxHeight().readableWidth()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),

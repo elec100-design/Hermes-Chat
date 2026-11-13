@@ -1,11 +1,15 @@
 package com.hermes.chatandroid.ui.bots
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -24,17 +28,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Forum
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Menu
@@ -43,15 +44,12 @@ import androidx.compose.material.icons.rounded.SmartToy
 import androidx.compose.material.icons.rounded.Terminal
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.ModalDrawerSheet
-import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -60,7 +58,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -68,7 +65,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -176,10 +172,6 @@ fun BotsScreen(
     var showCreate by remember { mutableStateOf(false) }
     var query by rememberSaveable { mutableStateOf("") }
     var sidebarExpanded by rememberSaveable { mutableStateOf(true) }
-    val drawerState = rememberDrawerState(
-        initialValue = if (selectedChannelId == null) DrawerValue.Open else DrawerValue.Closed,
-    )
-    val scope = rememberCoroutineScope()
 
     val configured = container.botApi() != null
     val hc = MaterialTheme.hermesColors
@@ -219,12 +211,7 @@ fun BotsScreen(
             }
         }
 
-        val selectChannelAndClose: (Int) -> Unit = { chId ->
-            onSelectChannel(chId)
-            if (!isWide) scope.launch { drawerState.close() }
-        }
-
-        val sidebarContent: @Composable (Boolean, (() -> Unit)?) -> Unit = { applyStatusBarPadding, onClose ->
+        val sidebarContent: @Composable () -> Unit = {
             BotSidebarPanel(
                 configured = configured,
                 demoMode = settings.demoMode,
@@ -237,35 +224,19 @@ fun BotsScreen(
                 query = query,
                 onQueryChange = { query = it },
                 selectedChannelId = selectedChannelId,
-                applyStatusBarPadding = applyStatusBarPadding,
                 onRefresh = { vm.refresh() },
                 onSelectBot = { b ->
                     container.touchBotActivity(b.id)
-                    b.dmChannelId?.let(selectChannelAndClose)
+                    b.dmChannelId?.let(onSelectChannel)
                 },
-                onOpenBotProfile = { botId ->
-                    if (!isWide) scope.launch { drawerState.close() }
-                    onOpenBotProfile(botId)
-                },
-                onSelectChannel = { ch -> selectChannelAndClose(ch.id) },
-                onCreateChannel = { showCreate = true },
-                onClose = onClose,
-            )
-        }
-
-        val detailPane: @Composable (onOpenMenu: () -> Unit) -> Unit = { onOpenMenu ->
-            ChatDetailPane(
-                container = container,
-                configured = configured,
-                selectedChannelId = selectedChannelId,
-                showOpenSidebarAction = !isWide || !sidebarExpanded,
-                onMenuClick = onOpenMenu,
                 onOpenBotProfile = onOpenBotProfile,
-                onOpenChannelSettings = onOpenChannelSettings,
+                onSelectChannel = { ch -> onSelectChannel(ch.id) },
+                onCreateChannel = { showCreate = true },
             )
         }
 
         if (isWide) {
+            // 넓은 창(폴드 내부 화면): 목록 사이드바 + 채팅 상세를 나란히
             Row(Modifier.fillMaxSize()) {
                 AnimatedVisibility(
                     visible = sidebarExpanded,
@@ -278,33 +249,51 @@ fun BotsScreen(
                             color = MaterialTheme.colorScheme.surface,
                             tonalElevation = 0.dp,
                         ) {
-                            sidebarContent(true, null)
+                            sidebarContent()
                         }
                         VerticalDivider(thickness = 0.7.dp, color = hc.cardBorder)
                     }
                 }
                 Box(Modifier.weight(1f).fillMaxHeight()) {
-                    detailPane { sidebarExpanded = !sidebarExpanded }
+                    ChatDetailPane(
+                        container = container,
+                        configured = configured,
+                        selectedChannelId = selectedChannelId,
+                        showOpenSidebarAction = !sidebarExpanded,
+                        onMenuClick = { sidebarExpanded = !sidebarExpanded },
+                        onBack = null,
+                        onOpenBotProfile = onOpenBotProfile,
+                        onOpenChannelSettings = onOpenChannelSettings,
+                    )
                 }
             }
         } else {
-            BackHandler(enabled = drawerState.isOpen) {
-                scope.launch { drawerState.close() }
-            }
-            ModalNavigationDrawer(
-                drawerState = drawerState,
-                drawerContent = {
-                    ModalDrawerSheet(
-                        modifier = Modifier.widthIn(max = 320.dp).fillMaxWidth(0.84f),
-                        drawerContainerColor = MaterialTheme.colorScheme.surface,
-                        drawerTonalElevation = 0.dp,
-                        windowInsets = WindowInsets.statusBars,
-                    ) {
-                        sidebarContent(false) { scope.launch { drawerState.close() } }
-                    }
+            // 좁은 창(폴드 커버 화면): 목록 ↔ 채팅 전체 화면 전환. 채팅 중엔 하단 탭 바를 숨긴다(AppNav).
+            val openId = selectedChannelId?.takeIf { configured }
+            AnimatedContent(
+                targetState = openId,
+                transitionSpec = {
+                    val forward = targetState != null
+                    (slideInHorizontally(tween(240)) { if (forward) it / 4 else -it / 4 } + fadeIn(tween(200)))
+                        .togetherWith(fadeOut(tween(160)))
                 },
-            ) {
-                detailPane { scope.launch { drawerState.open() } }
+                label = "compactListDetail",
+            ) { chId ->
+                if (chId == null) {
+                    sidebarContent()
+                } else {
+                    BackHandler { onSelectChannel(null) }
+                    ChatDetailPane(
+                        container = container,
+                        configured = configured,
+                        selectedChannelId = chId,
+                        showOpenSidebarAction = false,
+                        onMenuClick = {},
+                        onBack = { onSelectChannel(null) },
+                        onOpenBotProfile = onOpenBotProfile,
+                        onOpenChannelSettings = onOpenChannelSettings,
+                    )
+                }
             }
         }
     }
@@ -315,10 +304,7 @@ fun BotsScreen(
             onDismiss = { showCreate = false },
             onCreate = { title, topic, ids ->
                 showCreate = false
-                vm.createChannel(title, topic, ids) { chId ->
-                    onSelectChannel(chId)
-                    if (drawerState.isOpen) scope.launch { drawerState.close() }
-                }
+                vm.createChannel(title, topic, ids) { chId -> onSelectChannel(chId) }
             },
         )
     }
@@ -338,13 +324,11 @@ private fun BotSidebarPanel(
     query: String,
     onQueryChange: (String) -> Unit,
     selectedChannelId: Int?,
-    applyStatusBarPadding: Boolean,
     onRefresh: () -> Unit,
     onSelectBot: (Bot) -> Unit,
     onOpenBotProfile: (Int) -> Unit,
     onSelectChannel: (BotChannel) -> Unit,
     onCreateChannel: () -> Unit,
-    onClose: (() -> Unit)?,
 ) {
     val hc = MaterialTheme.hermesColors
     Column(Modifier.fillMaxSize()) {
@@ -353,7 +337,7 @@ private fun BotSidebarPanel(
             Modifier
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.surface)
-                .then(if (applyStatusBarPadding) Modifier.statusBarsPadding() else Modifier),
+                .statusBarsPadding(),
         ) {
             Row(
                 Modifier
@@ -386,11 +370,6 @@ private fun BotSidebarPanel(
                 if (configured) {
                     IconButton(onClick = onRefresh, enabled = !state.refreshing) {
                         Icon(Icons.Rounded.Refresh, contentDescription = "새로고침")
-                    }
-                }
-                if (onClose != null) {
-                    IconButton(onClick = onClose) {
-                        Icon(Icons.Rounded.Close, contentDescription = "사이드바 닫기")
                     }
                 }
             }
@@ -745,6 +724,7 @@ private fun ChatDetailPane(
     selectedChannelId: Int?,
     showOpenSidebarAction: Boolean,
     onMenuClick: () -> Unit,
+    onBack: (() -> Unit)?,
     onOpenBotProfile: (Int) -> Unit,
     onOpenChannelSettings: (Int) -> Unit,
 ) {
@@ -783,7 +763,7 @@ private fun ChatDetailPane(
                 BotChatScreen(
                     container = container,
                     channelId = selectedChannelId,
-                    onBack = null,
+                    onBack = onBack,
                     onMenuClick = onMenuClick,
                     modifier = Modifier.fillMaxSize(),
                     onOpenBotProfile = onOpenBotProfile,

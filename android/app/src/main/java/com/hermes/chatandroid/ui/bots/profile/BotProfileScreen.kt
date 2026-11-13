@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -80,6 +81,7 @@ import com.hermes.chatandroid.ui.components.HermesCard
 import com.hermes.chatandroid.ui.components.HermesTextField
 import com.hermes.chatandroid.ui.components.LoadingBox
 import com.hermes.chatandroid.ui.components.StatusPill
+import com.hermes.chatandroid.ui.components.readableWidth
 import com.hermes.chatandroid.ui.theme.hermesColors
 
 /**
@@ -136,7 +138,7 @@ fun BotProfileScreen(
                 ErrorBanner(st.error ?: "봇을 불러오지 못했습니다", onRetry = vm::loadBot)
             }
             else -> LazyColumn(
-                Modifier.padding(padding).fillMaxSize(),
+                Modifier.padding(padding).fillMaxHeight().readableWidth(),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
