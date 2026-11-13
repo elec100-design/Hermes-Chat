@@ -480,9 +480,21 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def authorized(self):
+        """Bearer 토큰 검증. 헤더 키·'Bearer' 대소문자·토큰 앞뒤 공백을 허용한다."""
         if not TOKEN:
             return True
-        return self.headers.get("Authorization", "") == f"Bearer {TOKEN}"
+        # BaseHTTPRequestHandler는 헤더를 대소문자 보존할 수 있어 직접 탐색한다.
+        auth = ""
+        for k, v in self.headers.items():
+            if k.lower() == "authorization":
+                auth = v.strip()
+                break
+        if not auth:
+            return False
+        parts = auth.split(None, 1)  # "Bearer <token>"
+        if len(parts) != 2 or parts[0].lower() != "bearer":
+            return False
+        return parts[1].strip() == TOKEN.strip()
 
     def check_profile(self, name):
         """프로필 이름 검증 — 실제 존재하는 디렉터리만 허용 (경로조작/명령주입 차단)"""

@@ -39,9 +39,19 @@ final class BridgeClient {
     let baseURL: URL
     let token: String
 
+    /// shared 세션 기본 요청 타임아웃(60s)보다 긴 업로드를 허용하기 위한 전용 세션.
+    private static let session: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 120
+        config.timeoutIntervalForResource = 300
+        config.waitsForConnectivity = true
+        return URLSession(configuration: config)
+    }()
+
     init(baseURL: URL, token: String) {
         self.baseURL = baseURL
-        self.token = token
+        // 앞뒤 공백/개행이 있으면 Bridge 401을 유발하므로 저장 시 정규화한다.
+        self.token = token.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     // MARK: - Profiles
@@ -155,12 +165,17 @@ final class BridgeClient {
 
     /// 파일을 해당 프로필의 uploads 폴더로 올리고 맥미니 측 절대경로를 돌려준다.
     /// 돌려받은 경로를 채팅 메시지에 포함하면 Hermes가 파일 도구로 읽을 수 있다.
+    /// 사진(수 MB) + Tailscale/LTE 구간을 고려해 기본 타임아웃보다 길게 잡는다 (T-159).
     func upload(data fileData: Data, filename: String, profile: String) async throws -> String {
         struct Response: Decodable { let path: String }
         let data = try await request(
             "POST", "upload/\(profile)",
             body: fileData,
-            headers: ["X-Filename": filename]
+            headers: [
+                "X-Filename": filename,
+                "Content-Type": "application/octet-stream",
+            ],
+            timeout: 120
         )
         return try decode(Response.self, from: data).path
     }
@@ -268,7 +283,13 @@ final class BridgeClient {
         }
         urlRequest.httpBody = body
 
-        let (data, response) = try await URLSession.shared.data(for: urlRequest)
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await Self.session.data(for: urlRequest)
+        } catch {
+            throw Self.mapNetworkError(error, host: baseURL.absoluteString)
+        }
         guard let http = response as? HTTPURLResponse else {
             throw HermesAPIError.serverError("브리지 응답 없음")
         }
@@ -276,10 +297,40 @@ final class BridgeClient {
         case 200..<300:
             return data
         case 401:
-            throw HermesAPIError.unauthorized
+            // 게이트웨이 API Key와 별개인 Bridge 토큰 인증 실패.
+            // HermesAPIError.unauthorized("API Key가…")로 매핑하면 원인 파악이 어렵다.
+            if token.isEmpty {
+                throw HermesAPIError.serverError(
+                    "Bridge Token이 비어 있습니다. 설정 → Hermes Bridge에 토큰을 입력하세요."
+                )
+            }
+            throw HermesAPIError.serverError(
+                "Bridge Token이 유효하지 않습니다. 설정 → Hermes Bridge 토큰을 맥미니 HERMES_BRIDGE_TOKEN과 맞추세요."
+            )
         default:
             let message = String(data: data, encoding: .utf8) ?? "알 수 없는 오류"
             throw HermesAPIError.serverError("브리지 HTTP \(http.statusCode): \(message)")
+        }
+    }
+
+    /// URLSession 네트워크 실패를 Bridge 관점의 안내 메시지로 바꾼다.
+    private static func mapNetworkError(_ error: Error, host: String) -> HermesAPIError {
+        let urlError = error as? URLError
+        switch urlError?.code {
+        case .timedOut:
+            return .serverError(
+                "Bridge 응답 시간 초과 (\(host)). Tailscale 연결·Bridge URL(:8765)·사진 크기를 확인하세요."
+            )
+        case .cannotConnectToHost, .cannotFindHost, .dnsLookupFailed:
+            return .serverError(
+                "Bridge에 연결할 수 없습니다 (\(host)). Tailscale VPN과 Bridge URL(:8765)을 확인하세요."
+            )
+        case .notConnectedToInternet, .networkConnectionLost:
+            return .serverError("네트워크 연결이 없습니다. Tailscale VPN을 켠 뒤 다시 시도하세요.")
+        case .secureConnectionFailed, .serverCertificateUntrusted:
+            return .serverError("Bridge HTTPS/인증서 오류: \(error.localizedDescription)")
+        default:
+            return .network(error)
         }
     }
 

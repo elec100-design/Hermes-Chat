@@ -61,7 +61,19 @@
 		PRIV001A00000000000PRIV01 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = PRIV001A00000000000PRIV02 /* PrivacyInfo.xcprivacy */; };
 		SUBS001A00000000000SUBS01 /* SubscriptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = SUBS001A00000000000SUBS02 /* SubscriptionService.swift */; };
 		DEMO001A00000000000DEMO01 /* DemoData.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEMO001A00000000000DEMO02 /* DemoData.swift */; };
+		T14900010000000000000001 /* SSEParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = T14900010000000000000002 /* SSEParserTests.swift */; };
+		T14900020000000000000001 /* ChatRecoveryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = T14900020000000000000002 /* ChatRecoveryTests.swift */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		T14900030000000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = BD8AF0C259AF7A97636A68F7 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = DB97AA5A8FBBD54B6F05AC0F;
+			remoteInfo = HermesChat;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		000000000000000000009001 /* ProfileDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileDetailView.swift; sourceTree = "<group>"; };
@@ -125,7 +137,20 @@
 		PRIV001A00000000000PRIV02 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		SUBS001A00000000000SUBS02 /* SubscriptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionService.swift; sourceTree = "<group>"; };
 		DEMO001A00000000000DEMO02 /* DemoData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoData.swift; sourceTree = "<group>"; };
+		T14900010000000000000002 /* SSEParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSEParserTests.swift; sourceTree = "<group>"; };
+		T14900020000000000000002 /* ChatRecoveryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatRecoveryTests.swift; sourceTree = "<group>"; };
+		T14900040000000000000002 /* HermesChatTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HermesChatTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		T14900090000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		2DBCD9AC0F176525E1C50AB6 /* Components */ = {
@@ -159,6 +184,7 @@
 			isa = PBXGroup;
 			children = (
 				23245B6E8F2A9A7A394852E9 /* HermesChat.app */,
+				T14900040000000000000002 /* HermesChatTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -243,8 +269,18 @@
 			isa = PBXGroup;
 			children = (
 				36A99B5720D58F1B3DB28FFB /* HermesChat */,
+				T14900050000000000000001 /* HermesChatTests */,
 				44F68EE33E19F15B8A6EF68B /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		T14900050000000000000001 /* HermesChatTests */ = {
+			isa = PBXGroup;
+			children = (
+				T14900010000000000000002 /* SSEParserTests.swift */,
+				T14900020000000000000002 /* ChatRecoveryTests.swift */,
+			);
+			path = HermesChatTests;
 			sourceTree = "<group>";
 		};
 		F071D0C15D5946A0A9C611C8 /* Models */ = {
@@ -284,6 +320,26 @@
 			productReference = 23245B6E8F2A9A7A394852E9 /* HermesChat.app */;
 			productType = "com.apple.product-type.application";
 		};
+		T14900060000000000000001 /* HermesChatTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = T14900070000000000000001 /* Build configuration list for PBXNativeTarget "HermesChatTests" */;
+			buildPhases = (
+				T14900080000000000000001 /* Sources */,
+				T14900090000000000000001 /* Frameworks */,
+				T149000A0000000000000001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				T149000B0000000000000001 /* PBXTargetDependency */,
+			);
+			name = HermesChatTests;
+			packageProductDependencies = (
+			);
+			productName = HermesChatTests;
+			productReference = T14900040000000000000002 /* HermesChatTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -295,6 +351,10 @@
 				TargetAttributes = {
 					DB97AA5A8FBBD54B6F05AC0F = {
 						ProvisioningStyle = Automatic;
+					};
+					T14900060000000000000001 = {
+						ProvisioningStyle = Automatic;
+						TestTargetID = DB97AA5A8FBBD54B6F05AC0F;
 					};
 				};
 			};
@@ -315,11 +375,19 @@
 			projectRoot = "";
 			targets = (
 				DB97AA5A8FBBD54B6F05AC0F /* HermesChat */,
+				T14900060000000000000001 /* HermesChatTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		T149000A0000000000000001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		AC5E70A11CE700000000C001 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -391,7 +459,24 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		T14900080000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				T14900010000000000000001 /* SSEParserTests.swift in Sources */,
+				T14900020000000000000001 /* ChatRecoveryTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		T149000B0000000000000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = DB97AA5A8FBBD54B6F05AC0F /* HermesChat */;
+			targetProxy = T14900030000000000000001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		L10N001A00000000000L10002 /* Localizable.strings */ = {
@@ -580,9 +665,54 @@
 			};
 			name = Debug;
 		};
+		T149000C0000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = C4LUZYK8L5;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.hermes.chatiosTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/HermesChat.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/HermesChat";
+			};
+			name = Debug;
+		};
+		T149000D0000000000000001 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = C4LUZYK8L5;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.hermes.chatiosTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/HermesChat.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/HermesChat";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		T14900070000000000000001 /* Build configuration list for PBXNativeTarget "HermesChatTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				T149000C0000000000000001 /* Debug */,
+				T149000D0000000000000001 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		41FFABF6DF1B39B1D967CB88 /* Build configuration list for PBXProject "HermesChat" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

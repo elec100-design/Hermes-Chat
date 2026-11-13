@@ -38,11 +38,18 @@
 >   KanbanView·ChatViewModel). 브랜치 `claude/epic-hopper-ayax9p`. NEEDS-BUILD.
 >   **사용자 조치 필요**: App Store Connect 심사 노트에 비즈니스 모델 답변 + Demo Mode 안내 입력.
 >
+> **2026-07-27 현황 (프로필 model/SOUL 401 + 첨부 타임아웃)**:
+> - **T-158**: 프로필 상세 model/SOUL "API Key 무효" 오진 — Bridge 토큰 401 메시지 분리·토큰 필수.
+> - **T-159**: Safety 채팅 사진 첨부 "요청한 시간이 초과되었습니다" — upload 타임아웃 15s→120s,
+>   이미지 2048px/JPEG 압축, Bridge URL 포트 8765 자동 보정, 네트워크 오류 안내 강화.
+>   브랜치 `claude/fix-profile-model-soul-auth-20260727`. **앱 재빌드·실기기 재설치 필수**
+>   (구 빌드에는 Bridge 테스트 버튼/타임아웃 수정이 없음).
+>
 > **다음 세션 예정 작업**:
-> 1. T-REV01 맥 빌드 검증 → DONE으로 갱신
-> 2. App Store Connect Review Notes 업데이트 후 재제출
-> 3. T-C01 Sign in with Apple 실기기 런타임 검증 (Supabase id_token 흐름)
-> 4. T-C03 StoreKit 샌드박스 테스트 (App Store Connect 제품 등록 후)
+> 1. T-158 맥 빌드 + 실기기: 설정 → Hermes Bridge Token = 맥미니 HERMES_BRIDGE_TOKEN 후 model/SOUL 확인
+> 2. T-REV01 맥 빌드 검증 → DONE으로 갱신
+> 3. App Store Connect Review Notes 업데이트 후 재제출
+> 4. T-C01 Sign in with Apple 실기기 런타임 검증 (Supabase id_token 흐름)
 
 > **2026-11-12 현황 (Phase 22~25)**:
 > - Phase 22~25 코드 작성 완료 — 맥 빌드/실기기 검증 대기, 신규 Swift 7개 pbxproj 등록됨, 다국어 키 41개 추가(ko/en/zh-Hans)
@@ -279,6 +286,13 @@
 | T-138 | 프로필별 크론잡 조회·편집 — hermes-agent 대시보드(:8000)의 Cron 화면을 네이티브로 재현. 프로필 보드 카드의 시계 버튼 → 잡 목록(시트) → 잡 편집(프롬프트·스케줄·전달대상·스킬·활성화). **Bridge 신규 엔드포인트** `GET /profiles/<name>/cron`(cron/jobs.json 잡 목록), `PUT /profiles/<name>/cron/<job_id>`(편집된 필드만 read-modify-write, id·mode·script·실행상태 등 나머지 필드 보존, .bak 백업 + 원자적 교체). 쓰기 CLI 미확인이라 파일 직접 수정. 신규 3파일 pbxproj 등록. **빌드 검증 필요(맥)**. 후속: 생성/삭제/즉시실행/실행리포트 뷰어 | `server/hermes_bridge.py`, `Models/CronModels.swift`(신규), `Services/BridgeClient.swift`, `Views/CronJobsView.swift`(신규), `Views/CronJobEditView.swift`(신규), `Views/ProfileBoardView.swift`, `HermesChat.xcodeproj/project.pbxproj` | NEEDS-BUILD |
 | T-146 | **크론 중앙 관리 화면** (T-138 후속, 사용자 요청 + 대시보드 스크린샷 참고). 프로필마다 흩어져 있던 크론 시트를 **한 화면(`CronManagerView`)**으로 통합 — 상단 **드롭다운으로 프로필 필터링**, 각 잡에 **재개/일시정지 · 지금 실행 · 편집 · 삭제** 버튼 + **상태 배지(scheduled/paused/running)** + **사람이 읽는 스케줄("매일 08:00")** + **최근/다음 실행 시각**(대시보드 :8000 Cron 화면 재현). 우상단 **CREATE(+)** 로 새 잡 생성(프로필 선택 포함). 전 프로필 jobs.json을 동시 로드해 프로필별 섹션으로 표시. 일시정지/재개=`enabled` 토글(PUT), 편집/생성=`CronJobEditView`(생성·편집 양용, 시트). **Bridge 신규**: `POST /profiles/<n>/cron`(새 잡 추가 — 기존 잡을 구조 템플릿 삼아 스키마 적응, id=이름 슬러그), `POST /profiles/<n>/cron/<id>/run`(즉시 실행 — `hermes [--profile <n>] cron run <id>`, ⚠️CLI 형태 버전별 상이 가능·실패 시 stdout/stderr 노출), `DELETE /profiles/<n>/cron/<id>`(제거), PUT 화이트리스트에 `name` 추가. 모두 .bak+원자적. 진입: 프로필 보드 툴바 "크론 관리"(전체) + 카드 시계 버튼(해당 프로필 필터). **기존 파일만 수정 → pbxproj 무수정**(`CronJobsView.swift`→`CronManagerView` 재작성). **빌드 검증 필요(맥)** + **브리지 재배포 필요** | `server/hermes_bridge.py`, `Models/CronModels.swift`, `Services/BridgeClient.swift`, `Views/CronJobsView.swift`, `Views/CronJobEditView.swift`, `Views/ProfileBoardView.swift` | NEEDS-BUILD |
 
+## Phase 24 — 프로필 model/SOUL Bridge 인증 오류 (2026-07-27)
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-158 | 프로필 상세 model/SOUL "API Key 무효" 오진 수정. **원인**: model·SOUL은 게이트웨이 API Key가 아니라 Bridge(`:8765`) Bearer 토큰을 쓰는데, Bridge 401을 `HermesAPIError.unauthorized`("API Key가 유효하지 않습니다")로 매핑해 원인 파악이 어려웠고, Bridge URL만 있으면 토큰 없이도 `bridgeClient`가 생성돼 즉시 401. **수정**: ①Bridge 401을 "Bridge Token…" 메시지로 분리 ②`bridgeClient`는 URL+토큰 모두 있을 때만 생성·trim ③설정에 Bridge 연결 테스트(`/profiles`) ④게이트웨이 연결 테스트는 `/health`+인증된 `/api/sessions`로 API Key 실제 검증 ⑤브리지 `authorized()`가 Bearer 대소문자·공백 허용. **브리지 맥미니 재배포 완료**. 앱 빌드·실기기(Bridge Token=HERMES_BRIDGE_TOKEN) 검증 대기 | `Services/BridgeClient.swift`, `Services/AppDefaults.swift`, `Views/SettingsView.swift`, `Resources/{ko,en,zh-Hans}.lproj/Localizable.strings`, `server/hermes_bridge.py` | NEEDS-BUILD (브리지 재배포 DONE) |
+| T-159 | 채팅 사진 첨부 타임아웃 수정 + Bridge 연결 견고화. **증상**: Safety 등에서 사진 첨부 전송 시 `[에러] 첨부 업로드 실패: 요청한 시간이 초과되었습니다` (LTE/Tailscale). **수정**: ①`BridgeClient.upload` 타임아웃 15→**120초** + octet-stream Content-Type ②이미지 긴 변 **2048px·JPEG 0.82** 축소(HEIC 포함, 비이미지는 유지) ③`bridgeClient` URL에 **포트 없으면 8765** 자동 부여(포트 80 타임아웃 방지) ④URLSession 실패를 "Bridge 응답 시간 초과/연결 불가/Tailscale" 안내로 매핑. **구 빌드에는 미포함 — 재설치 필수** | `Services/BridgeClient.swift`, `Services/AppDefaults.swift`, `ViewModels/ChatViewModel.swift` | NEEDS-BUILD |
+
 ## Phase 19 — 프로필 추가('+' 카드) + 모델 카탈로그 선택
 
 | ID | 작업 | 파일 | 상태 |
@@ -297,49 +311,55 @@
 |----|------|------|------|
 | T-147 | 세션 목록 trailing 스와이프 강화 — 삭제 버튼 왼편에 **이름변경**(pencil·파랑)·**고정/고정해제**(pin/pin.slash·주황) 아이콘 버튼 추가. **고정(Pin)**: 서버 미지원이라 `pinnedSessionIDs`(UserDefaults 키 `pinnedSessionIDs`)에 로컬 보관 — `isPinned`/`togglePin` + `filteredSessions`가 고정 세션을 맨 위로 안정 정렬(검색 경로도 적용), 행 제목 옆 `pin.fill` 표시, 앱 재실행 후 유지. **이름변경**: 기존 `updateSessionTitle` API(HermesAPIClient) + `updateSession` 로컬 갱신을 alert(TextField)로 연결(SettingsView 프로필 rename 패턴 재사용). **풀 스와이프 자동 삭제 비활성화**(`allowsFullSwipe: false`) — 버튼 확인하려 길게 밀어도 자동 삭제 안 되고 삭제 버튼을 눌러야만 삭제(사용자 보고 사고 대응). leading(분기) 스와이프는 그대로. 기존 파일만 수정 → pbxproj 무수정 | `Views/SessionListView.swift`, `Services/AppDefaults.swift` | NEEDS-BUILD |
 
+## Phase 22 — 스트림 회수 + 네이티브 SSE 파서 (PR #20 + ccr 통합)
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-149 | 채팅 스트림이 도중에 끊긴 뒤에도 서버가 저장한 답을 회수한다(핵심 회귀: 2026-08-05 17:55 KST 사례 — aiohttp `ClientConnectionResetError` 4초 뒤 게이트웨이가 state.db에 답 저장했지만 앱은 즉시 `[에러]` 버블을 붙여 답이 화면에 안 뜸). ①`send()` catch에서 무조건 `[에러]`를 append하던 것을 제거하고 대기 어시스턴트 버블을 do-scope 바깥으로 승격 — **좁은 화이트리스트(networkConnectionLost/timedOut, 조기 EOF 포함)에 걸리는 전송 오류일 때만** T-116의 `pollForMissedReply` 앵커링(마지막 user 뒤 visible assistant)으로 회수 시도, 성공하면 대기 버블에 채우고 실패했을 때만 **원본 오류를 그대로** 에러 버블로 대체(타입 보존). TTS/알림/자동 제목은 정확히 한 번씩 실행. ②사용자 중지는 두 경로(`CancellationError` throw / `URLError.cancelled`를 클라이언트가 finish로 승격)에서 모두 회수·에러 없이 조용히 종료 — `Task.isCancelled` 가드로 300초 폴링 방지. ③**`SSEParser`가 프로토콜-종료(`done`/`[DONE]`)와 실행-종료(`run.completed`)를 분리** (수용 기준): `run.completed`는 `sawRunCompleted` 플래그만 세우고 파이프를 살려둔다 — 뒤이어 오는 `done`을 놓치지 않도록. 바이트 EOF가 `run.completed` 없이 오면 `HermesAPIClient`가 `URLError(.networkConnectionLost)`로 승격해 상위 회수 폴링을 유발한다. `run.completed` 뒤 EOF는 정상 종료. ④**도구 이벤트 안전 병합** (수용 기준): 실제 게이트웨이 payload의 `message_id`는 **턴 전체** 식별자라서 그걸 도구 ID로 쓰면 서로 다른 도구가 하나로 합쳐진다. 파서가 tool.started마다 별도 합성 ID를 부여하고 같은 이름의 completed/failed에 FIFO 매칭 — 같은 턴에 서로 다른 도구/반복 같은 도구 모두 개별 카운트. deployed(`{message_id,run_id,tool_name,tool_args,sequence}`)와 source(`{message_id,run_id,tool_name,args,seq}`) 두 스키마 모두 수용, 문자열·객체 args 모두 처리. ⑤**에러 타입 보존** (수용 기준): `HermesAPIClient.streamChat`이 `HermesAPIError`(401/serverError/파서 에러)를 별도 catch로 원형 전파, URLSession 전송 오류만 `.network(...)`로 감쌈. `ChatViewModel.isRecoverableTransportError`가 `.network(URLError.networkConnectionLost|.timedOut)`만 통과시켜 명시적 서버/인증/파서 오류는 즉시 표면화(폴링 안 함). ⑥**배열 안전성** (수용 기준): 자리표시자 어시스턴트 버블을 `Int` 인덱스가 아니라 `UUID` id로 추적 — await 사이 배열이 흔들려도 매번 `firstIndex(where:)`로 재해석하고 사라졌으면 조용히 건너뛴다(subscript 크래시 방지). ⑦`recoveryDeadline`은 nonisolated static — 끊긴 스트림+빈 본문 300s, 끊긴 스트림+부분 본문 30s, 정상 종료+빈 본문 300s(T-116), 정상 종료+think-only 6s. ⑧회귀 테스트 `HermesChatTests/SSEParserTests.swift`·`ChatRecoveryTests.swift`(신규) — 델타 중복 없음, 완성본 fallback, 도구 FIFO 병합(다른 도구/반복 도구 개별 카운트), `run.completed`는 종료 안 함/`done`은 종료, 두 payload 스키마 수용, error 이벤트 표면화, 레거시 청크, `missedReply` 앵커링, `isRecoverableTransportError` 화이트리스트, `recoveryDeadline` 규칙. **Linux 개발 환경에는 Swift/Xcode toolchain이 없어 `xcodebuild`/XCTest 미실행 — 정적 검사만 수행. HermesChatTests 유닛 테스트 타깃이 pbxproj에 없고, 멀티 에이전트 환경에서 pbxproj 수기 편집은 파손 위험이 커서 이 커밋에서는 pbxproj를 건드리지 않는다** — 맥에서 Xcode `File → New → Target → iOS Unit Testing Bundle`로 타깃 생성 후 이 파일들을 Compile Sources에 넣고 `xcodebuild test`. 실기기 시나리오: 채팅 중 폰을 비행기 모드로 잠깐 껐다 켜 SSE 연결을 리셋 → 서버가 답 저장 시 회수돼 `[에러]` 없이 답이 뜨고 TTS 재생·자동 제목 1회 실행. 중지 버튼 즉시 종료(회수 폴링 없음). 게이트웨이 재시작·인증 실패 등 서버가 실패를 명시할 땐 회수 없이 원본 오류가 즉시 표면화 | `HermesChat/Services/HermesAPIClient.swift`, `HermesChat/StreamModels.swift`, `HermesChat/ViewModels/ChatViewModel.swift`, `HermesChatTests/SSEParserTests.swift`, `HermesChatTests/ChatRecoveryTests.swift`, `HermesChatTests/README.md`, `HermesChat.xcodeproj/project.pbxproj` | DONE (11-13 iOS Simulator 빌드·XCTest 34건 통과 — 실기기 스트림 리셋 확인은 체크리스트) |
+
 ## Phase 21 — 대시보드 핀치 줌 + 데스크톱 모드 (브랜치 `claude/focused-hypatia-w558o2`)
 
 | ID | 작업 | 파일 | 상태 |
 |----|------|------|------|
 | T-148 | 대시보드 탭에 **두 손가락 핀치 줌**과 **데스크톱 모드 토글** 추가(사용자 요청 — 모바일 화면에서 작아서 안 눌리거나 레이아웃에 숨겨져 접근 안 되는 버튼 대응). 대시보드 페이지(:8000)는 맥미니가 서빙해 HTML 직접 수정 불가 → 앱에서 보조. **핀치 줌**: 페이지의 `<meta viewport>`가 보통 `user-scalable=no`라 막혀 있어, `WKUserScript`(.atDocumentEnd) + 네비 완료 시 `evaluateJavaScript`로 viewport를 `user-scalable=yes, maximum-scale=10`으로 덮어씀. **데스크톱 모드**: 우상단 툴바 토글(iphone/desktopcomputer 아이콘) → `customUserAgent`를 macOS Safari로 바꾸고 viewport `width=1024`로 전체 데스크톱 레이아웃을 불러옴(숨겨진 버튼 노출) + 핀치 줌으로 탐색. 상태는 `@AppStorage("dashboardDesktopMode")`로 영속화. 모드 전환 시 UA 교체 후 `reload()`, 기존 host/port 변경 재로드 로직 보존. 기존 파일만 수정 → **pbxproj 무수정**. **빌드 검증 필요(맥)** | `Views/DashboardWebView.swift` | NEEDS-BUILD |
 
-## Phase 22 — 채팅 코어 (스트리밍·중단·빠른 전환)
+### Phase 22 후속 — 중단·빠른 전환
 
 | ID | 작업 | 파일 | 상태 |
 |----|------|------|------|
-| T-149 | SSE 이름 있는 이벤트(`assistant.delta` 등) 파싱 — 실시간 스트리밍 복구. OpenAI 청크 경로는 호환 유지 | `Services/HermesAPIClient.swift` | NEEDS-BUILD |
-| T-150 | 응답 중단 버튼 — `send()` 래퍼 + `cancelSend()`, 취소 시 폴링·알림·에러 버블 없음, 부분 응답 보존 | `ViewModels/ChatViewModel.swift`, `Views/ChatView.swift` | NEEDS-BUILD |
-| T-151 | 채팅 내 프로필 빠른 전환(툴바 메뉴 → 다른 프로필의 새 대화) | `Views/ChatView.swift` | NEEDS-BUILD |
+| T-150 | 응답 중단 버튼 — `send()` 래퍼 + `cancelSend()`, 취소 시 폴링·알림·에러 버블 없음, 부분 응답 보존 | `ViewModels/ChatViewModel.swift`, `Views/ChatView.swift` | DONE (11-13 iOS Simulator 빌드 통과 — 실기기 확인은 체크리스트) |
+| T-151 | 채팅 내 프로필 빠른 전환(툴바 메뉴 → 다른 프로필의 새 대화) | `Views/ChatView.swift` | DONE (11-13 iOS Simulator 빌드 통과 — 실기기 확인은 체크리스트) |
 
 ## Phase 23 — Live(핸즈프리 음성) 전체화면
 
 | ID | 작업 | 파일 | 상태 |
 |----|------|------|------|
-| T-152 | `LiveVoiceView` 신규(상태 원·실시간 자막·응답 자막·바로 보내기/끼어들기/응답 중단) + 컨트롤러 `primaryAction()`·`interrupt()` 공개 | `Views/LiveVoiceView.swift`(신규), `Services/VoiceConversationController.swift` | NEEDS-BUILD |
-| T-153 | 핸즈프리 on/off 에 따른 cover 자동 표시, 최소화 후 배너로 복귀, cover 표시 중 음성 정리 가드(`cleanupVoice()`) | `Views/ChatView.swift` | NEEDS-BUILD |
+| T-152 | `LiveVoiceView` 신규(상태 원·실시간 자막·응답 자막·바로 보내기/끼어들기/응답 중단) + 컨트롤러 `primaryAction()`·`interrupt()` 공개 | `Views/LiveVoiceView.swift`(신규), `Services/VoiceConversationController.swift` | DONE (11-13 iOS Simulator 빌드 통과 — 실기기 확인은 체크리스트) |
+| T-153 | 핸즈프리 on/off 에 따른 cover 자동 표시, 최소화 후 배너로 복귀, cover 표시 중 음성 정리 가드(`cleanupVoice()`) | `Views/ChatView.swift` | DONE (11-13 iOS Simulator 빌드 통과 — 실기기 확인은 체크리스트) |
 
-## Phase 24 — Hermes Bot 연동 (Hermes-bot 서버 :8900 을 백엔드로)
+## Phase 24-B — Hermes Bot 연동 (Hermes-bot 서버 :8900 을 백엔드로)
+
+> 번호 정리(2026-11-13): main의 Phase 24(`T-158` 프로필 model/SOUL 인증, `T-159` 사진 첨부 타임아웃)와 번호가 겹쳐 봇 승인(`T-167`, 구 T-158)과 탭 재구성(`T-168`, 구 T-159)을 재번호함.
 
 | ID | 작업 | 파일 | 상태 |
 |----|------|------|------|
-| T-154 | BotModels + BotClient(REST + job SSE) | `Models/BotModels.swift`, `Services/BotClient.swift`(신규) | NEEDS-BUILD |
-| T-155 | `botHost`/`botToken`(Keychain) + 설정 "Hermes Bot" 섹션·연결 테스트 | `Services/AppDefaults.swift`, `Views/SettingsView.swift` | NEEDS-BUILD |
-| T-156 | BotsView — 봇 목록·채널 목록·승인 배지·새 채널, 미설정 시 안내 | `Views/BotsView.swift`(신규) | NEEDS-BUILD |
-| T-157 | BotChatView + BotChatViewModel — DM/채널 공용, 잡 스트림 구독·재구독, @멘션 칩 | `Views/BotChatView.swift`, `ViewModels/BotChatViewModel.swift`(신규) | NEEDS-BUILD |
-| T-158 | 승인 목록(승인/거절 + 메모) | `Views/BotApprovalsView.swift`(신규) | NEEDS-BUILD |
-| T-159 | 탭 재구성: 봇 / 보드 / 세션 / 칸반 / 설정 (대시보드는 설정 > "대시보드 열기"), 봇 서버 미설정 시 첫 탭은 보드 | `HermesChatApp.swift`, `Views/SettingsView.swift`, `Views/DashboardWebView.swift` | NEEDS-BUILD |
+| T-154 | BotModels + BotClient(REST + job SSE) | `Models/BotModels.swift`, `Services/BotClient.swift`(신규) | DONE (11-13 iOS Simulator 빌드 통과 — 실기기 확인은 체크리스트) |
+| T-155 | `botHost`/`botToken`(Keychain) + 설정 "Hermes Bot" 섹션·연결 테스트 | `Services/AppDefaults.swift`, `Views/SettingsView.swift` | DONE (11-13 iOS Simulator 빌드 통과 — 실기기 확인은 체크리스트) |
+| T-156 | BotsView — 봇 목록·채널 목록·승인 배지·새 채널, 미설정 시 안내 | `Views/BotsView.swift`(신규) | DONE (11-13 iOS Simulator 빌드 통과 — 실기기 확인은 체크리스트) |
+| T-157 | BotChatView + BotChatViewModel — DM/채널 공용, 잡 스트림 구독·재구독, @멘션 칩 | `Views/BotChatView.swift`, `ViewModels/BotChatViewModel.swift`(신규) | DONE (11-13 iOS Simulator 빌드 통과 — 실기기 확인은 체크리스트) |
+| T-167 | 승인 목록(승인/거절 + 메모) *(구 T-158에서 재번호)* | `Views/BotApprovalsView.swift`(신규) | DONE (11-13 iOS Simulator 빌드 통과 — 실기기 확인은 체크리스트) |
+| T-168 | 탭 재구성: 봇 / 보드 / 세션 / 칸반 / 설정 (대시보드는 설정 > "대시보드 열기"), 봇 서버 미설정 시 첫 탭은 보드 *(구 T-159에서 재번호)* | `HermesChatApp.swift`, `Views/SettingsView.swift`, `Views/DashboardWebView.swift` | DONE (11-13 iOS Simulator 빌드 통과 — 실기기 확인은 체크리스트) |
 | T-160 | 봇 채팅 첨부 업로드(multipart `/api/channels/{id}/attachments`)·봇 채팅 음성 | — | TODO |
 
-**Phase 22~24 실기기 검증 체크리스트** (맥 빌드 후 실기기):
+**Phase 22~24-B 실기기 검증 체크리스트** (맥 빌드 후 실기기):
 1. 실시간 토큰 스트리밍: 전송 후 2초 폴링 없이 토큰 단위로 답이 흐르는지 (T-149)
 2. 응답 중단 후 부분 응답이 보존되고 재전송 가능한지, 중단 시 에러 버블·알림이 없는지 (T-150)
 3. 채팅 툴바 프로필 빠른 전환: 다른 프로필의 새 대화로 바로 이동하는지 (T-151)
 4. waveform 버튼·Siri 진입 시 Live cover 자동 표시, 최소화 후 배너 복귀, 백그라운드에서 음성 유지 (T-152, T-153)
 5. 글라스 탭 동작 불변: 싱글=시작/전송/바지-인, 더블탭 기존 동작 유지 (T-134 회귀)
-6. 봇 탭: DM 스트리밍, 채널 @멘션·연쇄 응답, 승인/거절 (T-154~158)
+6. 봇 탭: DM 스트리밍, 채널 @멘션·연쇄 응답, 승인/거절 (T-154~157, T-167)
 7. 설정 > Hermes Bot 연결 테스트 (T-155)
-8. 설정 > 대시보드 열기 (T-159)
-
+8. 설정 > 대시보드 열기 (T-168)
 ## Phase 25 — Android MVP (`android/`, Kotlin + Jetpack Compose)
 
 | ID | 작업 | 파일 | 상태 |
@@ -359,7 +379,7 @@
 |----|------|------|------|
 | T-170 | 봇 홈(대화/승인/더보기 탭)·온보딩(봇 서버 우선)·설정 재구성 + BotApi 전 엔드포인트(봇 수정·발견·헬스·steps·첨부·채널 관리·워크스페이스) + 프로필 검색 401 안내 | `android/…/net/BotApi.kt`, `…/ui/AppNav.kt`, `…/ui/{onboarding,settings,bots}` | NEEDS-BUILD (11-13 로컬 빌드·단위테스트 통과 6953ba1, 폴드 설치됨·봇 서버 미기동으로 실서버 미검증) |
 | T-171 | 봇 채팅 고도화 — 첨부 업로드·실행 단계(steps) 표시·마크다운·정체색 말풍선 | `…/ui/bots/chat` | NEEDS-BUILD (11-13 로컬 빌드·단위테스트 통과 6953ba1, 폴드 설치됨·봇 서버 미기동으로 실서버 미검증) |
-| T-172 | 봇 프로필 — 이름·아바타·페르소나·승인 정책 편집, 보관, 헬스·발견, 지난 세션(게이트웨이 직결) | `…/ui/bots/profile` | NEEDS-BUILD (11-13 로컬 빌드·단위테스트 통과 6953ba1, 폴드 설치됨·봇 서버 미기동으로 실서버 미검증) |
+| T-172 | 봇 프로필 — 이름·아바타·페르소나·승인 정책 편집, 보관, 헬스·발견 (지난 세션은 T-175로 이관) | `…/ui/bots/profile` | NEEDS-BUILD (11-13 로컬 빌드·단위테스트 통과 6953ba1, 폴드 설치됨·봇 서버 미기동으로 실서버 미검증) |
 | T-173 | 채널 관리 — 제목·주제·봇끼리 대화 수정, 멤버 추가/제거, 삭제 | `…/ui/bots/channel` | NEEDS-BUILD (11-13 로컬 빌드·단위테스트 통과 6953ba1, 폴드 설치됨·봇 서버 미기동으로 실서버 미검증) |
 | T-174 | 워크스페이스 — 목록·폴더 추가·리포 클론·상태·커밋·푸시·삭제 | `…/ui/workspaces` | NEEDS-BUILD (11-13 로컬 빌드·단위테스트 통과 6953ba1, 폴드 설치됨·봇 서버 미기동으로 실서버 미검증) |
 | T-175 | 2차: 칸반·크론·대시보드·봇별 지난 세션(게이트웨이 세션 — 멀티플렉스는 Hermes-bot 경유 프록시 필요) 부가 기능 | — | TODO |
@@ -428,6 +448,7 @@
 | 06-20 | claude/hopeful-edison-1p5q91 @ 6ce0852 | DOCKER BUILD SUCCEEDED | 사용자 확인 — T-B03 DONE (cloud_gateway.py Dockerfile + 컨테이너 프록시) |
 | 06-20 | claude/hopeful-edison-1p5q91 @ 767df1e | DOCKER BUILD SUCCEEDED | 사용자 확인 — T-B05 DONE (플랜 제한 + Bridge 프록시 + 메시지 카운팅) |
 | 06-21 | claude/sleepy-bardeen-x86kpk @ 98ad910 | BUILD SUCCEEDED + 실기기 설치 완료 | 사용자 Xcode 빌드 + iPhone17,4(iOS 26.5) 설치 확인 — T-C01~C05 Phase C 전체 (유료 Apple Developer C4LUZYK8L5, 빌드 오류 5개 수정 포함). 런타임 검증은 Sign in with Apple(T-C01)·StoreKit(T-C03) 대기. |
+| 08-05 | claude/t149-stream-recovery @ 2ea79f9 | BUILD SUCCEEDED | Hermes가 Mac Xcode 26.3에서 iOS Simulator 빌드 검증. T-149 실기기 스트림 리셋 시나리오와 XCTest 타깃 등록은 대기. |
 | 11-13 | ccr-29d493c3-z8tex2 @ d374c43 | ANDROID BUILD SUCCESSFUL | Claude Code 맥미니 로컬 검증 — `cd android && ./gradlew :app:testDebugUnitTest :app:assembleDebug` 통과(JDK 17, Gradle 8.11.1, AGP 8.7.3, compileSdk 35). JVM 단위 테스트 29개(SseParser 7·ThinkFilter 7·Parsers 10·HermesApiStream 4·BotSubscription 1) 전부 통과, `app-debug.apk` 생성. T-161~T-164 실기기/에뮬레이터 미검증 |
 | 11-13 | ccr-29d493c3-z8tex2 @ b579721 | ANDROID BUILD SUCCESSFUL | Claude Code 맥미니 로컬 — `./gradlew clean :app:testDebugUnitTest :app:assembleDebug :app:bundleRelease` 통과(AGP 8.9.3, compileSdk/targetSdk 36). 단위 테스트 34개 통과(DemoMode 5 추가), `app-release.aab` 생성(미서명). 임시 키스토어로 assembleRelease 서명 확인 후 삭제. 실기기 미검증 |
 | 11-13 | ccr-29d493c3-z8tex2 @ 6953ba1 | ANDROID BUILD SUCCESSFUL | Claude Code 맥미니 로컬 — Phase 26 봇 중심 재구성(T-170~174) `clean :app:testDebugUnitTest :app:assembleDebug` 통과, 단위 테스트 58개. Galaxy Z Fold(SM-F971N)에 adb 설치·실행 확인. 맥미니 Hermes-bot LaunchAgent(`ai.hermes.bot`)가 빈 배포 폴더(`~/Documents/Hermes-bot`)를 가리켜 :8900 미기동 → 실서버 검증 대기 |

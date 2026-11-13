@@ -36,7 +36,12 @@
 "settings.connection.host" = "Server Host";
 "settings.connection.test" = "연결 테스트";
 "settings.bridge" = "Hermes Bridge";
-"settings.bridge.desc" = "맥미니의 브리지(:8765)입니다. SOUL.md 편집, 게이트웨이 재시작, 프로필 자동 검색, 파일 업로드에 사용합니다.";
+"settings.bridge.desc" = "맥미니의 브리지(:8765)입니다. SOUL.md·모델 설정, 게이트웨이 재시작, 프로필 자동 검색, 파일 업로드에 사용합니다. 게이트웨이 API Key와 다른 Bridge Token이 필요합니다.";
+"settings.bridge.test" = "Bridge 연결 테스트";
+"settings.bridge.test.success" = "Bridge 연결 성공";
+"settings.bridge.test.missing_url" = "Bridge URL을 입력하세요.";
+"settings.bridge.test.missing_token" = "Bridge Token을 입력하세요 (게이트웨이 API Key와 다릅니다).";
+"settings.bridge.test.invalid_url" = "Bridge URL 형식이 올바르지 않습니다.";
 "settings.model.default" = "기본 모델";
 "settings.profiles" = "프로필 (맥미니 게이트웨이)";
 "settings.profiles.port" = "포트 %d";
@@ -76,6 +81,7 @@
 "settings.connection.test.status" = "상태 코드: %d";
 "settings.connection.test.response_error" = "응답 형식 오류";
 "settings.connection.test.failed" = "연결 실패: %@";
+"settings.connection.test.unauthorized" = "API Key가 유효하지 않습니다.";
 "settings.skills.footer" = "Skills & Tools는 현재 선택된 프로필(%@) 게이트웨이 기준이고, 파일 브라우저는 Bridge가 필요합니다 (읽기전용).";
 
 /* Common */

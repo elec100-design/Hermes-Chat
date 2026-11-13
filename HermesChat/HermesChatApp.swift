@@ -13,7 +13,7 @@ enum AppTab: Hashable {
 struct HermesChatApp: App {
     @StateObject private var appSettings = AppSettings()
     @StateObject private var coordinator = VoiceEntryCoordinator.shared
-    /// 봇 서버를 설정한 사용자는 봇 탭이 첫 화면, 미설정·데모 모드는 지금처럼 보드 (T-159)
+    /// 봇 서버를 설정한 사용자는 봇 탭이 첫 화면, 미설정·데모 모드는 지금처럼 보드 (T-168)
     @State private var selectedTab: AppTab =
         (UserDefaults.standard.string(forKey: "botHost") ?? "").trimmingCharacters(in: .whitespaces).isEmpty
         ? .board : .bots

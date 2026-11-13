@@ -36,7 +36,12 @@
 "settings.connection.host" = "Server Host";
 "settings.connection.test" = "Test Connection";
 "settings.bridge" = "Hermes Bridge";
-"settings.bridge.desc" = "The Mac mini bridge (:8765). Used for SOUL.md editing, gateway restart, profile auto-discovery, and file uploads.";
+"settings.bridge.desc" = "The Mac mini bridge (:8765). Used for SOUL.md/model settings, gateway restart, profile auto-discovery, and file uploads. Requires a Bridge Token distinct from the gateway API Key.";
+"settings.bridge.test" = "Test Bridge connection";
+"settings.bridge.test.success" = "Bridge connected";
+"settings.bridge.test.missing_url" = "Enter the Bridge URL.";
+"settings.bridge.test.missing_token" = "Enter the Bridge Token (not the gateway API Key).";
+"settings.bridge.test.invalid_url" = "Invalid Bridge URL.";
 "settings.model.default" = "Default Model";
 "settings.profiles" = "Profiles (Mac Mini Gateway)";
 "settings.profiles.port" = "Port %d";
@@ -76,6 +81,7 @@
 "settings.connection.test.status" = "Status code: %d";
 "settings.connection.test.response_error" = "Invalid response format";
 "settings.connection.test.failed" = "Connection failed: %@";
+"settings.connection.test.unauthorized" = "API Key is invalid.";
 "settings.skills.footer" = "Skills & Tools uses the selected profile (%@) gateway. File browser requires Bridge (read-only).";
 
 /* Common */

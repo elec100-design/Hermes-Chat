@@ -2,7 +2,7 @@ import SwiftUI
 import WebKit
 
 /// 맥미니 대시보드(:8000)를 그대로 임베드하는 화면. 설정 > "대시보드 열기"에서
-/// fullScreenCover 로 띄우며(T-159), 자체 NavigationStack 의 leading 닫기 버튼으로 돌아간다.
+/// fullScreenCover 로 띄우며(T-168), 자체 NavigationStack 의 leading 닫기 버튼으로 돌아간다.
 /// 로그인(세션 토큰)은 웹 페이지 안에서 한 번 입력하면 WKWebView 쿠키로 유지된다.
 ///
 /// 대시보드 페이지는 맥미니가 서빙하므로 앱에서 HTML을 직접 못 고친다.

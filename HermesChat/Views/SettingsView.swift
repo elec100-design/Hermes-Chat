@@ -7,6 +7,8 @@ struct SettingsView: View {
     @Environment(\.openURL) private var openURL
     @State private var testResult: ConnectionTestResult? = nil
     @State private var isTesting = false
+    @State private var bridgeTestResult: ConnectionTestResult? = nil
+    @State private var isTestingBridge = false
     @State private var showApiKeyInput = false
     @State private var showBridgeTokenInput = false
     @State private var showBotTokenInput = false
@@ -283,6 +285,24 @@ struct SettingsView: View {
                     }
                     .buttonStyle(.plain)
                 }
+                Button("settings.bridge.test") {
+                    testBridgeConnection()
+                }
+                .disabled(isTestingBridge)
+
+                if let result = bridgeTestResult {
+                    HStack(spacing: 6) {
+                        switch result {
+                        case .success:
+                            Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                            Text("settings.bridge.test.success").foregroundStyle(.green)
+                        case .failure(let msg):
+                            Image(systemName: "xmark.circle.fill").foregroundStyle(.red)
+                            Text(verbatim: msg).foregroundStyle(.red)
+                        }
+                    }
+                    .font(.footnote)
+                }
             } header: {
                 Text("settings.bridge")
             } footer: {
@@ -385,7 +405,7 @@ struct SettingsView: View {
         .navigationDestination(item: $detailProfile) { profile in
             ProfileDetailView(appSettings: appSettings, profileID: profile.id)
         }
-        // 대시보드는 탭에서 빠지고 설정 안에서 전체 화면으로 연다 (T-159)
+        // 대시보드는 탭에서 빠지고 설정 안에서 전체 화면으로 연다 (T-168)
         .fullScreenCover(isPresented: $showDashboard) {
             DashboardWebView(appSettings: appSettings)
         }
@@ -422,22 +442,43 @@ struct SettingsView: View {
     }
 
     private func testConnection() {
-        let url = appSettings.baseURL(for: appSettings.selectedProfile).appendingPathComponent("health")
+        // /health 는 무인증이라 연결만 확인하고, API Key 검증은 /api/sessions 로 한다.
+        let base = appSettings.baseURL(for: appSettings.selectedProfile)
+        let healthURL = base.appendingPathComponent("health")
+        let sessionsURL = base.appendingPathComponent("api/sessions")
 
         isTesting = true
         testResult = nil
 
-        var request = URLRequest(url: url)
-        if !appSettings.apiKey.isEmpty {
-            request.setValue(appSettings.apiKey, forHTTPHeaderField: "Authorization")
-        }
-
         Task {
             do {
-                let (_, response) = try await URLSession.shared.data(for: request)
-                if let http = response as? HTTPURLResponse {
-                    if http.statusCode == 200 {
+                var healthReq = URLRequest(url: healthURL)
+                healthReq.timeoutInterval = 10
+                let (_, healthResp) = try await URLSession.shared.data(for: healthReq)
+                guard let healthHTTP = healthResp as? HTTPURLResponse, healthHTTP.statusCode == 200 else {
+                    let code = (healthResp as? HTTPURLResponse)?.statusCode ?? 0
+                    testResult = .failure(String(format: NSLocalizedString("settings.connection.test.status", comment: ""), code))
+                    isTesting = false
+                    return
+                }
+
+                let key = appSettings.apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+                if key.isEmpty {
+                    // 호스트 도달만 확인 (키 미입력)
+                    testResult = .success
+                    isTesting = false
+                    return
+                }
+
+                var sessionsReq = URLRequest(url: sessionsURL)
+                sessionsReq.timeoutInterval = 10
+                sessionsReq.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
+                let (_, sessionsResp) = try await URLSession.shared.data(for: sessionsReq)
+                if let http = sessionsResp as? HTTPURLResponse {
+                    if (200..<300).contains(http.statusCode) {
                         testResult = .success
+                    } else if http.statusCode == 401 {
+                        testResult = .failure(String(localized: "settings.connection.test.unauthorized"))
                     } else {
                         testResult = .failure(String(format: NSLocalizedString("settings.connection.test.status", comment: ""), http.statusCode))
                     }
@@ -448,6 +489,35 @@ struct SettingsView: View {
                 testResult = .failure(String(format: NSLocalizedString("settings.connection.test.failed", comment: ""), error.localizedDescription))
             }
             isTesting = false
+        }
+    }
+
+    /// Bridge URL + Token 을 `/profiles` 로 검증 (model/SOUL/칸반과 동일 인증 경로).
+    private func testBridgeConnection() {
+        isTestingBridge = true
+        bridgeTestResult = nil
+
+        Task {
+            guard let bridge = appSettings.bridgeClient else {
+                let hostEmpty = appSettings.bridgeHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                let tokenEmpty = appSettings.bridgeToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                if hostEmpty {
+                    bridgeTestResult = .failure(String(localized: "settings.bridge.test.missing_url"))
+                } else if tokenEmpty {
+                    bridgeTestResult = .failure(String(localized: "settings.bridge.test.missing_token"))
+                } else {
+                    bridgeTestResult = .failure(String(localized: "settings.bridge.test.invalid_url"))
+                }
+                isTestingBridge = false
+                return
+            }
+            do {
+                _ = try await bridge.fetchProfiles()
+                bridgeTestResult = .success
+            } catch {
+                bridgeTestResult = .failure(error.localizedDescription)
+            }
+            isTestingBridge = false
         }
     }
 }
