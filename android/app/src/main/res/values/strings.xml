@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">HermesChat</string>
+    <string name="tab_bots">봇</string>
+    <string name="tab_board">보드</string>
+    <string name="tab_sessions">세션</string>
+    <string name="tab_settings">설정</string>
+    <string name="tab_chats">대화</string>
+    <string name="tab_approvals">승인</string>
+    <string name="tab_more">더보기</string>
+    <string name="loading">불러오는 중…</string>
+    <string name="retry">다시 시도</string>
+    <string name="back">뒤로</string>
+</resources>
