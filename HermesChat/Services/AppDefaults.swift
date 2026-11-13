@@ -14,6 +14,8 @@ final class AppSettings: ObservableObject {
     @AppStorage("selectedModel") var selectedModel: String = "hermes-agent"
     /// Hermes Bridge 주소 (예: http://100.x.x.x:8765). 비어 있으면 브리지 기능 비활성.
     @AppStorage("bridgeHost") var bridgeHost: String = ""
+    /// Hermes Bot 서버 주소 (예: http://100.x.x.x:8900). 비어 있으면 봇 탭은 안내 화면.
+    @AppStorage("botHost") var botHost: String = ""
     @AppStorage("dashboardPort") var dashboardPort: Int = 8000
     /// 온보딩 완료 여부 — false면 앱 시작 시 OnboardingView를 표시한다.
     @AppStorage("isFirstLaunchComplete") var isFirstLaunchComplete: Bool = false
@@ -100,6 +102,10 @@ final class AppSettings: ObservableObject {
     @Published var bridgeToken: String = "" {
         didSet { KeychainHelper.set(bridgeToken, for: "bridgeToken") }
     }
+    /// 봇 서버 토큰(HB_API_TOKEN) — 서버가 인증을 켠 경우에만 필요. 비어 있으면 헤더를 붙이지 않는다.
+    @Published var botToken: String = "" {
+        didSet { KeychainHelper.set(botToken, for: "botToken") }
+    }
 
     @Published var profiles: [HermesProfile] = []
     @Published var selectedProfileID: UUID?
@@ -131,6 +137,7 @@ final class AppSettings: ObservableObject {
         selectedProfileID = (profiles.first { $0.name == storedName } ?? profiles.first)?.id
         apiKey = Self.loadSecret("apiKey")
         bridgeToken = Self.loadSecret("bridgeToken")
+        botToken = Self.loadSecret("botToken")
         supabaseJWT     = Self.loadSecret("supabase_jwt")
         supabaseRefresh = Self.loadSecret("supabase_refresh")
         supabaseUserID  = Self.loadSecret("supabase_user_id")
@@ -206,6 +213,15 @@ final class AppSettings: ObservableObject {
         if comps.path == "/" { comps.path = "" }
         guard let url = comps.url else { return nil }
         return BridgeClient(baseURL: url, token: token)
+    }
+
+    /// Hermes Bot 서버 주소가 설정되어 있을 때만 만들어진다 (봇 목록, DM/채널, 승인).
+    var botClient: BotClient? {
+        var trimmed = botHost.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return nil }
+        if !trimmed.lowercased().hasPrefix("http") { trimmed = "http://" + trimmed }
+        guard let url = URL(string: trimmed) else { return nil }
+        return BotClient(baseURL: url, token: botToken)
     }
 
     func selectProfile(_ profile: HermesProfile) {

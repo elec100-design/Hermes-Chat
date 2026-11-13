@@ -1,7 +1,8 @@
 import SwiftUI
 import WebKit
 
-/// 맥미니 대시보드(:8000)를 그대로 임베드하는 탭.
+/// 맥미니 대시보드(:8000)를 그대로 임베드하는 화면. 설정 > "대시보드 열기"에서
+/// fullScreenCover 로 띄우며(T-168), 자체 NavigationStack 의 leading 닫기 버튼으로 돌아간다.
 /// 로그인(세션 토큰)은 웹 페이지 안에서 한 번 입력하면 WKWebView 쿠키로 유지된다.
 ///
 /// 대시보드 페이지는 맥미니가 서빙하므로 앱에서 HTML을 직접 못 고친다.
@@ -12,6 +13,7 @@ import WebKit
 ///     데스크톱 user-agent + 넓은 viewport(width=1024)로 전체 레이아웃을 불러온다.
 struct DashboardWebView: View {
     @ObservedObject var appSettings: AppSettings
+    @Environment(\.dismiss) private var dismiss
 
     /// 데스크톱 모드 토글 상태(앱 내 단순 설정값, 비밀값 아님).
     @AppStorage("dashboardDesktopMode") private var desktopMode = false
@@ -23,6 +25,9 @@ struct DashboardWebView: View {
                 .navigationTitle("tab.dashboard")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button("common.close") { dismiss() }
+                    }
                     ToolbarItem(placement: .topBarTrailing) {
                         Button {
                             desktopMode.toggle()

@@ -4,16 +4,13 @@ T-149 회귀 커버리지. `SSEParserTests`는 네이티브 Hermes SSE 이벤트
 청크 병존을 잠그고, `ChatRecoveryTests`는 스트림이 도중에 끊긴 뒤의 회수 판정 규칙
 (`DiscussionViewModel.missedReply` 앵커링과 `ChatViewModel.recoveryDeadline`)을 잠근다.
 
-## 테스트 타깃 등록 (맥에서 1회 설정 필요)
+## 테스트 타깃 (`HermesChatTests`)
 
-이 저장소는 애플리케이션 타깃만 있고 유닛 테스트 타깃이 없다. `project.pbxproj`를
-수기 편집해 유닛 테스트 타깃을 추가하는 것은 HANDOFF §4 정신상 파손 위험이 커서 Xcode
-GUI로 등록하는 것을 권장한다.
+`HermesChat.xcodeproj/project.pbxproj`에 `HermesChatTests` iOS Unit Testing Bundle 타깃이 등록되어 있으며 `SSEParserTests.swift`·`ChatRecoveryTests.swift`를 포함한다.
 
-1. Xcode에서 프로젝트 열기 → `File → New → Target… → iOS Unit Testing Bundle`.
-2. Product Name = `HermesChatTests`, Team = 앱과 동일, Host Application = `HermesChat`.
-3. 생성된 타깃의 `Compile Sources`에 이 폴더의 `.swift` 파일을 넣는다.
-4. `xcodebuild test -project HermesChat.xcodeproj -scheme HermesChat -destination 'platform=iOS Simulator,name=iPhone 15'`.
+```bash
+xcodebuild test -project HermesChat.xcodeproj -scheme HermesChat -destination 'platform=iOS Simulator,name=iPhone 17' CODE_SIGNING_ALLOWED=NO
+```
 
 ## 왜 XCUITest / ChatViewModel 통합 테스트가 아닌가
 

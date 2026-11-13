@@ -15,8 +15,8 @@
 - 프로젝트 이름: **HermesChat** (GitHub: `elec100-design/Hermes-Chat`)
 - 주요 목표: 맥미니(M4)에 상주하는 hermes-agent를 아이폰에서 채팅·음성·칸반·프로필 관리로 쓰는 클라이언트
 - 기술 스택: **SwiftUI** (iOS 앱) + **Python stdlib 단일 파일 Bridge**(`server/hermes_bridge.py`) + hermes-agent 게이트웨이 API
-- 현재 상태: **개발 중** — Phase 14(Deep think)까지 main 병합·실기기 검증 완료. Phase 15~20은 NEEDS-BUILD(맥 빌드/실기기 검증 대기)
-- 접속: Tailscale 사설망(`100.83.59.60`) — 게이트웨이 `:8642+`, Bridge `:8765`, 대시보드 `:8000`
+- 현재 상태: **개발 중** — Phase 14(Deep think)까지 main 병합·실기기 검증 완료. Phase 15~25는 NEEDS-BUILD(맥 빌드/실기기 검증 대기) — Phase 22~24: 실시간 스트리밍·중단·Live 전체화면·Hermes Bot 탭, Phase 25: Android MVP(`android/`)
+- 접속: Tailscale 사설망(`100.83.59.60`) — 게이트웨이 `:8642+`, Bridge `:8765`, 대시보드 `:8000`, Hermes-bot `:8900`
 
 ## 코딩 스타일 및 규칙
 - 언어: Swift 6.0+ / SwiftUI + async/await 우선
@@ -29,12 +29,13 @@
 ## 아키텍처 및 디자인 패턴
 - 패턴: **MVVM** (`Views/` + `ViewModels/` + `Services/` + `Models/`)
 - 폴더 구조 요약 (`HermesChat/` 하위):
-  - `Models/` — 데이터 모델 (`ProfileModels`, `KanbanModels`, `DiscussionModels`, `CronModels` 등)
+  - `Models/` — 데이터 모델 (`ProfileModels`, `KanbanModels`, `DiscussionModels`, `CronModels`, `BotModels` 등)
   - `Views/` — 화면 + `Views/Components/` 재사용 뷰 (`MarkdownText`, `MessageView`, `ChatImageView` 등)
-  - `ViewModels/` — `ChatViewModel`, `DiscussionViewModel`
-  - `Services/` — `HermesAPIClient`(게이트웨이), `BridgeClient`(Bridge), `AppDefaults`(설정/영속화), `SpeechService`, `VoiceConversationController` 등
+  - `ViewModels/` — `ChatViewModel`, `DiscussionViewModel`, `BotChatViewModel`
+  - `Services/` — `HermesAPIClient`(게이트웨이), `BridgeClient`(Bridge), `BotClient`(Hermes-bot 서버), `AppDefaults`(설정/영속화), `SpeechService`, `VoiceConversationController` 등
   - `Resources/` — `Info.plist`, `Assets.xcassets`
   - `server/hermes_bridge.py` — 게이트웨이가 못 하는 것(프로필 목록/생성/삭제·재시작·SOUL·업로드·칸반·크론·모델 카탈로그)을 담당하는 stdlib 단일 파일
+  - `android/` — Kotlin + Jetpack Compose MVP (빌드는 HANDOFF §3 "Android 빌드" 참조)
 - 핵심 원칙(PLAN §1): **세션/대화는 항상 프로필별 게이트웨이 API로 직접**, 게이트웨이가 못 하는 것만 Bridge로, 칸반은 hermes-agent **내장 칸반(kanban.db)이 단일 진실원본**
 
 ## 워크플로우 (Explore → Plan → Code → Review → Commit)
@@ -92,5 +93,5 @@
 
 ---
 
-**마지막 업데이트**: 2026-06-17
+**마지막 업데이트**: 2026-11-12
 **Claude 버전 선호**: 최신 Claude (Opus / Sonnet)

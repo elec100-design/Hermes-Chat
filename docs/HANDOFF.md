@@ -87,6 +87,10 @@ xcodebuild -project HermesChat.xcodeproj -scheme HermesChat \
 - APK: `android/app/build/outputs/apk/debug/`
 - Google Maven(`dl.google.com`) 접근이 필요하다. 상세는 `android/README.md` 참조.
 
+### Hermes Bot 연동
+
+앱의 봇 탭은 **Hermes-bot 서버(:8900)** 가 필요하다. 맥미니에서 Hermes-bot을 P31 이상으로 재배포하고 `HB_HOST=<Tailscale IP>`·`HB_API_TOKEN`을 설정한 뒤, 앱 설정 > Hermes Bot에 URL·토큰을 입력한다. 상세는 Hermes-bot 저장소 `docs/HANDOFF.md`.
+
 ## 4. 새 Swift 파일 추가 절차 (중요!)
 
 `project.pbxproj`는 objectVersion 77, **명시적 파일 참조** 방식이다 (폴더 자동 동기화 아님).
@@ -100,6 +104,7 @@ xcodebuild -project HermesChat.xcodeproj -scheme HermesChat \
   4. `PBXSourcesBuildPhase`의 `files`에 `<ID1>` 추가
   - ID는 24자리 16진수 아무 값(중복 금지). 예: `AAAA0001AAAA0001AAAA0001`.
 - 등록 후 반드시 빌드 검증(§3)으로 확인.
+- Phase 22~24 신규 Swift 7개(`LiveVoiceView`, `BotModels`, `BotClient`, `BotChatViewModel`, `BotsView`, `BotChatView`, `BotApprovalsView`)는 ID 접두 `B0751A`로 pbxproj에 등록돼 있다.
 
 ## 5. 에이전트별 시작 프롬프트 (복사해서 사용)
 

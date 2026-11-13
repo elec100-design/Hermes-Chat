@@ -1,6 +1,6 @@
 # HermesChat iOS — 전체 개발 계획 (Master Plan)
 
-> 최종 수정: 2026-06-21 (Claude Code — Phase C 코드 완성, 브랜치 `claude/sleepy-bardeen-x86kpk` PR #14)
+> 최종 수정: 2026-11-12 (Claude Code — Phase 22~25 코드 작성: 채팅 코어·Live 전체화면·Hermes Bot 탭·Android MVP, 전부 NEEDS-BUILD)
 > 진행 상태는 `docs/TASKS.md`, 에이전트 교대 규칙은 `docs/HANDOFF.md` 참조.
 > **어떤 에이전트든 이 3개 문서만 읽으면 즉시 작업을 이어갈 수 있어야 한다.**
 > 다음 작업: PR #14 main 병합 → T-C01 Sign in with Apple 런타임 검증 → T-C03 StoreKit 샌드박스 테스트 (App Store Connect 제품 등록 필요).
@@ -38,6 +38,16 @@
 | `POST /api/sessions/{id}/chat/stream` | SSE 스트리밍 대화 |
 | `POST /api/sessions/{id}/fork` | 세션 분기 |
 | `POST /v1/runs`, `GET /v1/runs/{id}/events` | 비동기 실행 + 이벤트 SSE |
+
+#### 스트리밍 와이어 포맷 (2026-11-12 정정 — Hermes-bot docs/PLAN.md §0.2.1 에서 게이트웨이 소스로 확인된 내용)
+
+`POST /api/sessions/{id}/chat/stream` 응답은 OpenAI 청크가 아니라 **이름 있는 SSE 이벤트**다:
+`run.started` → `message.started` → `assistant.delta`(`{"delta":"…"}`, 반복) → (`tool.progress` / `tool.started` / `tool.completed` / `tool.failed`, payload 형식 미확인) → `assistant.completed`(`{"content":"<전체>"}`) → `run.completed` → `done`.
+`event: error`의 data는 `{"message":…}`.
+
+T-149 이전 앱은 델타를 전부 버리고 폴링 폴백(T-116/T-121)으로만 답을 받았다.
+
+멀티플렉스 게이트웨이(`gateway.multiplex_profiles: true` — :8642 하나가 `/p/<profile>/` 로 전 프로필 서비스, Hermes-bot PLAN §0.1a)는 앱이 아직 대응하지 않는다 — default 외 프로필 직결이 안 될 수 있음(미대응, 후속 과제). 봇 탭(Hermes-bot 경유)은 전 프로필에 닿는다.
 
 ### 0.3 게이트웨이 API에 **없는** 것 (→ Hermes Bridge가 담당)
 - 프로필 목록 조회 ❌ (각 게이트웨이는 자기 자신만 앎)
@@ -316,6 +326,15 @@ alert(TextField)로 연결(SettingsView 프로필 rename 패턴 재사용). **�
 정렬하고 행에 `pin.fill` 표시, 앱 재실행 후에도 유지. 그리고 trailing 스와이프의 **풀 스와이프
 자동 삭제를 끔**(`allowsFullSwipe: false`) — 버튼을 확인하려 길게 민 것만으로 세션이 삭제되던
 사고를 막고, 삭제 버튼을 눌러야만 삭제되게 한다. 기존 파일만 수정(pbxproj 무수정).
+
+### Phase 22 — 채팅 코어 (스트리밍·스트림 회수·중단·빠른 전환, 2026-11-12, TASKS T-149~151)
+`SSEParser` 기반 네이티브 SSE 이벤트(`assistant.delta`, `tool.*`, `run.completed`, `done`) + 레거시 OpenAI 청크 병존, 전송 단절 시 저장 응답 자동 회수(`ChatRecoveryTests`/`SSEParserTests`), 응답 중단 버튼(부분 응답 보존), 채팅 툴바 프로필 빠른 전환.
+
+### Phase 23 — Live(핸즈프리 음성) 전체화면 (2026-11-12, TASKS T-152~153)
+`LiveVoiceView`(상태 원·실시간/응답 자막·바로 보내기·끼어들기·응답 중단). waveform/Siri 진입 시 cover 자동 표시, 최소화하면 배너로 복귀. cover 표시 중 음성 정리는 `cleanupVoice()` 가드.
+
+### Phase 24-B — Hermes Bot 연동 (2026-11-12, TASKS T-154~157, T-167~168, T-160)
+Hermes-bot 서버(:8900)를 백엔드로 하는 봇 탭 신설: `BotClient`(REST + job SSE), 봇/채널 목록, DM·채널 채팅(@멘션 칩), 승인 목록(T-167). 탭 재구성(T-168: 봇/보드/세션/칸반/설정, 대시보드는 설정에서 연다). 봇 서버 미설정 시 첫 탭은 보드. 봇 첨부 업로드·음성(T-160)은 TODO. 봇 탭은 Hermes-bot 경유라 전 프로필에 닿는다(§0.2 멀티플렉스 참조).
 
 ### Phase 25 — Android MVP (`android/`, Kotlin + Jetpack Compose, 2026-11-12, TASKS T-161~164)
 단일 `:app` 모듈(`com.hermes.chatandroid`). 스캐폴드·데이터/네트워크 계층·JVM 단위 테스트, 온보딩·프로필 보드·세션·설정, 스트리밍 채팅(think 은닉·첨부·중단), 봇 탭. 빌드 절차는 HANDOFF §3 "Android 빌드". NEEDS-BUILD.

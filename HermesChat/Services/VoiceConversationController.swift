@@ -426,6 +426,11 @@ final class VoiceConversationController: ObservableObject {
     /// 싱글탭(toggle/play/pause)의 의미 — 상태별로 "가장 자연스러운 다음 행동"
     private func handleRemoteToggle() {
         guard !remoteCommandDebounced() else { return }
+        primaryAction()
+    }
+
+    /// 상태별 "주 행동" — 리모트 싱글탭과 Live 화면의 주 버튼이 공유한다 (T-152)
+    func primaryAction() {
         switch state {
         case .idle:
             // 커맨드 해제 직전의 늦은 탭 등 — 연결된 화면이 있으면 모드 재시작
@@ -478,6 +483,11 @@ final class VoiceConversationController: ObservableObject {
 
     /// 바지-인: 남은 낭독을 끊고 듣기로 — 취소 정산은 didCancel→sentenceFinished가 처리.
     /// 스트림 진행 중이면 handleStream(finished:)의 advanceIfDone이 재청취로 이어준다. (T-119/T-134 공용)
+    /// Live 화면 "끼어들기"/"응답 중단"용 공개 래퍼 (T-152)
+    func interrupt() {
+        bargeIn()
+    }
+
     private func bargeIn() {
         skipRemainingTTS = true
         speech.flushSentenceQueue()
