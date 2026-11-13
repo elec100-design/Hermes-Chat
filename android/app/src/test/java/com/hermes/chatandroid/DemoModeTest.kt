@@ -1,6 +1,9 @@
 package com.hermes.chatandroid
 
+import com.hermes.chatandroid.data.BotPatch
+import com.hermes.chatandroid.data.ChannelPatch
 import com.hermes.chatandroid.data.DemoBotApi
+import com.hermes.chatandroid.net.ApiException
 import com.hermes.chatandroid.data.DemoData
 import com.hermes.chatandroid.data.DemoHermesApi
 import com.hermes.chatandroid.data.Settings
@@ -70,5 +73,43 @@ class DemoModeTest {
         assertEquals(1, pending.size)
         api.approve(pending[0].id)
         assertTrue(api.fetchApprovals().isEmpty())
+    }
+
+    @Test
+    fun botFakeAdminChannelAndWorkspaceFlows() = runTest {
+        val api = DemoBotApi(0)
+        // DM 은 채널 목록에 없다
+        assertTrue(api.fetchChannels().none { it.isDm })
+        // 봇 수정/보관
+        val b = api.updateBot(1, BotPatch(name = "새이름", readOnly = true))
+        assertEquals("새이름", b.name); assertEquals(true, b.readOnly)
+        api.updateBot(3, BotPatch(status = "archived"))
+        assertEquals(2, api.fetchBots().size)
+        assertEquals(3, api.fetchBots(false).size)
+        assertEquals(2, api.refreshHealth().online)
+        // 채널 멤버/설정/삭제
+        api.addChannelMember(201, 3)
+        assertEquals(3, api.fetchChannels().first { it.id == 201 }.members.size)
+        api.removeChannelMember(201, 3)
+        assertEquals("팀", api.updateChannel(201, ChannelPatch(title = "팀")).title)
+        try { api.deleteChannel(101); org.junit.Assert.fail() } catch (e: ApiException) { assertEquals(400, e.code) }
+        api.deleteChannel(201)
+        assertTrue(api.fetchChannels().none { it.id == 201 })
+        // 첨부
+        val att = api.uploadAttachment(101, "a.txt", ByteArray(3), "text/plain")
+        api.postMessage(101, "", listOf(att))
+        assertEquals("a.txt", api.fetchMessages(101).first { it.attachments != null }.attachmentItems.single().name)
+        assertTrue(api.fetchSteps(1002).isNotEmpty())
+        // 워크스페이스 + push 는 승인 항목이 된다
+        val before = api.fetchWorkspaces().size
+        val w = api.cloneWorkspace("o/r")
+        assertEquals(before + 1, api.fetchWorkspaces().size)
+        assertTrue(api.fetchWorkspaceStatus(w.id).isRepo)
+        assertEquals(1, api.fetchApprovals().size)
+        api.requestWorkspacePush(w.id)
+        assertEquals(2, api.fetchApprovals().size)
+        api.removeWorkspace(w.id)
+        assertEquals(before, api.fetchWorkspaces().size)
+        assertTrue(api.browseWorkspaces().entries.isNotEmpty())
     }
 }

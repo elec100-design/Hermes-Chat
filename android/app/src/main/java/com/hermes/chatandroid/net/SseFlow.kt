@@ -19,7 +19,7 @@ fun OkHttpClient.sseFrames(request: Request): Flow<SseFrame> = callbackFlow {
             call.execute().use { resp ->
                 if (!resp.isSuccessful) {
                     val text = resp.body?.string().orEmpty()
-                    throw ApiException(resp.code, errorMessageFor(resp.code, text))
+                    throw ApiException(resp.code, errorMessageFor(resp.code, text), errorDetailOf(text))
                 }
                 val source = resp.body?.source() ?: return@use
                 for (frame in SseParser.parse(source)) {

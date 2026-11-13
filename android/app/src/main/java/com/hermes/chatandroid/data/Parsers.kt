@@ -5,6 +5,7 @@ import com.hermes.chatandroid.net.asArray
 import com.hermes.chatandroid.net.asBoolLenient
 import com.hermes.chatandroid.net.asDoubleLenient
 import com.hermes.chatandroid.net.asIntLenient
+import com.hermes.chatandroid.net.asLongLenient
 import com.hermes.chatandroid.net.asObject
 import com.hermes.chatandroid.net.asText
 import com.hermes.chatandroid.net.asTone
@@ -123,10 +124,10 @@ object Parsers {
         )
     }
 
-    fun parseBots(body: String): List<Bot> = dataArray(body).mapNotNull { el ->
-        val o = el.asObject() ?: return@mapNotNull null
-        val id = o.int("id") ?: return@mapNotNull null
-        Bot(
+    /** 봇 행 하나. `PATCH /api/bots/{id}` 응답에는 dm_channel_id/preview/tone 이 없다(호출 측에서 병합). */
+    fun parseBot(o: JsonObject): Bot? {
+        val id = o.int("id") ?: return null
+        return Bot(
             id = id,
             slug = o.text("slug") ?: "bot$id",
             name = o.text("name"),
@@ -139,8 +140,22 @@ object Parsers {
             preview = o.text("preview"),
             tone = o["tone"].asTone(),
             readOnly = o.bool("read_only"),
+            gatewayPort = o.int("gateway_port"),
+            hasApiKey = o.bool("has_api_key"),
+            personaNote = o.text("persona_note"),
+            icon = o.text("icon"),
+            workdir = o.text("workdir"),
+            approvalPolicy = o.text("approval_policy"),
+            computerUse = o.bool("computer_use"),
+            lastSeenAt = o.text("last_seen_at"),
+            nameMismatch = o.text("name_mismatch"),
+            source = o.text("source"),
         )
     }
+
+    fun parseBots(body: String): List<Bot> = dataArray(body).mapNotNull { it.asObject()?.let(::parseBot) }
+
+    fun parseBotObject(body: String): Bot? = parseJsonOrNull(body).asObject()?.let(::parseBot)
 
     fun parseBotChannel(o: JsonObject): BotChannel? {
         val id = o.int("id") ?: return null
@@ -154,8 +169,14 @@ object Parsers {
             updatedAt = o.text("updated_at"),
             members = o.array("members")?.mapNotNull { it.asObject()?.let(::parseBotMember) } ?: emptyList(),
             preview = o.text("preview"),
+            kind = o.text("kind"),
+            workdir = o.text("workdir"),
+            createdAt = o.text("created_at"),
         )
     }
+
+    /** 채널 행 하나(PATCH/POST 응답). */
+    fun parseJsonChannel(body: String): BotChannel? = parseJsonOrNull(body).asObject()?.let(::parseBotChannel)
 
     fun parseBotChannels(body: String): List<BotChannel> =
         dataArray(body).mapNotNull { it.asObject()?.let(::parseBotChannel) }
@@ -179,6 +200,9 @@ object Parsers {
             displayName = o.text("display_name"),
             avatar = o.text("avatar"),
             tone = o["tone"].asTone(),
+            parentId = o.int("parent_id"),
+            rootId = o.int("root_id"),
+            iconKey = o.text("icon_key")?.takeIf { it.isNotEmpty() },
         )
     }
 
@@ -207,6 +231,129 @@ object Parsers {
             jobId = o.int("job_id"),
             bot = o.text("bot"),
             error = o.text("error"),
+            botName = o.text("bot_name"),
+            botAvatar = o.text("bot_avatar"),
+            botTone = o["bot_tone"].asTone(),
         )
     }
+
+    // ---- steps / attachments ----
+
+    fun parseStep(o: JsonObject): BotStep? {
+        val id = o.int("id") ?: return null
+        return BotStep(
+            id = id,
+            messageId = o.int("message_id"),
+            jobId = o.int("job_id"),
+            seq = o.int("seq") ?: 0,
+            kind = o.text("kind") ?: "note",
+            title = o.text("title") ?: "",
+            detail = o.text("detail") ?: "",
+            status = o.text("status"),
+            createdAt = o.text("created_at"),
+        )
+    }
+
+    fun parseStepList(arr: JsonArray?): List<BotStep> =
+        arr?.mapNotNull { it.asObject()?.let(::parseStep) }?.sortedBy { it.seq } ?: emptyList()
+
+    /** `GET /api/messages/{id}/steps` → `{"data":[…]}`. */
+    fun parseSteps(body: String): List<BotStep> = parseStepList(dataArray(body))
+
+    fun parseAttachment(o: JsonObject): BotAttachment? {
+        val path = o.text("path")?.takeIf { it.isNotEmpty() } ?: return null
+        return BotAttachment(
+            name = o.text("name")?.takeIf { it.isNotEmpty() } ?: path.substringAfterLast('/'),
+            path = path,
+            mime = o.text("mime"),
+            size = o["size"].asLongLenient(),
+            via = o.text("via"),
+        )
+    }
+
+    /** 메시지의 `attachments`(JSON 문자열) 또는 null/빈 문자열/깨진 값 → 목록. */
+    fun parseAttachments(json: String?): List<BotAttachment> {
+        if (json.isNullOrBlank()) return emptyList()
+        return parseJsonOrNull(json).asArray()?.mapNotNull { it.asObject()?.let(::parseAttachment) } ?: emptyList()
+    }
+
+    /** `POST /api/channels/{id}/attachments` 응답. path 가 없으면 null. */
+    fun parseUpload(body: String): BotAttachment? = parseJsonOrNull(body).asObject()?.let(::parseAttachment)
+
+    // ---- bot admin ----
+
+    fun parseDiscoverResult(body: String): DiscoverResult {
+        val o = parseJsonOrNull(body).asObject() ?: return DiscoverResult()
+        return DiscoverResult(
+            source = o.text("source"),
+            found = o.int("found") ?: 0,
+            created = o.int("created") ?: 0,
+            updated = o.int("updated") ?: 0,
+            offline = o.int("offline") ?: 0,
+            archived = o.int("archived") ?: 0,
+            skipped = o.array("skipped")?.mapNotNull { it.asText() } ?: emptyList(),
+        )
+    }
+
+    fun parseHealthSummary(body: String): BotHealthSummary {
+        val o = parseJsonOrNull(body).asObject()
+        return BotHealthSummary(o?.int("online") ?: 0, o?.int("total") ?: 0)
+    }
+
+    // ---- workspaces ----
+
+    fun parseWorkspace(o: JsonObject): Workspace? {
+        val id = o.int("id") ?: return null
+        val path = o.text("path") ?: return null
+        return Workspace(
+            id = id,
+            kind = o.text("kind") ?: "folder",
+            label = o.text("label")?.takeIf { it.isNotEmpty() } ?: path.substringAfterLast('/'),
+            path = path,
+            repoUrl = o.text("repo_url"),
+            defaultBranch = o.text("default_branch"),
+            createdAt = o.text("created_at"),
+        )
+    }
+
+    fun parseWorkspaces(body: String): List<Workspace> =
+        dataArray(body).mapNotNull { it.asObject()?.let(::parseWorkspace) }
+
+    fun parseWorkspaceObject(body: String): Workspace? = parseJsonOrNull(body).asObject()?.let(::parseWorkspace)
+
+    fun parseBrowse(body: String): BrowseResult? {
+        val o = parseJsonOrNull(body).asObject() ?: return null
+        val path = o.text("path") ?: return null
+        return BrowseResult(
+            path = path,
+            parent = o.text("parent"),
+            entries = o.array("entries")?.mapNotNull { el ->
+                val e = el.asObject() ?: return@mapNotNull null
+                val p = e.text("path") ?: return@mapNotNull null
+                BrowseEntry(e.text("name") ?: p.substringAfterLast('/'), p)
+            } ?: emptyList(),
+        )
+    }
+
+    /** git 저장소가 아니면 서버가 `{"repo": false}` 만 준다. */
+    fun parseWorkspaceStatus(body: String): WorkspaceStatus {
+        val o = parseJsonOrNull(body).asObject() ?: return WorkspaceStatus(isRepo = false)
+        return WorkspaceStatus(
+            isRepo = o.bool("repo") ?: false,
+            branch = o.text("branch"),
+            dirty = o.bool("dirty") ?: false,
+            files = o.array("files")?.mapNotNull { it.asText() } ?: emptyList(),
+        )
+    }
+
+    /** `POST /api/workspaces/{id}/commit` → `{"ok":true,"sha":"…"}`. */
+    fun parseCommitSha(body: String): String? = parseJsonOrNull(body).asObject()?.text("sha")
+
+    fun parsePushRequest(body: String): PushRequestResult {
+        val o = parseJsonOrNull(body).asObject()
+        return PushRequestResult(o?.int("approval_id"), o?.text("status"), o?.text("note"))
+    }
+
+    /** `{"ok":true,"note":"…"}` 류 응답의 note. */
+    fun parseNote(body: String): String? = parseJsonOrNull(body).asObject()?.text("note")
 }

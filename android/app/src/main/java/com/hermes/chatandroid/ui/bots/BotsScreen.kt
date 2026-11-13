@@ -15,19 +15,18 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -36,6 +35,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,15 +64,25 @@ data class BotsUiState(
     val refreshing: Boolean = false,
     val bots: List<Bot> = emptyList(),
     val channels: List<BotChannel> = emptyList(),
-    val pendingApprovals: Int = 0,
     val error: String? = null,
 )
+
+/**
+ * 홈 목록 순서: 대화가 있는 봇(미리보기 있음) 먼저, 그 안에서 최근에 연 순서(이 기기 기준 — 서버는 DM 시각을 주지 않는다),
+ * 그다음 온라인 → 이름. 보관된 봇/DM 없는 봇은 제외.
+ */
+internal fun sortBotsForHome(bots: List<Bot>, activity: Map<Int, Long>): List<Bot> =
+    bots.filter { !it.isArchived && it.dmChannelId != null }
+        .sortedWith(
+            compareByDescending<Bot> { !it.preview.isNullOrEmpty() }
+                .thenByDescending { activity[it.id] ?: 0L }
+                .thenByDescending { it.isOnline }
+                .thenBy { it.displayName },
+        )
 
 class BotsViewModel(private val container: AppContainer) : ViewModel() {
     private val _state = MutableStateFlow(BotsUiState())
     val state = _state.asStateFlow()
-
-    init { refresh(initial = true) }
 
     fun refresh(initial: Boolean = false) {
         val api = container.botApi() ?: run {
@@ -82,10 +92,10 @@ class BotsViewModel(private val container: AppContainer) : ViewModel() {
         _state.update { it.copy(refreshing = !initial) }
         viewModelScope.launch {
             try {
+                if (!initial) runCatching { api.refreshHealth() } // 당겨서 새로고침: 헬스 점도 갱신
                 val bots = api.fetchBots()
                 val channels = api.fetchChannels()
-                val approvals = runCatching { api.fetchApprovals().size }.getOrDefault(0)
-                _state.update { BotsUiState(loading = false, bots = bots, channels = channels, pendingApprovals = approvals) }
+                _state.update { BotsUiState(loading = false, bots = bots, channels = channels) }
             } catch (e: Exception) {
                 _state.update { it.copy(loading = false, refreshing = false, error = botErrorText(e)) }
             }
@@ -111,60 +121,65 @@ class BotsViewModel(private val container: AppContainer) : ViewModel() {
 fun BotsScreen(
     container: AppContainer,
     onOpenChannel: (channelId: Int) -> Unit,
-    onOpenApprovals: () -> Unit,
+    onOpenBotProfile: (botId: Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val vm: BotsViewModel = viewModel(factory = viewModelFactory { initializer { BotsViewModel(container) } })
     val state by vm.state.collectAsStateWithLifecycle()
+    // 탭으로 돌아올 때마다 조용히 갱신(첫 진입 포함)
+    androidx.compose.runtime.LaunchedEffect(Unit) { vm.refresh(initial = true) }
     var showCreate by remember { mutableStateOf(false) }
+    var showChannels by rememberSaveable { mutableStateOf(false) }
     val configured = container.botApi() != null
 
     Scaffold(
         modifier = modifier,
-        topBar = {
-            TopAppBar(
-                title = { Text("봇") },
-                actions = {
-                    IconButton(onClick = onOpenApprovals) {
-                        BadgedBox(badge = { if (state.pendingApprovals > 0) Badge { Text("${state.pendingApprovals}") } }) {
-                            Icon(Icons.Filled.Notifications, contentDescription = "승인 요청")
-                        }
-                    }
-                },
-            )
-        },
+        topBar = { TopAppBar(title = { Text("대화") }) },
         floatingActionButton = {
-            if (configured) FloatingActionButton(onClick = { showCreate = true }) {
+            if (configured && showChannels) FloatingActionButton(onClick = { showCreate = true }) {
                 Icon(Icons.Filled.Add, contentDescription = "새 채널")
             }
         },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
             if (!configured) {
-                EmptyState("봇 서버가 설정되지 않았습니다", subtitle = "설정 탭에서 봇 서버 주소와 토큰을 입력하세요.")
+                EmptyState("봇 서버가 설정되지 않았습니다", subtitle = "더보기 탭에서 봇 서버 주소와 토큰을 입력하세요.")
                 return@Column
+            }
+            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
+                SegmentedButton(
+                    selected = !showChannels, onClick = { showChannels = false },
+                    shape = SegmentedButtonDefaults.itemShape(0, 2),
+                ) { Text("봇") }
+                SegmentedButton(
+                    selected = showChannels, onClick = { showChannels = true },
+                    shape = SegmentedButtonDefaults.itemShape(1, 2),
+                ) { Text("채널") }
             }
             state.error?.let { ErrorBanner(it, onRetry = { vm.refresh() }) }
             if (state.loading) {
                 LoadingBox()
             } else {
+                val homeBots = sortBotsForHome(state.bots, container.botActivity)
                 PullToRefreshBox(isRefreshing = state.refreshing, onRefresh = { vm.refresh() }, modifier = Modifier.weight(1f)) {
-                    LazyColumn(Modifier.fillMaxSize()) {
-                        item { SectionHeader("봇") }
-                        items(state.bots, key = { "b${it.id}" }) { b ->
-                            BotRow(b) { b.dmChannelId?.let(onOpenChannel) }
-                            HorizontalDivider()
-                        }
-                        item { SectionHeader("채널") }
-                        if (state.channels.isEmpty()) {
-                            item {
-                                Text("채널이 없습니다. 아래 + 로 만들어 보세요.", Modifier.padding(16.dp),
-                                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (!showChannels && homeBots.isEmpty()) {
+                        EmptyState("대화할 봇이 없습니다", subtitle = "서버에서 프로필을 검색하면 봇이 나타납니다. 당겨서 새로고침하세요.")
+                    } else if (showChannels && state.channels.isEmpty()) {
+                        EmptyState("채널이 없습니다", subtitle = "아래 + 로 봇들이 모인 채널을 만들어 보세요.")
+                    } else LazyColumn(Modifier.fillMaxSize()) {
+                        if (!showChannels) {
+                            items(homeBots, key = { "b${it.id}" }) { b ->
+                                BotRow(b, onAvatar = { onOpenBotProfile(b.id) }) {
+                                    container.touchBotActivity(b.id)
+                                    b.dmChannelId?.let(onOpenChannel)
+                                }
+                                HorizontalDivider()
                             }
-                        }
-                        items(state.channels, key = { "c${it.id}" }) { c ->
-                            ChannelRow(c) { onOpenChannel(c.id) }
-                            HorizontalDivider()
+                        } else {
+                            items(state.channels, key = { "c${it.id}" }) { c ->
+                                ChannelRow(c) { onOpenChannel(c.id) }
+                                HorizontalDivider()
+                            }
                         }
                     }
                 }
@@ -185,19 +200,13 @@ fun BotsScreen(
 }
 
 @Composable
-private fun SectionHeader(text: String) {
-    Text(text, Modifier.padding(start = 16.dp, top = 12.dp, bottom = 4.dp),
-        style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-}
-
-@Composable
-private fun BotRow(b: Bot, onClick: () -> Unit) {
+private fun BotRow(b: Bot, onAvatar: () -> Unit, onClick: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().clickable(enabled = b.dmChannelId != null, onClick = onClick).padding(horizontal = 16.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        BotAvatar(b.avatarText, b.tone)
+        BotAvatar(b.avatarText, b.tone, modifier = Modifier.clickable(onClick = onAvatar))
         Column(Modifier.weight(1f)) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(b.displayName, style = MaterialTheme.typography.titleMedium, maxLines = 1)

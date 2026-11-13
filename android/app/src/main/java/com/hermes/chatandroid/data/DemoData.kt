@@ -102,13 +102,18 @@ object DemoData {
     )
 
     val channels = listOf(
-        BotChannel(101, "dm-planner", "플래너", null, false, "active", null, listOf(BotMember(1, "planner", "플래너", "🗓️", "online", 1)), "이번 주 일정을 정리했어요."),
-        BotChannel(102, "dm-coder", "코더", null, false, "active", null, listOf(BotMember(2, "coder", "코더", "💻", "online", 2)), "리뷰할 코드를 보내 주세요."),
+        BotChannel(101, "dm-planner", "플래너", null, false, "active", null, listOf(BotMember(1, "planner", "플래너", "🗓️", "online", 1)), "이번 주 일정을 정리했어요.", kind = "dm"),
+        BotChannel(102, "dm-coder", "코더", null, false, "active", null, listOf(BotMember(2, "coder", "코더", "💻", "online", 2)), "리뷰할 코드를 보내 주세요.", kind = "dm"),
         BotChannel(
             201, "team", "팀 채널", "프로젝트 논의", true, "active", null,
             listOf(BotMember(1, "planner", "플래너", "🗓️", "online", 1), BotMember(2, "coder", "코더", "💻", "online", 2)),
-            "배포 일정 논의",
+            "배포 일정 논의", kind = "channel",
         ),
+    )
+
+    val workspaces = listOf(
+        Workspace(1, "folder", "문서", "/Users/demo/Documents"),
+        Workspace(2, "repo", "Hermes-Chat", "/Users/demo/repos/elec100-design/Hermes-Chat", "https://github.com/elec100-design/Hermes-Chat", "main"),
     )
 
     fun botMessages(channelId: Int): List<BotMessage> = when (channelId) {

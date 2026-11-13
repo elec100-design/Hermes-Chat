@@ -11,6 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -38,6 +39,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hermes.chatandroid.AppContainer
 import com.hermes.chatandroid.data.ProfileEntry
+import com.hermes.chatandroid.ui.bots.botErrorText
+import com.hermes.chatandroid.ui.bots.checkBotServer
 import com.hermes.chatandroid.ui.components.ErrorBanner
 import kotlinx.coroutines.launch
 
@@ -76,6 +79,8 @@ fun SettingsScreen(
     onRerunOnboarding: () -> Unit,
     onExitDemo: () -> Unit,
     modifier: Modifier = Modifier,
+    /** 더보기 → 설정으로 들어온 경우 뒤로 버튼. */
+    onBack: (() -> Unit)? = null,
 ) {
     val repo = container.settingsRepository
     val settings by repo.settings.collectAsStateWithLifecycle()
@@ -98,7 +103,10 @@ fun SettingsScreen(
         modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-        Text("설정", style = MaterialTheme.typography.headlineSmall)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (onBack != null) IconButton(onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "뒤로") }
+            Text("설정", style = MaterialTheme.typography.headlineSmall)
+        }
         if (settings.demoMode) {
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -114,7 +122,52 @@ fun SettingsScreen(
         error?.let { ErrorBanner(it) }
         message?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
 
-        Section("서버") {
+        Section("Hermes Bot 서버") {
+            Field("서버 주소", settings.botHost, { v -> repo.update { it.copy(botHost = v) } },
+                placeholder = "http://100.83.59.60:8900", keyboard = KeyboardType.Uri)
+            Field("토큰 (서버에 설정된 경우만)", settings.botToken, { v -> repo.update { it.copy(botToken = v) } }, secret = true)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(
+                    onClick = {
+                        val api = container.botApi()
+                        if (api == null) { botResult = false to "서버 주소를 입력하세요"; return@OutlinedButton }
+                        botTesting = true; botResult = null
+                        scope.launch {
+                            val r = checkBotServer(api)
+                            botResult = r.ok to r.message
+                            botTesting = false
+                        }
+                    },
+                    enabled = !botTesting,
+                ) {
+                    if (botTesting) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                    else Text("연결 테스트")
+                }
+                OutlinedButton(
+                    onClick = {
+                        val api = container.botApi() ?: return@OutlinedButton
+                        botTesting = true; botResult = null
+                        scope.launch {
+                            botResult = try {
+                                val r = api.discoverBots()
+                                true to "프로필 ${r.found}개 확인 (새 봇 ${r.created}개)"
+                            } catch (e: kotlinx.coroutines.CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                false to botErrorText(e)
+                            }
+                            botTesting = false
+                        }
+                    },
+                    enabled = !botTesting && settings.botConfigured,
+                ) { Text("봇 프로필 재검색") }
+            }
+            botResult?.let { (ok, msg) ->
+                Text(msg, color = if (ok) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
+            }
+        }
+
+        Section("게이트웨이 (지난 세션 보기용)") {
             Field("호스트", settings.host, { v -> repo.update { it.copy(host = v) } }, placeholder = "http://100.83.59.60")
             Field("API 키", settings.apiKey, { v -> repo.update { it.copy(apiKey = v) } }, secret = true)
         }
@@ -152,11 +205,12 @@ fun SettingsScreen(
                     onClick = {
                         discovering = true; error = null; message = null
                         scope.launch {
-                            val found = container.profileDiscovery.scan(settings.host, settings.apiKey)
-                            if (found.isEmpty()) error = "프로필을 찾지 못했습니다. 호스트/API 키를 확인하세요."
+                            val scan = container.profileDiscovery.scan(settings.host, settings.apiKey)
+                            val err = scan.errorMessage
+                            if (err != null) error = err
                             else {
-                                repo.update { it.copy(profiles = found) }
-                                message = "${found.size}개 프로필을 찾았습니다."
+                                repo.update { it.copy(profiles = scan.profiles) }
+                                message = "${scan.profiles.size}개 프로필을 찾았습니다."
                             }
                             discovering = false
                         }
@@ -169,37 +223,10 @@ fun SettingsScreen(
             }
         }
 
-        Section("Bridge") {
+        Section("Bridge (고급)") {
             Field("Bridge URL", settings.bridgeUrl, { v -> repo.update { it.copy(bridgeUrl = v) } },
                 placeholder = "비우면 호스트:8765")
             Field("Bridge 토큰", settings.bridgeToken, { v -> repo.update { it.copy(bridgeToken = v) } }, secret = true)
-        }
-
-        Section("Hermes Bot") {
-            Field("봇 호스트", settings.botHost, { v -> repo.update { it.copy(botHost = v) } },
-                placeholder = "host 또는 host:8900 (비우면 비활성)")
-            Field("봇 토큰", settings.botToken, { v -> repo.update { it.copy(botToken = v) } }, secret = true)
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedButton(
-                    onClick = {
-                        val api = container.botApi()
-                        if (api == null) { botResult = false to "봇 호스트를 입력하세요"; return@OutlinedButton }
-                        botTesting = true; botResult = null
-                        scope.launch {
-                            val ok = api.health()
-                            botResult = ok to (if (ok) "연결 성공" else "연결 실패")
-                            botTesting = false
-                        }
-                    },
-                    enabled = !botTesting,
-                ) {
-                    if (botTesting) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-                    else Text("연결 테스트")
-                }
-                botResult?.let { (ok, msg) ->
-                    Text(msg, color = if (ok) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
-                }
-            }
         }
 
         Section("정보") {

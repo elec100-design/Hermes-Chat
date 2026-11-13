@@ -1,6 +1,7 @@
 package com.hermes.chatandroid.ui.bots
 
 import com.hermes.chatandroid.data.BotMessage
+import com.hermes.chatandroid.data.BotStep
 import com.hermes.chatandroid.data.BotStreamEvent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -25,6 +26,8 @@ class BotJobFollower(
     private val onDelta: (messageId: Int, text: String) -> Unit,
     private val onStreamError: (messageId: Int, message: String) -> Unit,
     private val onReloadError: (Throwable) -> Unit = {},
+    /** 실행 단계 스냅샷(통째 교체). End 에 실린 최종 스냅샷도 여기로 온다. */
+    private val onSteps: (messageId: Int, steps: List<BotStep>) -> Unit = { _, _ -> },
     private val endDelayMs: Long = 700L,
 ) {
     private val active = HashMap<Int, Job>()
@@ -46,7 +49,11 @@ class BotJobFollower(
                     .collect { ev ->
                         when (ev) {
                             is BotStreamEvent.Delta -> onDelta(messageId, ev.text)
-                            is BotStreamEvent.End -> ended = true
+                            is BotStreamEvent.Steps -> onSteps(messageId, ev.steps)
+                            is BotStreamEvent.End -> {
+                                if (ev.steps.isNotEmpty()) onSteps(messageId, ev.steps)
+                                ended = true
+                            }
                             is BotStreamEvent.Error -> onStreamError(messageId, ev.message)
                         }
                     }

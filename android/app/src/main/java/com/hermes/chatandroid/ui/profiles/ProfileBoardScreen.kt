@@ -74,7 +74,7 @@ fun ProfileBoardScreen(
         }
         // 2) 여전히 비었으면 포트 스캔
         if (!repo.current.demoMode && repo.current.profiles.isEmpty() && repo.current.cleanHost.isNotEmpty()) {
-            val found = container.profileDiscovery.scan(repo.current.host, repo.current.apiKey)
+            val found = container.profileDiscovery.scan(repo.current.host, repo.current.apiKey).profiles
             if (found.isNotEmpty()) repo.update { it.copy(profiles = found) }
         }
         // 3) 헬스 점

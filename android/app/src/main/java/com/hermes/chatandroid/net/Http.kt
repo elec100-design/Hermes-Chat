@@ -15,7 +15,7 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 /** HTTP 오류(비 2xx). [code] 401 = 인증 문제. */
-class ApiException(val code: Int, message: String) : IOException(message)
+class ApiException(val code: Int, message: String, val detail: String? = null) : IOException(message)
 
 val JSON_MEDIA = "application/json; charset=utf-8".toMediaType()
 
@@ -31,13 +31,32 @@ fun jsonBody(json: String): RequestBody = json.toRequestBody(JSON_MEDIA)
 fun joinUrl(base: String, path: String): String =
     base.trimEnd('/') + "/" + path.trimStart('/')
 
+/**
+ * 오류 본문에서 서버 문구를 꺼낸다. FastAPI/Hermes-bot 은 `{"detail": "한글 문구"}`,
+ * 검증 오류(422)는 `{"detail": [{"loc":…, "msg":…}]}`.
+ */
+fun errorDetailOf(body: String): String? {
+    val root = parseJsonOrNull(body)
+    val obj = root.asObject()
+    if (obj != null) {
+        val d = obj["detail"]
+        d.asText()?.takeIf { it.isNotBlank() }?.let { return it }
+        d.asArray()?.mapNotNull { it.asObject()?.text("msg") ?: it.asText() }?.takeIf { it.isNotEmpty() }
+            ?.let { return it.joinToString("; ") }
+        (obj.text("message") ?: obj.text("error"))?.takeIf { it.isNotBlank() }?.let { return it }
+        return null
+    }
+    return body.take(200).ifBlank { null }
+}
+
+/** 서버가 준 문구가 있으면 그대로(한글 안내), 없으면 코드별 기본 문구. 401 은 항상 인증 안내를 앞세운다. */
 fun errorMessageFor(code: Int, body: String): String {
-    val detail = parseJsonOrNull(body).asObject()?.let { it.text("detail") ?: it.text("message") ?: it.text("error") }
-        ?: body.take(200).ifBlank { null }
-    return when (code) {
-        401 -> "인증 실패(401) - API 키/토큰을 확인하세요" + (detail?.let { ": $it" } ?: "")
-        404 -> "찾을 수 없음(404)" + (detail?.let { ": $it" } ?: "")
-        else -> "HTTP $code" + (detail?.let { ": $it" } ?: "")
+    val detail = errorDetailOf(body)
+    return when {
+        code == 401 -> "인증 실패(401) - API 키/토큰을 확인하세요" + (detail?.let { ": $it" } ?: "")
+        detail != null -> detail
+        code == 404 -> "찾을 수 없음(404)"
+        else -> "HTTP $code"
     }
 }
 
@@ -58,7 +77,7 @@ suspend fun OkHttpClient.fetchText(request: Request): String =
                         if (r.isSuccessful) {
                             if (cont.isActive) cont.resume(text)
                         } else if (cont.isActive) {
-                            cont.resumeWithException(ApiException(r.code, errorMessageFor(r.code, text)))
+                            cont.resumeWithException(ApiException(r.code, errorMessageFor(r.code, text), errorDetailOf(text)))
                         }
                         Unit
                     }

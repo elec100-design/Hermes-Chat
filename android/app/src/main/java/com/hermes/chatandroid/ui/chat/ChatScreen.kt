@@ -57,8 +57,10 @@ fun ChatScreen(
     sessionId: String,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    /** 특정 봇의 게이트웨이 포트를 대상으로 열 때. null 이면 설정에서 선택된 프로필. */
+    port: Int? = null,
 ) {
-    val vm: ChatViewModel = viewModel(key = "chat/$sessionId", factory = ChatViewModel.factory(container, sessionId))
+    val vm: ChatViewModel = viewModel(key = "chat/$port/$sessionId", factory = ChatViewModel.factory(container, sessionId, port))
     val state by vm.state.collectAsStateWithLifecycle()
     var input by rememberSaveable { mutableStateOf("") }
     val context = LocalContext.current

@@ -22,6 +22,13 @@ class AppContainer(val settingsRepository: SettingsRepository) {
     private val demoBot by lazy { DemoBotApi() }
     private val demoBridge by lazy { DemoBridgeApi() }
 
+    /**
+     * 봇 DM 을 마지막으로 연/보낸 시각(이 기기 기준, 프로세스 수명). 서버가 DM 마지막 활동 시각을 주지 않아
+     * 홈 목록의 "최근 활동순"을 보정하는 용도.
+     */
+    val botActivity: MutableMap<Int, Long> = java.util.concurrent.ConcurrentHashMap()
+    fun touchBotActivity(botId: Int) { botActivity[botId] = System.currentTimeMillis() }
+
     /** 선택된(또는 지정한) 프로필의 게이트웨이. host/프로필 미설정이면 null. */
     fun hermesApi(profile: ProfileEntry? = null): HermesApi? {
         val s = settingsRepository.current

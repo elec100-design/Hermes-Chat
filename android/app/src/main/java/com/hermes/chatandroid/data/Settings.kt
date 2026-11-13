@@ -39,6 +39,10 @@ data class Settings(
     val botConfigured: Boolean get() = demoMode || botHost.isNotBlank()
 
     companion object {
+        /** "http://100.1.2.3:8900/x" -> "100.1.2.3" (스킴·포트·경로 제거). */
+        fun hostOnly(raw: String): String =
+            raw.trim().removePrefix("http://").removePrefix("https://").substringBefore('/').substringBefore(':')
+
         /** "host" -> http://host:defaultPort, "host:1234" -> http://host:1234, 스킴 있으면 그대로. */
         fun normalizeUrl(raw: String, defaultPort: Int): String? {
             val s = raw.trim().trimEnd('/')

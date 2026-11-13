@@ -42,6 +42,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.hermes.chatandroid.AppContainer
+import com.hermes.chatandroid.data.Bot
 import com.hermes.chatandroid.data.BotChannel
 import com.hermes.chatandroid.data.BotMessage
 import com.hermes.chatandroid.ui.components.ErrorBanner
@@ -56,6 +57,8 @@ import kotlinx.coroutines.launch
 data class BotChatUiState(
     val loading: Boolean = true,
     val channel: BotChannel? = null,
+    /** 이 채널이 봇 DM 이면 그 봇(`/api/channels` 목록에는 DM 이 없어 봇 목록에서 찾는다). */
+    val dmBot: Bot? = null,
     val messages: List<BotMessage> = emptyList(),
     /** messageId → 스트리밍 중 누적 본문 */
     val streaming: Map<Int, String> = emptyMap(),
@@ -98,8 +101,9 @@ class BotChatViewModel(private val container: AppContainer, private val channelI
         viewModelScope.launch {
             try {
                 val ch = runCatching { api.fetchChannels().firstOrNull { it.id == channelId } }.getOrNull()
+                val dm = if (ch != null) null else runCatching { api.fetchBots(false).firstOrNull { it.dmChannelId == channelId } }.getOrNull()
                 val msgs = api.fetchMessages(channelId)
-                _state.update { it.copy(loading = false, channel = ch ?: it.channel, error = null) }
+                _state.update { it.copy(loading = false, channel = ch ?: it.channel, dmBot = dm ?: it.dmBot, error = null) }
                 follower.submit(msgs)
             } catch (e: Exception) {
                 _state.update { it.copy(loading = false, error = botErrorText(e)) }
@@ -116,6 +120,7 @@ class BotChatViewModel(private val container: AppContainer, private val channelI
             try {
                 val r = api.postMessage(channelId, body)
                 onSent()
+                _state.value.dmBot?.let { container.touchBotActivity(it.id) }
                 val msgs = api.fetchMessages(channelId)
                 follower.submit(msgs)
                 if (r.jobId != null && r.replyMessageId != null) follower.follow(r.replyMessageId, r.jobId)
@@ -146,6 +151,10 @@ fun BotChatScreen(
     channelId: Int,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    /** DM 상단 제목 탭 → 봇 프로필. */
+    onOpenBotProfile: (botId: Int) -> Unit = {},
+    /** 채널 상단 제목 탭 → 채널 설정. */
+    onOpenChannelSettings: (channelId: Int) -> Unit = {},
 ) {
     val vm: BotChatViewModel = viewModel(
         key = "botChat$channelId",
@@ -165,7 +174,22 @@ fun BotChatScreen(
         modifier = modifier.imePadding(),
         topBar = {
             TopAppBar(
-                title = { Text(state.channel?.title ?: "채팅", maxLines = 1) },
+                title = {
+                    val dm = state.dmBot
+                    val titleClick: (() -> Unit)? = when {
+                        dm != null -> { { onOpenBotProfile(dm.id) } }
+                        state.channel != null -> { { onOpenChannelSettings(channelId) } }
+                        else -> null
+                    }
+                    Row(
+                        Modifier.then(if (titleClick != null) Modifier.clickable(onClick = titleClick) else Modifier),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        if (dm != null) BotAvatar(dm.avatarText, dm.tone, size = 28.dp)
+                        Text(dm?.displayName ?: state.channel?.title ?: "채팅", maxLines = 1)
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "뒤로") }
                 },

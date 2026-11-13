@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.hermes.chatandroid.AppContainer
+import com.hermes.chatandroid.data.ProfileEntry
 import com.hermes.chatandroid.data.StreamEvent
 import com.hermes.chatandroid.net.HermesApi
 import com.hermes.chatandroid.net.ThinkFilter
@@ -42,7 +43,15 @@ data class ChatUiState(
     val error: String? = null,
 )
 
-class ChatViewModel(private val container: AppContainer, private val sessionId: String) : ViewModel() {
+/** [port] 가 있으면 그 게이트웨이 포트(봇 프로필 화면에서 연 과거 세션)를, 없으면 선택된 프로필을 대상으로 한다. */
+class ChatViewModel(
+    private val container: AppContainer,
+    private val sessionId: String,
+    private val port: Int? = null,
+) : ViewModel() {
+    private val target: ProfileEntry?
+        get() = port?.let { p -> container.settingsRepository.current.visibleProfiles.firstOrNull { it.port == p } ?: ProfileEntry("", p) }
+
     private val _state = MutableStateFlow(ChatUiState())
     val state: StateFlow<ChatUiState> = _state.asStateFlow()
 
@@ -54,7 +63,7 @@ class ChatViewModel(private val container: AppContainer, private val sessionId: 
     init { loadHistory() }
 
     fun loadHistory() {
-        val api = container.hermesApi()
+        val api = container.hermesApi(target)
         if (api == null) {
             _state.update { it.copy(loading = false, error = "게이트웨이가 설정되지 않았습니다. 설정에서 호스트/프로필을 확인하세요.") }
             return
@@ -135,7 +144,7 @@ class ChatViewModel(private val container: AppContainer, private val sessionId: 
         val text = textRaw.trim()
         val s = _state.value
         if (s.sending || (text.isEmpty() && s.attachments.isEmpty())) return
-        val api = container.hermesApi()
+        val api = container.hermesApi(target)
         if (api == null) {
             _state.update { it.copy(error = "게이트웨이가 설정되지 않았습니다.") }
             return
@@ -162,7 +171,7 @@ class ChatViewModel(private val container: AppContainer, private val sessionId: 
                 val paths = ArrayList<String>()
                 if (atts.isNotEmpty()) {
                     val bridge = container.bridgeApi()
-                    val profile = container.settingsRepository.current.currentProfile?.name
+                    val profile = (target?.name?.takeIf { it.isNotEmpty() } ?: container.settingsRepository.current.currentProfile?.name)
                     if (bridge == null || profile == null) {
                         error = "첨부 업로드를 하려면 Bridge 설정이 필요합니다. 설정에서 호스트를 확인하세요."
                     } else {
@@ -239,9 +248,9 @@ class ChatViewModel(private val container: AppContainer, private val sessionId: 
     companion object {
         const val MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024
 
-        fun factory(container: AppContainer, sessionId: String) = object : ViewModelProvider.Factory {
+        fun factory(container: AppContainer, sessionId: String, port: Int? = null) = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T = ChatViewModel(container, sessionId) as T
+            override fun <T : ViewModel> create(modelClass: Class<T>): T = ChatViewModel(container, sessionId, port) as T
         }
     }
 }

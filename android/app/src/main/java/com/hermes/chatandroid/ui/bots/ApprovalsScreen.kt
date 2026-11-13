@@ -64,8 +64,6 @@ class ApprovalsViewModel(private val container: AppContainer) : ViewModel() {
     private val _state = MutableStateFlow(ApprovalsUiState())
     val state = _state.asStateFlow()
 
-    init { refresh(initial = true) }
-
     fun refresh(initial: Boolean = false) {
         val api = container.botApi()
         if (api == null) {
@@ -105,11 +103,14 @@ private data class Pending(val approval: BotApproval, val approve: Boolean)
 @Composable
 fun ApprovalsScreen(
     container: AppContainer,
-    onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    /** null 이면 탭 화면(뒤로 버튼 없음). */
+    onBack: (() -> Unit)? = null,
 ) {
     val vm: ApprovalsViewModel = viewModel(factory = viewModelFactory { initializer { ApprovalsViewModel(container) } })
     val state by vm.state.collectAsStateWithLifecycle()
+    // 탭으로 돌아올 때마다 조용히 갱신(첫 진입 포함)
+    androidx.compose.runtime.LaunchedEffect(Unit) { vm.refresh(initial = true) }
     var pending by remember { mutableStateOf<Pending?>(null) }
 
     Scaffold(
@@ -118,7 +119,7 @@ fun ApprovalsScreen(
             TopAppBar(
                 title = { Text("승인 요청") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "뒤로") }
+                    if (onBack != null) IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "뒤로") }
                 },
             )
         },
