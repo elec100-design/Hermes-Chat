@@ -357,11 +357,11 @@
 
 | ID | 작업 | 파일 | 상태 |
 |----|------|------|------|
-| T-170 | 봇 홈(대화/승인/더보기 탭)·온보딩(봇 서버 우선)·설정 재구성 + BotApi 전 엔드포인트(봇 수정·발견·헬스·steps·첨부·채널 관리·워크스페이스) + 프로필 검색 401 안내 | `android/…/net/BotApi.kt`, `…/ui/AppNav.kt`, `…/ui/{onboarding,settings,bots}` | DOING(Claude Code, 11-13) |
-| T-171 | 봇 채팅 고도화 — 첨부 업로드·실행 단계(steps) 표시·마크다운·정체색 말풍선 | `…/ui/bots/chat` | TODO |
-| T-172 | 봇 프로필 — 이름·아바타·페르소나·승인 정책 편집, 보관, 헬스·발견, 지난 세션(게이트웨이 직결) | `…/ui/bots/profile` | TODO |
-| T-173 | 채널 관리 — 제목·주제·봇끼리 대화 수정, 멤버 추가/제거, 삭제 | `…/ui/bots/channel` | TODO |
-| T-174 | 워크스페이스 — 목록·폴더 추가·리포 클론·상태·커밋·푸시·삭제 | `…/ui/workspaces` | TODO |
+| T-170 | 봇 홈(대화/승인/더보기 탭)·온보딩(봇 서버 우선)·설정 재구성 + BotApi 전 엔드포인트(봇 수정·발견·헬스·steps·첨부·채널 관리·워크스페이스) + 프로필 검색 401 안내 | `android/…/net/BotApi.kt`, `…/ui/AppNav.kt`, `…/ui/{onboarding,settings,bots}` | NEEDS-BUILD (11-13 로컬 빌드·단위테스트 통과 6953ba1, 폴드 설치됨·봇 서버 미기동으로 실서버 미검증) |
+| T-171 | 봇 채팅 고도화 — 첨부 업로드·실행 단계(steps) 표시·마크다운·정체색 말풍선 | `…/ui/bots/chat` | NEEDS-BUILD (11-13 로컬 빌드·단위테스트 통과 6953ba1, 폴드 설치됨·봇 서버 미기동으로 실서버 미검증) |
+| T-172 | 봇 프로필 — 이름·아바타·페르소나·승인 정책 편집, 보관, 헬스·발견, 지난 세션(게이트웨이 직결) | `…/ui/bots/profile` | NEEDS-BUILD (11-13 로컬 빌드·단위테스트 통과 6953ba1, 폴드 설치됨·봇 서버 미기동으로 실서버 미검증) |
+| T-173 | 채널 관리 — 제목·주제·봇끼리 대화 수정, 멤버 추가/제거, 삭제 | `…/ui/bots/channel` | NEEDS-BUILD (11-13 로컬 빌드·단위테스트 통과 6953ba1, 폴드 설치됨·봇 서버 미기동으로 실서버 미검증) |
+| T-174 | 워크스페이스 — 목록·폴더 추가·리포 클론·상태·커밋·푸시·삭제 | `…/ui/workspaces` | NEEDS-BUILD (11-13 로컬 빌드·단위테스트 통과 6953ba1, 폴드 설치됨·봇 서버 미기동으로 실서버 미검증) |
 | T-175 | 2차: 칸반·크론·대시보드 부가 기능 | — | TODO |
 
 ## Phase A — 앱스토어 상품화 Phase 0: 컴플라이언스 + 다국어 기반
@@ -430,3 +430,4 @@
 | 06-21 | claude/sleepy-bardeen-x86kpk @ 98ad910 | BUILD SUCCEEDED + 실기기 설치 완료 | 사용자 Xcode 빌드 + iPhone17,4(iOS 26.5) 설치 확인 — T-C01~C05 Phase C 전체 (유료 Apple Developer C4LUZYK8L5, 빌드 오류 5개 수정 포함). 런타임 검증은 Sign in with Apple(T-C01)·StoreKit(T-C03) 대기. |
 | 11-13 | ccr-29d493c3-z8tex2 @ d374c43 | ANDROID BUILD SUCCESSFUL | Claude Code 맥미니 로컬 검증 — `cd android && ./gradlew :app:testDebugUnitTest :app:assembleDebug` 통과(JDK 17, Gradle 8.11.1, AGP 8.7.3, compileSdk 35). JVM 단위 테스트 29개(SseParser 7·ThinkFilter 7·Parsers 10·HermesApiStream 4·BotSubscription 1) 전부 통과, `app-debug.apk` 생성. T-161~T-164 실기기/에뮬레이터 미검증 |
 | 11-13 | ccr-29d493c3-z8tex2 @ b579721 | ANDROID BUILD SUCCESSFUL | Claude Code 맥미니 로컬 — `./gradlew clean :app:testDebugUnitTest :app:assembleDebug :app:bundleRelease` 통과(AGP 8.9.3, compileSdk/targetSdk 36). 단위 테스트 34개 통과(DemoMode 5 추가), `app-release.aab` 생성(미서명). 임시 키스토어로 assembleRelease 서명 확인 후 삭제. 실기기 미검증 |
+| 11-13 | ccr-29d493c3-z8tex2 @ 6953ba1 | ANDROID BUILD SUCCESSFUL | Claude Code 맥미니 로컬 — Phase 26 봇 중심 재구성(T-170~174) `clean :app:testDebugUnitTest :app:assembleDebug` 통과, 단위 테스트 58개. Galaxy Z Fold(SM-F971N)에 adb 설치·실행 확인. 맥미니 Hermes-bot LaunchAgent(`ai.hermes.bot`)가 빈 배포 폴더(`~/Documents/Hermes-bot`)를 가리켜 :8900 미기동 → 실서버 검증 대기 |
