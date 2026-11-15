@@ -15,7 +15,31 @@ sealed interface MdBlock {
     data class Code(val language: String?, val code: String) : MdBlock
     data class Heading(val level: Int, val text: String) : MdBlock
     data class Quote(val text: String) : MdBlock
+    /** GFM 표. [rows] 의 각 행은 헤더와 같은 열 수로 맞춰진다. */
+    data class Table(val header: List<String>, val rows: List<List<String>>) : MdBlock
 }
+
+private val TableSeparatorRe = Regex("^\\s*\\|?\\s*:?-{2,}:?\\s*(\\|\\s*:?-{2,}:?\\s*)*\\|?\\s*$")
+
+/** `| a | b |` 한 줄을 셀 목록으로. 바깥 파이프는 선택, `\|` 는 리터럴 파이프. */
+internal fun splitTableRow(line: String): List<String> {
+    var t = line.trim()
+    if (t.startsWith("|")) t = t.substring(1)
+    if (t.endsWith("|") && !t.endsWith("\\|")) t = t.dropLast(1)
+    val cells = mutableListOf<String>()
+    val cur = StringBuilder()
+    var i = 0
+    while (i < t.length) {
+        val c = t[i]
+        if (c == '\\' && i + 1 < t.length && t[i + 1] == '|') { cur.append('|'); i += 2; continue }
+        if (c == '|') { cells.add(cur.toString().trim()); cur.clear() } else cur.append(c)
+        i++
+    }
+    cells.add(cur.toString().trim())
+    return cells
+}
+
+private fun isTableSeparator(line: String): Boolean = line.contains('-') && TableSeparatorRe.matches(line)
 
 private val HeadingRe = Regex("^(#{1,3})\\s+(.+)$")
 
@@ -46,8 +70,27 @@ fun splitMarkdownBlocks(raw: String): List<MdBlock> {
             if (joined.isNotBlank()) blocks.add(MdBlock.Quote(joined))
         }
 
-        for (line in lines) {
+        var idx = 0
+        while (idx < lines.size) {
+            val line = lines[idx]
             val trimmed = line.trimStart()
+            // 표: 파이프가 있는 헤더 줄 + 바로 다음 줄이 구분선(|---|---|)
+            if (trimmed.contains('|') && idx + 1 < lines.size && isTableSeparator(lines[idx + 1])) {
+                val header = splitTableRow(trimmed)
+                val cols = header.size
+                val rows = mutableListOf<List<String>>()
+                var j = idx + 2
+                while (j < lines.size && lines[j].contains('|') && lines[j].isNotBlank()) {
+                    val r = splitTableRow(lines[j])
+                    rows.add(if (r.size >= cols) r.take(cols) else r + List(cols - r.size) { "" })
+                    j++
+                }
+                flushPara(); flushQuote()
+                blocks.add(MdBlock.Table(header, rows))
+                idx = j
+                continue
+            }
+            idx++
             val h = HeadingRe.matchEntire(trimmed)
             when {
                 h != null -> {
