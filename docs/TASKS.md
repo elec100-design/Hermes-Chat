@@ -400,11 +400,22 @@
 | T-183 | ~~음성 입력~~ — 사용자 결정(11-15): 키보드 Typeless 사용으로 앱 내 음성 입력 불필요. 응답 읽기(TTS)만 필요 시 재검토 | — | DROPPED |
 | T-184 | 알림 — 봇 답장 완료·승인 요청. 앱이 보이는 동안 30초(기존 승인 배지 폴링 대체), 백그라운드는 WorkManager 15분 주기(**의존성 `androidx.work:work-runtime-ktx` 2.10.0 추가**). 봇 서버에 새 메시지 API 가 없어 봇·채널 미리보기 변화가 있는 채널만 메시지를 읽고, 채널별 마지막 확인 id 이후의 완료된 봇 답만 알림(첫 실행은 기준점만 기록). 보고 있는 채팅·이미 본 답은 제외, 알림 탭 시 해당 채팅/승인 탭으로 이동. 채널 2개(봇 답장 기본, 승인 요청 높음), POST_NOTIFICATIONS 최초 1회 요청, 설정 > 알림 스위치 | `…/notify/*`(신규), `…/ui/AppNav.kt`, `…/MainActivity.kt`, `…/AppContainer.kt`, `…/data/Settings.kt`, `…/ui/settings/SettingsScreen.kt`, `…/ui/bots/BotChatScreen.kt`, `res/drawable/ic_stat_hermes.xml`, `test/…/BotNotifierTest.kt` | DONE (11-15 폴드 실기기 확인 — 알림 동작) |
 | T-185 | 파일 브라우저·스킬 목록 | — | DROPPED (11-15 사용자 결정 — 대시보드 파일·스킬 메뉴로 대체) |
-| T-186 | Deep think 토론방 | — | TODO |
-| T-187 | 핸즈프리 Live 모드(침묵 자동 전송·문장 단위 TTS·BT SCO·포그라운드 서비스) | — | TODO |
-| T-188 | 글라스 사진 자동 전송(MediaStore ContentObserver) | — | TODO |
+| T-186 | Deep think 토론방 | — | DROPPED (11-15 사용자 결정 — 봇 모드 채널이 대체) |
+| T-187 | 핸즈프리 Live 모드 — 봇 채팅 상단 헤드셋 버튼 → Live 화면. 대화는 그 봇 채널(DM/채널, 채널은 답할 봇 @멘션 자동)에 그대로 기록. 한 턴: 시스템 SpeechRecognizer(ko-KR, 침묵 1.5초로 문장 종료) → 업로드·전송 → 잡 스트림 delta 를 문장 단위로 TTS → 다 읽으면 재청취. **무발화는 절대 전송하지 않음**(4회 연속이면 대기, 탭/버튼으로 재개). 마이크·TTS 모두 통화 모드 + BT SCO(`setCommunicationDevice`, 29~30 은 `startBluetoothSco`) 고정 — HFP↔A2DP 전환 지연 제거. 포그라운드 서비스(microphone, BT 권한 있을 때만 connectedDevice) + 진행 알림(탭/종료). 글라스·이어폰 탭 = MediaSession(듣는 중=바로 보내기, 답하는 중=끼어들기, 대기=다시 듣기) | `…/live/*`(신규: `LiveController`, `LiveAudio`, `LiveService`, `LiveText`), `…/ui/live/LiveScreen.kt`(신규), `…/AppContainer.kt`, `…/ui/AppNav.kt`, `…/ui/bots/BotChatScreen.kt`, `…/ui/bots/BotsScreen.kt`, `…/notify/OpenRequest.kt`, `AndroidManifest.xml`, `test/…/live/LiveTextTest.kt` | NEEDS-BUILD (11-15 로컬 빌드·단위테스트 85건 통과, 실기기 미검증) |
+| T-188 | 글라스 카메라 — **Meta DAT SDK 1.0.1 직접 촬영**(갤러리 감시 폐기, 11-15 사용자 승인). 의존성 `com.meta.wearable:mwdat-core/mwdat-camera` 추가 → **minSdk 26→29, Kotlin 2.0.21→2.2.21**(SDK 요구). 개발자 모드라 APPLICATION_ID/CLIENT_TOKEN=0(배포 시 local.properties), Meta 분석·크래시 수집 끔, 콜백 스킴 `hermeschat`. Live 화면 글라스 카드: 블루투스 권한 → Meta AI 에서 연결(등록) → 카메라 권한 → 카메라 켜기. 스트림은 촬영용으로만 열어 둠(HIGH·2fps, 프레임 미사용). 사진 = in-stream `capturePhoto()` → 긴 변 2048px·JPEG 90. 시야 첨부 모드: 말할 때마다(기본, 말 끝나는 순간 촬영 시작해 인식과 겹침)/요청할 때만(“이거·읽어·보여…”)/끔, 수동 “사진” 버튼은 다음 질문에 첨부. 오류 3건 대응: ①지연 → 동기화 대기 제거·촬영과 인식 병렬 ②묻기 전 설명 → 사진 단독 전송 경로 없음 ③글 판독 → 원본 해상도 사진·과압축 금지, 화면에 원본 크기 표시(실측용) | `…/glasses/GlassesCamera.kt`(신규), `gradle/libs.versions.toml`, `app/build.gradle.kts`, `AndroidManifest.xml` | NEEDS-BUILD (11-15 로컬 빌드 통과, 실기기 미검증) |
 | T-189 | 진입 단축 — 앱 아이콘 길게 누르기: 정적 바로가기(승인·칸반·크론) + 봇 DM 을 열 때마다 동적 바로가기(봇 아바타 아이콘, 런처가 최근순 정리·홈 화면 고정 가능) / 빠른 설정 타일 "Hermes": 마지막으로 연 봇 대화를 바로 열기(부제에 봇 이름). 글라스 탭(MediaSession)은 연결할 동작이 Live 모드라 T-187 로 이관 | `…/shortcut/*`(신규), `res/xml/shortcuts.xml`, `res/drawable/ic_shortcut_*.xml`, `AndroidManifest.xml`, `…/notify/OpenRequest.kt`, `…/ui/AppNav.kt`, `…/AppContainer.kt`, `…/ui/bots/BotChatScreen.kt` | NEEDS-BUILD (11-15 로컬 빌드·단위테스트 통과, 실기기 미검증) |
 | T-190 | 다국어(en/zh) 문자열 추출 | `res/values*` | TODO |
+
+**T-187/T-188 실기기 검증 체크리스트** (폴드 + 메타 글라스, Meta AI 앱 개발자 모드 ON):
+1. 봇 DM 상단 헤드셋 버튼 → Live 화면. 글라스 카드: 블루투스 권한 → "Meta AI에서 연결" → 앱 복귀 후 "카메라 권한 요청" → "카메라 켜기" → "카메라 연결됨"
+2. Live 시작 → "블루투스 헤드셋(글라스)으로 듣고 말해요" 표시, 글라스 마이크로 인식·글라스 스피커로 답 낭독
+3. 시야 "말할 때마다": "이거 뭐야?" → 사진+질문이 한 메시지로 전송, 답이 문장 단위로 바로 읽히는지, 체감 지연(말 끝 → 첫 음성) 기록
+4. 메뉴판·문서 "읽어줘" → 판독 품질. 화면의 "원본 W×H" 값 기록(in-stream 사진 해상도 실측 — 낮으면 standalone `camera.photo` 후속)
+5. 아무 말 안 하기 → 사진·메시지가 전송되지 않고 재청취, 4회 후 "대기"
+6. 글라스 탭: 듣는 중=바로 보내기, 답하는 중=끼어들기, 대기=다시 듣기 (DAT 문서상 글라스 단일 탭이 카메라 스트림을 일시정지할 수 있음 — 탭 후 카메라 상태 확인)
+7. 화면 끄고 주머니에 넣은 채 3턴 이상 대화 유지, 알림의 "종료"로 끝남
+8. 봇 채팅으로 돌아가 Live 대화·사진이 기록돼 있는지
+9. 채널(멤버 2+)에서 Live: 답할 봇 선택 → 그 봇만 답함
 
 ## Phase A — 앱스토어 상품화 Phase 0: 컴플라이언스 + 다국어 기반
 

@@ -31,6 +31,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.AttachFile
+import androidx.compose.material.icons.rounded.Headset
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Menu
@@ -71,6 +72,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.hermes.chatandroid.AppContainer
+import com.hermes.chatandroid.live.LiveTarget
 import com.hermes.chatandroid.data.Bot
 import com.hermes.chatandroid.data.BotChannel
 import com.hermes.chatandroid.data.BotMessage
@@ -248,6 +250,8 @@ fun BotChatScreen(
     onOpenBotProfile: (botId: Int) -> Unit = {},
     /** 채널 상단 제목 탭 → 채널 설정. */
     onOpenChannelSettings: (channelId: Int) -> Unit = {},
+    /** 상단 헤드셋 버튼 → Live(글라스) 대화. 채널이면 멤버 slug 목록을 함께 넘긴다. */
+    onOpenLive: ((LiveTarget, List<String>) -> Unit)? = null,
 ) {
     val vm: BotChatViewModel = viewModel(
         key = "botChat$channelId",
@@ -350,6 +354,14 @@ fun BotChatScreen(
                         }
                     },
                     actions = {
+                        if (onOpenLive != null && (dm != null || ch != null)) {
+                            IconButton(onClick = {
+                                val title = dm?.displayName ?: ch?.title ?: "채팅"
+                                onOpenLive(LiveTarget(channelId, title), if (dm != null) emptyList() else members.map { it.slug })
+                            }) {
+                                Icon(Icons.Rounded.Headset, contentDescription = "Live 대화(글라스)")
+                            }
+                        }
                         if (headerAction != null) {
                             IconButton(onClick = headerAction) {
                                 Icon(Icons.Rounded.Tune, contentDescription = "정보 및 설정")

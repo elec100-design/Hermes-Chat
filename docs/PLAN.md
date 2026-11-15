@@ -396,6 +396,16 @@ cloud_gateway.py (:8080) ← T-B03
 
 ---
 
+### Phase 27 — Android 글라스 Live (Meta DAT + 핸즈프리, 2026-11-15, TASKS T-187/T-188)
+**목표**: 글라스를 쓴 채 폰을 꺼내지 않고 Hermes 봇과 음성으로 대화하고, 지금 보는 것을 사진으로 함께 보낸다.
+**결정(사용자 11-15)**: iOS Phase 16 의 갤러리 감시 대신 **Meta Wearables DAT SDK 직접 촬영** 도입(개인 사이드로드 APK 라 개발자 프리뷰 제약 무관).
+실시간 영상 이해 모델(Gemini Live 등)은 쓰지 않고 **A안 = 말하는 순간의 시야 사진 + 질문**을 Hermes 봇 채널로 보낸다(사설망 원칙 유지, 기록이 채널에 남음).
+iOS 실사용 오류 3건(사진 늦음·묻기 전 사진 설명·글 판독 불량)의 원인: Meta AI 앱 동기화 대기, 무발화 시 기본 프롬프트로 자동 전송(`glassesPhotoPrompt`), 저해상도 원본.
+**설계**: `GlassesCamera`(DAT 세션·카메라 스트림은 촬영용·in-stream `capturePhoto`) + `LiveController`(듣기→촬영 병렬→업로드→`POST /api/channels/<id>/messages`→잡 SSE delta 문장 낭독→재청취) +
+`LiveAudio`(통화 모드 BT SCO 고정, SpeechRecognizer ko-KR, TTS 큐) + `LiveService`(포그라운드·MediaSession 탭). 사진은 사용자 발화와 함께만 전송.
+**제약(DAT 1.0.1)**: 스트림 최대 720×1280, 프레임 YUV 레이아웃 미문서화(그래서 프레임 대신 사진), Inputs·Speech·standalone Photo 는 experimental(Developer Center 승인 필요할 수 있음), 글라스 단일 탭이 스트림을 PAUSED 로 만들 수 있음.
+**후속 후보**: in-stream 사진 해상도가 글 판독에 부족하면 standalone `camera.photo`(FULL/HIGH, 스트림 정지 필요), Gemini 실시간 모드(B안), Hermes 텔레그램 동시 게시.
+
 ## 4. 위험 요소 / 주의
 1. **새 Swift 파일은 반드시 `project.pbxproj`에 등록** (objectVersion 77, 명시적 파일 참조 — 자동 동기화 폴더 아님). 절차는 HANDOFF.md §4. *이번 커밋은 기존 파일만 수정해서 pbxproj 변경 없음.*
 2. `API_SERVER_HOST=0.0.0.0`은 Tailscale 사설망 전제. 공유기 포트포워딩으로 공인망 노출 금지.

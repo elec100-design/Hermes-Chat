@@ -86,6 +86,8 @@ xcodebuild -project HermesChat.xcodeproj -scheme HermesChat \
   ```
 - APK: `android/app/build/outputs/apk/debug/`
 - Google Maven(`dl.google.com`) 접근이 필요하다. 상세는 `android/README.md` 참조.
+- 맥미니: `export JAVA_HOME=/opt/homebrew/opt/openjdk@17`, SDK `~/Library/Android/sdk`. Claude Code 샌드박스는 `~/.gradle` 쓰기를 막으므로 gradle 은 샌드박스 밖에서 실행.
+- 2026-11-15(T-188): Meta DAT SDK(Maven Central `com.meta.wearable`) 때문에 **minSdk 29, Kotlin 2.2.21**. APK 가 DAT 네이티브 라이브러리로 약 90MB.
 
 ### Hermes Bot 연동
 

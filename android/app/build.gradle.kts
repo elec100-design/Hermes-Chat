@@ -13,11 +13,18 @@ android {
 
     defaultConfig {
         applicationId = "com.hermes.chatandroid"
-        minSdk = 26
+        minSdk = 29
         targetSdk = 36
         // versionCode must increase on every Play Console upload.
         versionCode = 1
         versionName = "1.0.0"
+        // Meta Wearables DAT: 개발자 모드는 0/0. 배포용 값은 local.properties(mwdat_application_id/mwdat_client_token).
+        val localProps = Properties().apply {
+            val f = rootProject.file("local.properties")
+            if (f.exists()) f.inputStream().use { load(it) }
+        }
+        manifestPlaceholders["mwdat_application_id"] = localProps.getProperty("mwdat_application_id", "0")
+        manifestPlaceholders["mwdat_client_token"] = localProps.getProperty("mwdat_client_token", "0")
     }
 
     // Release signing: env vars first, then android/keystore.properties (gitignored).
@@ -81,6 +88,8 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.security.crypto)
     implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.mwdat.core)
+    implementation(libs.mwdat.camera)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.okhttp)
