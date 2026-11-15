@@ -2,12 +2,15 @@ package com.hermes.chatandroid.ui.more
 
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.graphics.Bitmap
 import android.net.Uri
+import android.webkit.ConsoleMessage
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -17,11 +20,18 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.DesktopWindows
 import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -29,6 +39,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -36,11 +47,15 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hermes.chatandroid.AppContainer
@@ -86,8 +101,18 @@ fun DashboardScreen(
     var progress by remember { mutableIntStateOf(0) }
     var error by remember { mutableStateOf<String?>(null) }
     var canGoBack by remember { mutableStateOf(false) }
+    // 진단: JS 콘솔 오류·실패한 요청(최근 40건). 대시보드가 빈 화면일 때 원인 확인용.
+    val diag = remember { mutableStateListOf<String>() }
+    var diagOpen by remember { mutableStateOf(false) }
+    var diagSnapshot by remember { mutableStateOf("") }
+    fun log(line: String) {
+        diag.add(line)
+        if (diag.size > 40) diag.removeAt(0)
+    }
 
     val webView = remember {
+        // 디버그 빌드에서만 chrome://inspect 원격 디버깅 허용
+        if (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0) WebView.setWebContentsDebuggingEnabled(true)
         WebView(context).apply {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
@@ -106,6 +131,12 @@ fun DashboardScreen(
     val dashboardHost = url?.let { Uri.parse(it).host }
     webView.webChromeClient = object : WebChromeClient() {
         override fun onProgressChanged(view: WebView, newProgress: Int) { progress = newProgress }
+        override fun onConsoleMessage(m: ConsoleMessage): Boolean {
+            if (m.messageLevel() == ConsoleMessage.MessageLevel.ERROR || m.messageLevel() == ConsoleMessage.MessageLevel.WARNING) {
+                log("[JS ${m.messageLevel()}] ${m.message()} (${m.sourceId().substringAfterLast('/')}:${m.lineNumber()})")
+            }
+            return false
+        }
     }
     webView.webViewClient = object : WebViewClient() {
         override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
@@ -125,9 +156,14 @@ fun DashboardScreen(
         }
 
         override fun onReceivedError(view: WebView, request: WebResourceRequest, err: WebResourceError) {
+            log("[NET] ${err.errorCode} ${err.description} ${request.method} ${request.url.path}")
             if (request.isForMainFrame) {
                 error = "대시보드에 연결할 수 없습니다 (${err.description}). Tailscale 연결과 맥미니 :${Settings.DASHBOARD_PORT} 상태를 확인하세요."
             }
+        }
+
+        override fun onReceivedHttpError(view: WebView, request: WebResourceRequest, response: WebResourceResponse) {
+            log("[HTTP ${response.statusCode}] ${request.method} ${request.url.path}")
         }
 
         override fun doUpdateVisitedHistory(view: WebView, url: String?, isReload: Boolean) {
@@ -169,6 +205,18 @@ fun DashboardScreen(
                 },
                 actions = {
                     if (url != null) {
+                        IconButton(onClick = {
+                            webView.evaluateJavascript(
+                                "(function(){var r=document.getElementById('root');return [location.href, navigator.userAgent, " +
+                                    "'viewport '+innerWidth+'x'+innerHeight, 'root text '+(r?r.innerText.length:-1), " +
+                                    "'main h '+[...document.querySelectorAll('main,[class*=flex-1]')].slice(0,4).map(e=>Math.round(e.getBoundingClientRect().height)).join(',')].join('\\n')})()",
+                            ) { diagSnapshot = it.trim('"').replace("\\n", "\n") }
+                            diagOpen = true
+                        }) {
+                            BadgedBox(badge = { if (diag.isNotEmpty()) Badge { Text("${diag.size}") } }) {
+                                Icon(Icons.Rounded.BugReport, contentDescription = "진단 로그")
+                            }
+                        }
                         IconButton(onClick = { webView.reload() }) {
                             Icon(Icons.Rounded.Refresh, contentDescription = "새로고침")
                         }
@@ -183,6 +231,23 @@ fun DashboardScreen(
             )
         },
     ) { padding ->
+        if (diagOpen) {
+            val clipboard = LocalClipboardManager.current
+            val report = (listOf("== 상태 ==", diagSnapshot, "== 오류/요청 실패 ${diag.size}건 ==") + diag).joinToString("\n")
+            AlertDialog(
+                onDismissRequest = { diagOpen = false },
+                title = { Text("대시보드 진단") },
+                text = {
+                    SelectionContainer(Modifier.verticalScroll(rememberScrollState())) {
+                        Text(report, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { clipboard.setText(AnnotatedString(report)); diagOpen = false }) { Text("복사") }
+                },
+                dismissButton = { TextButton(onClick = { diagOpen = false }) { Text("닫기") } },
+            )
+        }
         Column(Modifier.padding(padding).fillMaxSize()) {
             if (url == null) {
                 EmptyState(
