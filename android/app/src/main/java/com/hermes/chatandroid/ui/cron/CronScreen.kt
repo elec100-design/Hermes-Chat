@@ -121,7 +121,7 @@ fun CronScreen(container: AppContainer, modifier: Modifier = Modifier) {
             )
         },
         floatingActionButton = {
-            if (!st.loading) {
+            if (!st.loading && st.profiles.isNotEmpty()) {
                 ExtendedFloatingActionButton(onClick = vm::startCreate, icon = { Icon(Icons.Rounded.Add, null) }, text = { Text("크론 추가") })
             }
         },
@@ -149,7 +149,12 @@ fun CronScreen(container: AppContainer, modifier: Modifier = Modifier) {
                 else -> PullToRefreshBox(isRefreshing = st.refreshing, onRefresh = { vm.refresh() }, modifier = Modifier.fillMaxSize()) {
                     val list = st.visible
                     if (list.isEmpty()) {
-                        EmptyState(
+                        // 불러오기 실패와 진짜 0건을 구분 — 오류일 땐 "없습니다" 대신 확인 안내
+                        if (st.error != null && st.jobs.isEmpty()) EmptyState(
+                            title = "크론을 불러오지 못했습니다",
+                            subtitle = "위 안내대로 설정을 확인한 뒤 다시 시도하세요.",
+                            icon = Icons.Rounded.Schedule,
+                        ) else EmptyState(
                             title = "등록된 크론이 없습니다",
                             subtitle = "‘크론 추가’로 정해진 시간에 봇이 할 일을 예약하세요.",
                             icon = Icons.Rounded.Schedule,
