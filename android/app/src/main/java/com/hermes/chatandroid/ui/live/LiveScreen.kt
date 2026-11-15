@@ -142,6 +142,7 @@ fun LiveScreen(
                 onRegister = { activity?.let(glasses::register) },
                 onRequestCamera = { camLauncher.launch(Permission.CAMERA) },
                 onConnect = glasses::connect,
+                onUpdate = { activity?.let(glasses::openUpdate) },
                 onDisconnect = glasses::disconnect,
                 onDismissError = glasses::clearError,
             )
@@ -248,6 +249,7 @@ private fun GlassesCard(
     onRegister: () -> Unit,
     onRequestCamera: () -> Unit,
     onConnect: () -> Unit,
+    onUpdate: () -> Unit,
     onDisconnect: () -> Unit,
     onDismissError: () -> Unit,
 ) {
@@ -260,12 +262,19 @@ private fun GlassesCard(
                 state.registration == RegistrationState.REGISTERING -> "Meta AI 앱에서 연결 중…" to null
                 !state.registered -> "Meta AI 앱에 이 앱을 연결해야 해요 (개발자 모드)" to ("Meta AI에서 연결" to onRegister)
                 state.cameraPermission != true -> "글라스 카메라 권한이 필요해요" to ("카메라 권한 요청" to onRequestCamera)
+                state.update != null && !state.cameraReady ->
+                    "글라스 업데이트가 필요해요 — Meta AI 앱에서 업데이트 후 돌아와 '카메라 켜기'" to ("업데이트 열기" to onUpdate)
                 state.cameraReady -> "카메라 연결됨 · 사진 촬영 가능" to ("끄기" to onDisconnect)
                 state.session != null -> "글라스 연결 중… (${state.stream ?: state.session})" to ("끄기" to onDisconnect)
                 else -> "글라스 ${state.deviceCount}대 발견 · 카메라 꺼짐" to ("카메라 켜기" to onConnect)
             }
             Text(status, style = MaterialTheme.typography.bodyMedium)
-            action?.let { (label, fn) -> OutlinedButton(onClick = fn) { Text(label) } }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                action?.let { (label, fn) -> OutlinedButton(onClick = fn) { Text(label) } }
+                if (state.update != null && !state.cameraReady && state.cameraPermission == true) {
+                    OutlinedButton(onClick = onConnect) { Text("업데이트 후 다시 연결") }
+                }
+            }
             state.error?.let {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(it, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)

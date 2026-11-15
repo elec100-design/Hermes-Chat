@@ -15,6 +15,8 @@ import com.meta.wearable.dat.core.Wearables
 import com.meta.wearable.dat.core.selectors.AutoDeviceSelector
 import com.meta.wearable.dat.core.session.DeviceSession
 import com.meta.wearable.dat.core.session.DeviceSessionState
+import com.meta.wearable.dat.core.types.DeviceCompatibility
+import com.meta.wearable.dat.core.types.DeviceSessionError
 import com.meta.wearable.dat.core.types.Permission
 import com.meta.wearable.dat.core.types.PermissionStatus
 import com.meta.wearable.dat.core.types.RegistrationState
@@ -32,6 +34,8 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
+enum class GlassesUpdate { GLASSES_APP, FIRMWARE }
+
 /** 글라스에서 찍은 사진(업로드용 JPEG + 화면 미리보기). */
 class GlassesPhoto(val jpeg: ByteArray, val preview: Bitmap, val sourceWidth: Int, val sourceHeight: Int)
 
@@ -43,6 +47,8 @@ data class GlassesState(
     val session: DeviceSessionState? = null,
     val stream: StreamState? = null,
     val error: String? = null,
+    /** 글라스 쪽 업데이트가 필요해 세션이 안 열림 — Meta AI 앱의 업데이트 화면으로 보낸다. */
+    val update: GlassesUpdate? = null,
 ) {
     val registered get() = registration == RegistrationState.REGISTERED
     /** capturePhoto 가능 — 스트림이 살아 있을 때만 된다(DAT 제약). */
@@ -71,10 +77,38 @@ class GlassesCamera(private val appContext: Context) {
             .onSuccess {
                 _state.update { it.copy(initialized = true, error = null) }
                 scope.launch { Wearables.registrationState.collect { r -> _state.update { it.copy(registration = r) } } }
-                scope.launch { Wearables.devices.collect { d -> _state.update { it.copy(deviceCount = d.size) } } }
+                scope.launch {
+                    Wearables.devices.collect { d ->
+                        _state.update { it.copy(deviceCount = d.size) }
+                        d.forEach(::watchCompatibility)
+                    }
+                }
                 scope.launch { refreshPermission() }
             }
             .onFailure { e, _ -> fail("DAT 초기화 실패: ${e.description}") }
+    }
+
+    private val watched = mutableSetOf<com.meta.wearable.dat.core.types.DeviceIdentifier>()
+
+    private fun watchCompatibility(id: com.meta.wearable.dat.core.types.DeviceIdentifier) {
+        if (!watched.add(id)) return
+        val flow = Wearables.devicesMetadata[id] ?: return
+        scope.launch {
+            flow.collect { dev ->
+                if (dev.compatibility == DeviceCompatibility.DEVICE_UPDATE_REQUIRED) {
+                    _state.update { it.copy(update = GlassesUpdate.FIRMWARE) }
+                }
+            }
+        }
+    }
+
+    /** Meta AI 앱의 글라스 업데이트 화면을 연다. */
+    fun openUpdate(activity: Activity) {
+        val r = when (_state.value.update) {
+            GlassesUpdate.FIRMWARE -> Wearables.openFirmwareUpdate(activity)
+            else -> Wearables.openDATGlassesAppUpdate(activity)
+        }
+        r.onFailure { e, _ -> fail("업데이트 화면 열기 실패: ${e.description}") }
     }
 
     /** Meta AI 앱으로 넘어가 이 앱을 등록한다(개발자 모드 필요). */
@@ -99,12 +133,23 @@ class GlassesCamera(private val appContext: Context) {
         Wearables.createSession(AutoDeviceSelector())
             .onSuccess { s ->
                 session = s
-                jobs += scope.launch { s.errors.collect { e -> fail("글라스 세션: ${e.description}") } }
+                jobs += scope.launch {
+                    s.errors.collect { e ->
+                        if (e == DeviceSessionError.DAT_APP_ON_THE_GLASSES_UPDATE_REQUIRED) {
+                            _state.update { it.copy(update = GlassesUpdate.GLASSES_APP, error = null) }
+                        } else {
+                            fail("글라스 세션: ${e.description}")
+                        }
+                    }
+                }
                 jobs += scope.launch {
                     s.state.collect { ss ->
                         _state.update { it.copy(session = ss) }
                         when (ss) {
-                            DeviceSessionState.STARTED -> if (camera == null) startCamera(s)
+                            DeviceSessionState.STARTED -> {
+                                _state.update { it.copy(update = null) }
+                                if (camera == null) startCamera(s)
+                            }
                             DeviceSessionState.STOPPED -> cleanup()
                             else -> Unit
                         }
