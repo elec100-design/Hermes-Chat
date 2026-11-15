@@ -1,6 +1,17 @@
 package com.hermes.chatandroid.ui
 
+import android.Manifest
 import android.net.Uri
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
+import com.hermes.chatandroid.notify.Notifications
+import com.hermes.chatandroid.notify.OpenRequest
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -130,7 +141,11 @@ private fun tabOf(route: String?): Tab? = when (route) {
 }
 
 @Composable
-fun AppNav(container: AppContainer) {
+fun AppNav(
+    container: AppContainer,
+    openRequest: OpenRequest? = null,
+    onOpenHandled: () -> Unit = {},
+) {
     val repo = container.settingsRepository
     val settings by repo.settings.collectAsStateWithLifecycle()
 
@@ -149,18 +164,47 @@ fun AppNav(container: AppContainer) {
     val currentTab = tabOf(currentRoute)
     var selectedBotChannelId by rememberSaveable { mutableStateOf<Int?>(null) }
 
-    // 승인 탭 배지: 화면 이동마다 + 30초마다 대기 건수 갱신
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val lifecycleState by lifecycleOwner.lifecycle.currentStateFlow.collectAsState()
+    val notifyOn = settings.notificationsEnabled && !settings.demoMode
+
+    // 승인 탭 배지 + 알림(T-184): 화면이 보이는 동안 30초마다 확인. 백그라운드는 WorkManager(15분)가 맡는다.
     var pendingCount by remember { mutableIntStateOf(0) }
-    LaunchedEffect(currentRoute, settings.botHost, settings.botToken, settings.demoMode) {
-        while (true) {
-            pendingCount = try {
-                container.botApi()?.fetchApprovals()?.size ?: 0
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                pendingCount
+    LaunchedEffect(settings.botHost, settings.botToken, notifyOn) {
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                val api = container.botApi()
+                pendingCount = try {
+                    if (api != null && notifyOn) {
+                        val (events, n) = container.notifier.check(api)
+                        Notifications.post(context, events)
+                        n
+                    } else api?.fetchApprovals()?.size ?: 0
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    pendingCount
+                }
+                delay(30_000)
             }
-            delay(30_000)
+        }
+    }
+    LaunchedEffect(settings.botHost, notifyOn) {
+        Notifications.schedule(context, notifyOn && settings.botBaseUrl != null)
+    }
+    // 보고 있는 봇 채팅은 알리지 않는다
+    LaunchedEffect(currentRoute, selectedBotChannelId, lifecycleState) {
+        container.notifier.activeChannelId =
+            if (currentRoute == Routes.BOTS && lifecycleState.isAtLeast(Lifecycle.State.STARTED)) selectedBotChannelId else null
+    }
+    // 알림 권한(Android 13+): 처음 한 번만 묻는다. 거절하면 설정 > 알림에서 다시 켤 수 있다.
+    val notifyPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    LaunchedEffect(notifyOn) {
+        val prefs = context.getSharedPreferences("notify", android.content.Context.MODE_PRIVATE)
+        if (notifyOn && Build.VERSION.SDK_INT >= 33 && !Notifications.canPost(context) && !prefs.getBoolean("asked_permission", false)) {
+            prefs.edit().putBoolean("asked_permission", true).apply()
+            notifyPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
 
@@ -174,6 +218,15 @@ fun AppNav(container: AppContainer) {
             launchSingleTop = true
             restoreState = true
         }
+    }
+    // 알림을 눌러 들어온 경우 해당 채팅/승인 탭으로
+    LaunchedEffect(openRequest) {
+        when (openRequest) {
+            is OpenRequest.Channel -> { selectedBotChannelId = openRequest.channelId; navigateTab(ChatsTab) }
+            OpenRequest.Approvals -> navigateTab(ApprovalsTab)
+            null -> return@LaunchedEffect
+        }
+        onOpenHandled()
     }
 
     Row(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {

@@ -398,8 +398,8 @@
 | T-181 | 칸반 탭 — 보드 선택·새 보드, 커버: 상태 필터 칩(진행 중 묶음)+카드 목록 / 펼침: 상태별 컬럼 보드, 카드(상태 색 띠·담당·실행 중·오류·갱신 시각), 상세 시트(본문·결과·오류·댓글 작성·이력·상태 전이 실행/보류/재개/완료/보관), 작업 추가(담당 프로필·시작 방식). Bridge 에 `GET /kanban/<board>/tasks/<id>`(댓글·이벤트)와 결과·오류 필드 추가 | `…/ui/kanban/*`(신규), `…/data/OpsModels.kt`(신규), `…/net/BridgeApi.kt`, `…/data/DemoApis.kt`, `…/ui/AppNav.kt`, `server/hermes_bridge.py` | NEEDS-BUILD (11-15 로컬 빌드·단위테스트 72개 통과, 브리지 재배포 DONE, 실기기 미검증) |
 | T-182 | 크론 탭 — 전 프로필 크론 모아보기·프로필 필터, 카드(사람이 읽는 일정·다음 실행·마지막 성공/실패·오류), 켜기/끄기 스위치, 지금 실행·편집·삭제, 편집 화면(일정 프리셋·시각 선택·결과 보내기·스킬). **Bridge 크론 쓰기를 `hermes cron create/edit/pause/resume/remove` CLI 경유로 교체** — 기존 PUT/POST 는 실제 jobs.json 의 `schedule` 객체를 문자열로 덮어써 파일을 깨뜨릴 수 있었음(iOS 도 같은 엔드포인트, payload 호환 유지) | `…/ui/cron/*`(신규), `…/data/OpsModels.kt`, `…/net/BridgeApi.kt`, `server/hermes_bridge.py` | NEEDS-BUILD (11-15 로컬 빌드·단위테스트 통과, 브리지 재배포 DONE — safety 프로필 임시 잡으로 CLI 생성·편집·재개·일시정지·삭제 확인, 실기기 미검증) |
 | T-183 | ~~음성 입력~~ — 사용자 결정(11-15): 키보드 Typeless 사용으로 앱 내 음성 입력 불필요. 응답 읽기(TTS)만 필요 시 재검토 | — | DROPPED |
-| T-184 | 알림 — 응답 완료·승인 대기 (POST_NOTIFICATIONS) | — | TODO |
-| T-185 | 파일 브라우저·스킬 목록 | — | TODO |
+| T-184 | 알림 — 봇 답장 완료·승인 요청. 앱이 보이는 동안 30초(기존 승인 배지 폴링 대체), 백그라운드는 WorkManager 15분 주기(**의존성 `androidx.work:work-runtime-ktx` 2.10.0 추가**). 봇 서버에 새 메시지 API 가 없어 봇·채널 미리보기 변화가 있는 채널만 메시지를 읽고, 채널별 마지막 확인 id 이후의 완료된 봇 답만 알림(첫 실행은 기준점만 기록). 보고 있는 채팅·이미 본 답은 제외, 알림 탭 시 해당 채팅/승인 탭으로 이동. 채널 2개(봇 답장 기본, 승인 요청 높음), POST_NOTIFICATIONS 최초 1회 요청, 설정 > 알림 스위치 | `…/notify/*`(신규), `…/ui/AppNav.kt`, `…/MainActivity.kt`, `…/AppContainer.kt`, `…/data/Settings.kt`, `…/ui/settings/SettingsScreen.kt`, `…/ui/bots/BotChatScreen.kt`, `res/drawable/ic_stat_hermes.xml`, `test/…/BotNotifierTest.kt` | NEEDS-BUILD (11-15 로컬 빌드·단위테스트 77개 통과, 실기기 미검증) |
+| T-185 | 파일 브라우저·스킬 목록 | — | DROPPED (11-15 사용자 결정 — 대시보드 파일·스킬 메뉴로 대체) |
 | T-186 | Deep think 토론방 | — | TODO |
 | T-187 | 핸즈프리 Live 모드(침묵 자동 전송·문장 단위 TTS·BT SCO·포그라운드 서비스) | — | TODO |
 | T-188 | 글라스 사진 자동 전송(MediaStore ContentObserver) | — | TODO |

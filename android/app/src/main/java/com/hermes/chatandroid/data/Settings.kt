@@ -20,6 +20,8 @@ data class Settings(
     val onboardingComplete: Boolean = false,
     /** 심사/체험용 데모 모드 — 네트워크 없이 [DemoData] 사용. */
     val demoMode: Boolean = false,
+    /** 봇 답장·승인 요청 알림(앱 실행 중 30초, 백그라운드 15분 주기 확인). */
+    val notificationsEnabled: Boolean = true,
 ) {
     /** 화면에 보이는 프로필. 데모 모드에서는 저장된 실제 프로필 대신 데모 프로필. */
     val visibleProfiles: List<ProfileEntry> get() = if (demoMode) DemoData.profiles else profiles

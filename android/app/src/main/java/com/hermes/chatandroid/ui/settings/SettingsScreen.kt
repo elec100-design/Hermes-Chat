@@ -1,5 +1,14 @@
 package com.hermes.chatandroid.ui.settings
 
+import android.Manifest
+import android.content.Intent
+import android.os.Build
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import com.hermes.chatandroid.notify.Notifications
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.Switch
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -257,6 +266,38 @@ fun SettingsScreen(
                             )
                         }
                     }
+                }
+            }
+
+            SectionCard("알림", "봇이 답을 마쳤을 때와 승인 요청이 왔을 때 알려줍니다.") {
+                val notifyPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("봇 답장·승인 알림", style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            "앱을 쓰는 중에는 30초, 앱을 닫으면 약 15분마다 확인합니다.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = settings.notificationsEnabled,
+                        onCheckedChange = { on ->
+                            repo.update { it.copy(notificationsEnabled = on) }
+                            Notifications.schedule(context, on && !settings.demoMode && settings.botBaseUrl != null)
+                            if (on && Build.VERSION.SDK_INT >= 33 && !Notifications.canPost(context)) {
+                                notifyPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            }
+                        },
+                    )
+                }
+                if (settings.notificationsEnabled && !Notifications.canPost(context)) {
+                    TextButton(onClick = {
+                        context.startActivity(
+                            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                        )
+                    }) { Text("시스템 알림이 꺼져 있습니다 — 알림 설정 열기") }
                 }
             }
 

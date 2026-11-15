@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 상태바 알림 아이콘(단색): 런처 아이콘의 말풍선 + 스파크(구멍) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="56"
+    android:viewportHeight="56">
+    <group android:translateX="-26" android:translateY="-28">
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:fillType="evenOdd"
+            android:pathData="M36,34h36a8,8 0 0 1 8,8v20a8,8 0 0 1 -8,8H50l-11,9.5c-0.8,0.7 -2,0.1 -2,-0.9V70h-1a8,8 0 0 1 -8,-8V42a8,8 0 0 1 8,-8z M54,42l2.6,6.9L63.5,51.5l-6.9,2.6L54,61l-2.6,-6.9L44.5,51.5l6.9,-2.6z" />
+    </group>
+</vector>

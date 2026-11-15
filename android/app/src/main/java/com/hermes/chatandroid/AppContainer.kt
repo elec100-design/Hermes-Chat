@@ -11,9 +11,17 @@ import com.hermes.chatandroid.net.BotApi
 import com.hermes.chatandroid.net.BridgeApi
 import com.hermes.chatandroid.net.HermesApi
 import com.hermes.chatandroid.net.defaultHttpClient
+import com.hermes.chatandroid.notify.BotNotifier
+import com.hermes.chatandroid.notify.MemoryNotifyStore
+import com.hermes.chatandroid.notify.Notifications
+import com.hermes.chatandroid.notify.PrefsNotifyStore
 
 /** 수동 DI. 팩토리는 호출 시점의 최신 설정으로 클라이언트를 만든다(설정 변경 즉시 반영). */
-class AppContainer(val settingsRepository: SettingsRepository) {
+class AppContainer(
+    val settingsRepository: SettingsRepository,
+    /** 봇 답장·승인 알림 판정(앱 폴링과 WorkManager 가 공유). */
+    val notifier: BotNotifier = BotNotifier(MemoryNotifyStore()),
+) {
     val httpClient = defaultHttpClient()
     val profileDiscovery = ProfileDiscovery()
 
@@ -56,6 +64,9 @@ class HermesApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        container = AppContainer(SettingsRepository(AndroidSettingsStore(this)))
+        container = AppContainer(SettingsRepository(AndroidSettingsStore(this)), BotNotifier(PrefsNotifyStore(this)))
+        Notifications.createChannels(this)
+        val s = container.settingsRepository.current
+        Notifications.schedule(this, s.notificationsEnabled && !s.demoMode && s.botBaseUrl != null)
     }
 }

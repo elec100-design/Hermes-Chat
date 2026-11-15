@@ -120,6 +120,7 @@ class BotChatViewModel(private val container: AppContainer, private val channelI
         streamOf = { jobId -> container.botApi()?.jobStream(jobId) ?: emptyFlow() },
         reload = { container.botApi()!!.fetchMessages(channelId) },
         onMessages = { list ->
+            container.notifier.markSeen(channelId, list)
             _state.update { s ->
                 val sorted = list.sortedWith(compareBy({ it.seq ?: Int.MAX_VALUE }, { it.id }))
                 val inFlight = sorted.filter { it.isInFlight }.map { it.id }.toSet()
