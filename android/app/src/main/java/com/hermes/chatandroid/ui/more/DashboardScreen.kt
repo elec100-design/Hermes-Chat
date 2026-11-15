@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.graphics.Bitmap
 import android.net.Uri
+import android.view.ViewGroup
 import android.webkit.ConsoleMessage
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient
@@ -77,6 +78,17 @@ private fun viewportJs(desktop: Boolean): String {
 }
 
 /**
+ * 100dvh 보정: WebView 에서 dvh 가 0 으로 계산되면 대시보드 틀(h-dvh)이 0 높이로 접힌다.
+ * 실제 innerHeight(px)를 CSS 변수로 넣고 h-dvh/max-h-dvh 를 그 값으로 덮어쓴다. 창 크기 변경 시 갱신.
+ */
+private const val DVH_FIX_JS = "(function(){if(window.__hcDvh)return;window.__hcDvh=1;" +
+    "var st=document.createElement('style');" +
+    "st.textContent='.h-dvh{height:var(--hc-vh)!important}.max-h-dvh{max-height:var(--hc-vh)!important}';" +
+    "document.head.appendChild(st);" +
+    "function u(){document.documentElement.style.setProperty('--hc-vh',window.innerHeight+'px');}" +
+    "u();window.addEventListener('resize',u);})();"
+
+/**
  * 맥미니 대시보드(:8000) WebView (T-179).
  * 커버 화면은 모바일, 펼친 화면은 데스크톱(UA + 1024px viewport)으로 자동 전환.
  * 로그인은 페이지 안에서 한 번 하면 쿠키로 유지된다. 대시보드 호스트 밖 링크는 외부 브라우저로 연다.
@@ -114,6 +126,8 @@ fun DashboardScreen(
         // 디버그 빌드에서만 chrome://inspect 원격 디버깅 허용
         if (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0) WebView.setWebContentsDebuggingEnabled(true)
         WebView(context).apply {
+            // WRAP_CONTENT(기본)면 페이지의 100vh/100dvh 가 0 이 되어 대시보드 본문 틀 높이가 0 으로 접힌다.
+            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             settings.setSupportZoom(true)
@@ -151,6 +165,7 @@ fun DashboardScreen(
 
         override fun onPageFinished(view: WebView, url: String?) {
             view.evaluateJavascript(viewportJs(desktop), null)
+            view.evaluateJavascript(DVH_FIX_JS, null)
             canGoBack = view.canGoBack()
             CookieManager.getInstance().flush()
         }
