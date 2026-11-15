@@ -394,7 +394,7 @@
 | T-177 | 마크다운 표(GFM table) 렌더링 — 헤더+구분선(`|---|`) 감지 시 `MdBlock.Table`, 열 폭=셀 최대 폭(최대 220dp, 넘으면 줄바꿈)·행 높이 정렬 격자, 말풍선보다 넓으면 가로 스크롤, 헤더 굵게·옅은 배경, 셀 안 인라인 마크다운·`\|` 이스케이프. 구분선 전(스트리밍 중)은 텍스트 유지. 봇·세션 채팅 공통(`MessageBubble`) | `…/ui/components/MarkdownLite.kt`, `…/ui/components/MarkdownTable.kt`(신규), `…/ui/components/MessageBubble.kt`, `test/…/MarkdownLiteTest.kt` | DONE (11-15 폴드 실기기 확인 — 봇 답변 표 정상 렌더링) |
 | T-178 | 봇 프로필 "지난 세션" — 봇 게이트웨이 포트로 직결해 세션 목록·열기(기존 `ChatScreen` 재사용) | `…/ui/bots/profile`, `…/ui/sessions` | DROPPED (11-15 사용자 결정 — 지난 세션은 대시보드 세션 화면으로 대체) |
 | T-179 | 대시보드 WebView(:8000, 더보기 > 대시보드) — 쿠키 로그인 유지·핀치 줌(viewport 덮어쓰기)·**폴드 커버=모바일 / 펼침(600dp+)=데스크톱 UA+1024px 자동 전환**(툴바 토글은 임시)·외부 링크는 브라우저·뒤로가기=웹 history·WebView MATCH_PARENT + `h-dvh` 보정 주입(WebView 에서 100dvh=0 으로 본문 틀이 접히던 문제)·textZoom 100. `BridgeClient`는 T-180으로 이관 | `…/ui/more/DashboardScreen.kt`(신규), `…/ui/more/MoreScreen.kt`, `…/ui/AppNav.kt`, `…/data/Settings.kt` | DONE (11-15 폴드 실기기 확인 — 세션 등 본문 정상 표시) |
-| T-180 | `BridgeClient`(:8765, 토큰 401 분리·업로드 120s) + 프로필 관리 — SOUL 편집·모델 선택·게이트웨이 재시작·로그·생성/삭제 | `…/ui/bots/profile` | TODO |
+| T-180 | `BridgeClient`(:8765, 토큰 401 분리·업로드 120s) + 프로필 관리 — SOUL 편집·모델 선택·게이트웨이 재시작·로그·생성/삭제 | `…/ui/bots/profile` | DROPPED (11-15 사용자 결정 — 대시보드(프로필·모델·설정·로그·재시작) 또는 봇에게 지시로 대체) |
 | T-181 | 칸반 — 보드 목록·보드·태스크 생성/액션 (Bridge 경유, CLI 쓰기) | `…/ui/kanban` | TODO |
 | T-182 | 크론 — 조회·편집·켜기/끄기·즉시 실행·삭제 | `…/ui/cron` | TODO |
 | T-183 | ~~음성 입력~~ — 사용자 결정(11-15): 키보드 Typeless 사용으로 앱 내 음성 입력 불필요. 응답 읽기(TTS)만 필요 시 재검토 | — | DROPPED |
