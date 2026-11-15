@@ -82,6 +82,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.hermes.chatandroid.AppContainer
+import com.hermes.chatandroid.live.LiveTarget
 import com.hermes.chatandroid.data.Bot
 import com.hermes.chatandroid.data.BotChannel
 import com.hermes.chatandroid.ui.components.EmptyState
@@ -162,6 +163,7 @@ fun BotsScreen(
     onOpenBotProfile: (botId: Int) -> Unit,
     onOpenChannelSettings: (channelId: Int) -> Unit,
     modifier: Modifier = Modifier,
+    onOpenLive: (LiveTarget, List<String>) -> Unit = { _, _ -> },
 ) {
     val vm: BotsViewModel = viewModel(factory = viewModelFactory { initializer { BotsViewModel(container) } })
     val state by vm.state.collectAsStateWithLifecycle()
@@ -264,6 +266,7 @@ fun BotsScreen(
                         onBack = null,
                         onOpenBotProfile = onOpenBotProfile,
                         onOpenChannelSettings = onOpenChannelSettings,
+                        onOpenLive = onOpenLive,
                     )
                 }
             }
@@ -292,6 +295,7 @@ fun BotsScreen(
                         onBack = { onSelectChannel(null) },
                         onOpenBotProfile = onOpenBotProfile,
                         onOpenChannelSettings = onOpenChannelSettings,
+                        onOpenLive = onOpenLive,
                     )
                 }
             }
@@ -727,6 +731,7 @@ private fun ChatDetailPane(
     onBack: (() -> Unit)?,
     onOpenBotProfile: (Int) -> Unit,
     onOpenChannelSettings: (Int) -> Unit,
+    onOpenLive: (LiveTarget, List<String>) -> Unit,
 ) {
     val hc = MaterialTheme.hermesColors
     when {
@@ -768,6 +773,7 @@ private fun ChatDetailPane(
                     modifier = Modifier.fillMaxSize(),
                     onOpenBotProfile = onOpenBotProfile,
                     onOpenChannelSettings = onOpenChannelSettings,
+                    onOpenLive = onOpenLive,
                 )
             }
         }

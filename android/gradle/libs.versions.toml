@@ -1,6 +1,6 @@
 [versions]
 agp = "8.9.3"
-kotlin = "2.0.21"
+kotlin = "2.2.21"
 composeBom = "2024.12.01"
 activityCompose = "1.9.3"
 lifecycle = "2.8.7"
@@ -12,8 +12,11 @@ securityCrypto = "1.1.0-alpha06"
 coreKtx = "1.15.0"
 junit = "4.13.2"
 work = "2.10.0"
+mwdat = "1.0.1"
 
 [libraries]
+mwdat-core = { group = "com.meta.wearable", name = "mwdat-core", version.ref = "mwdat" }
+mwdat-camera = { group = "com.meta.wearable", name = "mwdat-camera", version.ref = "mwdat" }
 androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }

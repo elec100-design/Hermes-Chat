@@ -12,6 +12,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import com.hermes.chatandroid.notify.Notifications
 import com.hermes.chatandroid.notify.OpenRequest
+import com.hermes.chatandroid.live.LiveTarget
+import com.hermes.chatandroid.ui.live.LiveScreen
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -107,6 +109,7 @@ object Routes {
     const val BOT_CHAT = "botChat/{channelId}"
     const val BOT_PROFILE = "botProfile/{botId}"
     const val CHANNEL_SETTINGS = "channelSettings/{channelId}"
+    const val LIVE = "live"
 
     fun chat(sessionId: String, port: Int? = null) =
         "chat/${Uri.encode(sessionId)}" + (port?.let { "?port=$it" } ?: "")
@@ -163,6 +166,9 @@ fun AppNav(
     val currentRoute = backStack?.destination?.route
     val currentTab = tabOf(currentRoute)
     var selectedBotChannelId by rememberSaveable { mutableStateOf<Int?>(null) }
+    // Live(글라스) 화면을 연 봇 채팅 — 프로세스 수명. 진행 중인 Live 는 컨트롤러가 대상을 들고 있다.
+    var liveTarget by remember { mutableStateOf<LiveTarget?>(null) }
+    var liveMembers by remember { mutableStateOf(emptyList<String>()) }
 
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -219,12 +225,17 @@ fun AppNav(
             restoreState = true
         }
     }
+    val openLive: (LiveTarget, List<String>) -> Unit = { t, m ->
+        liveTarget = t; liveMembers = m
+        navController.navigate(Routes.LIVE) { launchSingleTop = true }
+    }
     // 알림을 눌러 들어온 경우 해당 채팅/승인 탭으로
     LaunchedEffect(openRequest) {
         when (openRequest) {
             is OpenRequest.Channel -> { selectedBotChannelId = openRequest.channelId; navigateTab(ChatsTab) }
             OpenRequest.Approvals -> navigateTab(ApprovalsTab)
             is OpenRequest.Tab -> Tabs.firstOrNull { it.route == openRequest.route }?.let(navigateTab)
+            OpenRequest.Live -> if (container.live.active) navController.navigate(Routes.LIVE) { launchSingleTop = true }
             null -> return@LaunchedEffect
         }
         onOpenHandled()
@@ -329,6 +340,7 @@ fun AppNav(
                         onOpenBotProfile = { navController.navigate(Routes.botProfile(it)) },
                         onOpenChannelSettings = { navController.navigate(Routes.channelSettings(it)) },
                         modifier = mod,
+                        onOpenLive = openLive,
                     )
                 }
                 composable(Routes.APPROVALS) {
@@ -390,6 +402,16 @@ fun AppNav(
                         modifier = mod,
                         onOpenBotProfile = { navController.navigate(Routes.botProfile(it)) },
                         onOpenChannelSettings = { navController.navigate(Routes.channelSettings(it)) },
+                        onOpenLive = openLive,
+                    )
+                }
+                composable(Routes.LIVE) {
+                    LiveScreen(
+                        container,
+                        target = liveTarget ?: container.live.ui.value.target,
+                        members = liveMembers,
+                        onBack = { navController.popBackStack() },
+                        modifier = mod,
                     )
                 }
                 composable(
