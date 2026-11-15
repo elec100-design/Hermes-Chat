@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 앱 아이콘 길게 누르기 — 정적 바로가기 (T-189). 최근 봇 대화는 동적 바로가기로 추가된다. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut android:shortcutId="tab_approvals" android:enabled="true"
+        android:icon="@drawable/ic_shortcut_approvals"
+        android:shortcutShortLabel="@string/tab_approvals" android:shortcutLongLabel="@string/shortcut_approvals_long">
+        <intent android:action="android.intent.action.VIEW"
+            android:targetPackage="com.hermes.chatandroid" android:targetClass="com.hermes.chatandroid.MainActivity">
+            <extra android:name="open_tab" android:value="approvals" />
+        </intent>
+    </shortcut>
+    <shortcut android:shortcutId="tab_kanban" android:enabled="true"
+        android:icon="@drawable/ic_shortcut_kanban"
+        android:shortcutShortLabel="@string/tab_kanban" android:shortcutLongLabel="@string/tab_kanban">
+        <intent android:action="android.intent.action.VIEW"
+            android:targetPackage="com.hermes.chatandroid" android:targetClass="com.hermes.chatandroid.MainActivity">
+            <extra android:name="open_tab" android:value="kanban" />
+        </intent>
+    </shortcut>
+    <shortcut android:shortcutId="tab_cron" android:enabled="true"
+        android:icon="@drawable/ic_shortcut_cron"
+        android:shortcutShortLabel="@string/tab_cron" android:shortcutLongLabel="@string/tab_cron">
+        <intent android:action="android.intent.action.VIEW"
+            android:targetPackage="com.hermes.chatandroid" android:targetClass="com.hermes.chatandroid.MainActivity">
+            <extra android:name="open_tab" android:value="cron" />
+        </intent>
+    </shortcut>
+</shortcuts>

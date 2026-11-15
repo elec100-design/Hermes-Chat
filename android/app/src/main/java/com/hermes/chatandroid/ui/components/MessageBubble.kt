@@ -157,6 +157,14 @@ fun MessageBubble(
                                 style = MaterialTheme.typography.bodyMedium,
                             )
                             is MdBlock.Code -> CodeBlockCard(language = block.language, code = block.code)
+                            is MdBlock.Table -> MarkdownTable(
+                                table = block,
+                                textColor = fg,
+                                borderColor = fg.copy(alpha = 0.18f),
+                                headerBackground = fg.copy(alpha = 0.06f),
+                                codeBackground = inlineCodeBg,
+                                linkColor = linkColor,
+                            )
                         }
                     }
                 }

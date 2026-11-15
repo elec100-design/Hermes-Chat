@@ -34,6 +34,7 @@ class AndroidSettingsStore(context: Context) : SettingsStore {
         botToken = secure.getString("botToken", "") ?: "",
         onboardingComplete = plain.getBoolean("onboardingComplete", false),
         demoMode = plain.getBoolean("demoMode", false),
+        notificationsEnabled = plain.getBoolean("notificationsEnabled", true),
     )
 
     override fun save(settings: Settings) {
@@ -45,6 +46,7 @@ class AndroidSettingsStore(context: Context) : SettingsStore {
             .putString("botHost", settings.botHost)
             .putBoolean("onboardingComplete", settings.onboardingComplete)
             .putBoolean("demoMode", settings.demoMode)
+            .putBoolean("notificationsEnabled", settings.notificationsEnabled)
             .apply()
         secure.edit()
             .putString("apiKey", settings.apiKey)

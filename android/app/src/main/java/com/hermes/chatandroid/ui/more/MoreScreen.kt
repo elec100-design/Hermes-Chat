@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,7 +18,7 @@ import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Dns
 import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material.icons.rounded.Upcoming
+import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -39,15 +40,17 @@ import com.hermes.chatandroid.AppContainer
 import com.hermes.chatandroid.ui.components.HermesCard
 import com.hermes.chatandroid.ui.components.IconBadge
 import com.hermes.chatandroid.ui.components.StatusPill
+import com.hermes.chatandroid.ui.components.readableWidth
 import com.hermes.chatandroid.ui.theme.hermesColors
 
-/** 더보기 탭: 연결 요약, 설정, 워크스페이스, 그리고 2차 예정 기능 자리. */
+/** 더보기 탭: 연결 요약, 대시보드, 설정, 워크스페이스. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MoreScreen(
     container: AppContainer,
     onOpenSettings: () -> Unit,
     onOpenWorkspaces: () -> Unit,
+    onOpenDashboard: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val settings by container.settingsRepository.settings.collectAsStateWithLifecycle()
@@ -66,7 +69,7 @@ fun MoreScreen(
         Column(
             Modifier
                 .padding(padding)
-                .fillMaxSize()
+                .fillMaxHeight().readableWidth()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -137,6 +140,13 @@ fun MoreScreen(
             )
 
             MoreActionCard(
+                icon = Icons.Rounded.Speed,
+                tint = Color(0xFF10B981),
+                title = "대시보드",
+                subtitle = settings.dashboardUrl?.takeIf { !settings.demoMode } ?: "데모 모드에서는 사용할 수 없습니다",
+                onClick = onOpenDashboard.takeIf { settings.dashboardUrl != null && !settings.demoMode },
+            )
+            MoreActionCard(
                 icon = Icons.Rounded.Settings,
                 tint = MaterialTheme.colorScheme.primary,
                 title = "설정",
@@ -151,21 +161,6 @@ fun MoreScreen(
                 onClick = onOpenWorkspaces,
             )
 
-            Spacer(Modifier.height(2.dp))
-            Text(
-                "로드맵",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 4.dp),
-            )
-            MoreActionCard(
-                icon = Icons.Rounded.Upcoming,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                title = "칸반 · 크론 · 대시보드",
-                subtitle = "2차 업데이트로 제공될 예정입니다",
-                trailingBadge = "예정",
-                onClick = null,
-            )
         }
     }
 }

@@ -338,6 +338,38 @@ def write_config_model(name, model):
     return True, None
 
 
+
+def run_cron_cli(name, args, timeout=60):
+    """크론 쓰기는 `hermes [-p <profile>] cron ...` CLI 경유 — jobs.json 스키마(schedule 객체,
+    state/paused_at, next_run_at 재계산 등)를 hermes-agent 가 직접 관리하게 한다."""
+    hermes = find_hermes()
+    if not hermes:
+        return None, "hermes 실행파일을 찾지 못했습니다 (HERMES_BIN 설정 필요)"
+    base = [hermes] if name == "default" else [hermes, "--profile", name]
+    try:
+        proc = subprocess.run(
+            base + ["cron"] + args, capture_output=True, text=True,
+            timeout=timeout, env=hermes_env(),
+        )
+    except subprocess.TimeoutExpired:
+        return None, "cron CLI timeout"
+    out = ((proc.stdout or "") + (("\n" + proc.stderr) if proc.stderr else "")).strip()
+    if proc.returncode != 0:
+        return None, f"cron CLI 실패 (exit {proc.returncode}): {out[-500:]}"
+    return out, None
+
+
+def cron_edit_args(payload):
+    """앱 payload → `cron create/edit` 공용 플래그. deliver_to(구 iOS) 와 deliver 둘 다 허용."""
+    args = []
+    if "name" in payload:
+        args += ["--name", str(payload.get("name") or "").strip()]
+    deliver = payload.get("deliver", payload.get("deliver_to"))
+    if deliver is not None:
+        args += ["--deliver", str(deliver).strip()]
+    return args
+
+
 # ── 내장 칸반 (hermes-agent kanban.db) ──────────────────────────
 # default 보드는 ~/.hermes/kanban.db, 그 외는 ~/.hermes/kanban/boards/<slug>/kanban.db.
 # 상태값: triage|todo|scheduled|ready|running|blocked|done|archived
@@ -392,9 +424,7 @@ def kanban_read(board):
     conn.row_factory = sqlite3.Row
     try:
         rows = conn.execute(
-            "SELECT id, title, body, status, assignee, session_id,"
-            " created_at, started_at, completed_at, last_heartbeat_at"
-            " FROM tasks WHERE status != 'archived' ORDER BY created_at DESC"
+            "SELECT * FROM tasks WHERE status != 'archived' ORDER BY created_at DESC"
         ).fetchall()
     finally:
         conn.close()
@@ -414,12 +444,61 @@ def kanban_read(board):
             "session_id": r["session_id"] or "",
             "created_at": epoch_to_iso(r["created_at"]),
             "updated_at": epoch_to_iso(updated),
+            **kanban_extra_fields(r),
         })
     return {
         "name": kanban_board_display_name(board),
         "board": board,
         "updated_at": epoch_to_iso(latest),
         "tasks": tasks,
+    }
+
+
+def kanban_extra_fields(r):
+    """버전에 따라 없을 수 있는 열은 건너뛴다 (sqlite3.Row.keys())."""
+    keys = set(r.keys())
+    out = {}
+    for col, key in (("priority", "priority"), ("result", "result"),
+                     ("last_failure_error", "error"), ("consecutive_failures", "failures")):
+        if col in keys and r[col] not in (None, ""):
+            out[key] = r[col]
+    for col in ("started_at", "completed_at"):
+        if col in keys and r[col]:
+            out[col] = epoch_to_iso(r[col])
+    return out
+
+
+def kanban_task_detail(board, task_id):
+    """태스크 1건 + 댓글 + 최근 이벤트(heartbeat 제외 40건)."""
+    db = kanban_db_path(board)
+    if not db.is_file():
+        return None
+    conn = kanban_connect_ro(db)
+    conn.row_factory = sqlite3.Row
+    try:
+        r = conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
+        if r is None:
+            return None
+        comments = conn.execute(
+            "SELECT author, body, created_at FROM task_comments WHERE task_id = ?"
+            " ORDER BY created_at", (task_id,)).fetchall()
+        events = conn.execute(
+            "SELECT kind, payload, created_at FROM task_events WHERE task_id = ?"
+            " AND kind != 'heartbeat' ORDER BY id DESC LIMIT 40", (task_id,)).fetchall()
+    finally:
+        conn.close()
+    task = {
+        "id": r["id"], "title": r["title"], "detail": r["body"] or "",
+        "status": r["status"], "assignee": r["assignee"] or "",
+        "created_at": epoch_to_iso(r["created_at"]),
+        **kanban_extra_fields(r),
+    }
+    return {
+        "task": task,
+        "comments": [{"author": c["author"], "body": c["body"],
+                      "created_at": epoch_to_iso(c["created_at"])} for c in comments],
+        "events": [{"kind": e["kind"], "payload": (e["payload"] or "")[:300],
+                    "created_at": epoch_to_iso(e["created_at"])} for e in events],
     }
 
 
@@ -646,6 +725,21 @@ class Handler(BaseHTTPRequestHandler):
                 })
             return self.send_json({"data": result})
 
+        # GET /kanban/<board>/tasks/<id> — 태스크 상세 + 댓글 + 이벤트
+        if len(parts) == 4 and parts[0] == "kanban" and parts[2] == "tasks":
+            board = self.check_kanban_board(parts[1])
+            if not board:
+                return self.fail(404, "unknown board")
+            if not SAFE_NAME.match(parts[3]):
+                return self.fail(400, "invalid task id")
+            try:
+                data = kanban_task_detail(board, parts[3])
+            except sqlite3.Error as e:
+                return self.fail(500, f"kanban db error: {e}")
+            if data is None:
+                return self.fail(404, "unknown task")
+            return self.send_json(data)
+
         # GET /kanban/<board> — 비아카이브 태스크 전체 (앱 스키마)
         if len(parts) == 2 and parts[0] == "kanban":
             board = self.check_kanban_board(parts[1])
@@ -770,9 +864,8 @@ class Handler(BaseHTTPRequestHandler):
             )
             return self.send_json({"profile": name, "ok": True, "output": output})
 
-        # POST /profiles/<name>/cron  {"name","prompt","schedule","deliver_to","skills","enabled"}
-        # 새 크론잡을 jobs.json에 추가 (대시보드 "CREATE"). 기존 잡 하나를 구조 템플릿으로 삼아
-        # hermes-agent 버전별 잡 스키마에 최대한 맞추고, 편집 필드만 덮어쓴다. id는 이름에서 슬러그.
+        # POST /profiles/<name>/cron  {"name","schedule","prompt"?,"deliver"?,"skills"?,"enabled"?}
+        # `hermes cron create` CLI 로 생성 — 잡 스키마는 hermes-agent 가 만든다.
         if len(parts) == 3 and parts[0] == "profiles" and parts[2] == "cron":
             name = self.check_profile(parts[1])
             if not name:
@@ -792,46 +885,22 @@ class Handler(BaseHTTPRequestHandler):
                 return self.fail(400, "name is required")
             if not schedule:
                 return self.fail(400, "schedule is required")
-            jobs, container = read_cron_jobs(name)
-            existing_ids = {str(j.get("id")) for j in jobs if isinstance(j, dict)}
-            base_id = re.sub(r"[^A-Za-z0-9._-]+", "-", job_name).strip("-").lower()[:60] or "job"
-            job_id, suffix = base_id, 2
-            while job_id in existing_ids:
-                job_id = f"{base_id}-{suffix}"
-                suffix += 1
-            # 기존 잡을 구조 템플릿으로 (없으면 빈 dict). 실행상태/스크립트 키는 제거.
-            template = next((dict(j) for j in jobs if isinstance(j, dict)), {})
-            for key in ("last_run", "next_run", "last_status", "last_error",
-                        "last_result", "running", "script"):
-                template.pop(key, None)
+            args = ["create"] + cron_edit_args(payload)
             skills = payload.get("skills")
-            if not isinstance(skills, list):
-                skills = []
-            template.update({
-                "id": job_id,
-                "name": job_name,
-                "mode": "agent",
-                "prompt": str(payload.get("prompt") or ""),
-                "schedule": schedule,
-                "deliver_to": str(payload.get("deliver_to") or "origin"),
-                "skills": [str(s) for s in skills],
-                "enabled": bool(payload.get("enabled", True)),
-            })
-            new_jobs = list(jobs) + [template]
-            path = cron_jobs_file(name)
-            if isinstance(container, dict):
-                container["jobs"] = new_jobs
-            elif isinstance(container, list):
-                container = new_jobs
-            else:  # 파일 없음/형식 미상 → 새 {"jobs": [...]}
-                container = {"jobs": new_jobs}
-            path.parent.mkdir(parents=True, exist_ok=True)
-            if path.is_file():
-                path.with_suffix(".json.bak").write_text(path.read_text(errors="replace"))
-            tmp = path.with_suffix(".json.tmp")
-            tmp.write_text(json.dumps(container, ensure_ascii=False, indent=2))
-            os.replace(str(tmp), str(path))  # 원자적 교체
-            return self.send_json({"profile": name, "job": job_id, "ok": True}, 201)
+            if isinstance(skills, list):
+                for sk in skills:
+                    if str(sk).strip():
+                        args += ["--skill", str(sk).strip()]
+            if payload.get("enabled") is False:
+                args += ["--paused"]
+            args += [schedule]
+            prompt = str(payload.get("prompt") or "").strip()
+            if prompt:
+                args += [prompt]
+            out, err = run_cron_cli(name, args)
+            if err:
+                return self.fail(500, err)
+            return self.send_json({"profile": name, "ok": True, "output": out[-500:]}, 201)
 
         # POST /profiles/<name>/cron/<job_id>/run — 크론잡 즉시 실행 (대시보드 "Trigger now").
         # 게이트웨이 스케줄러를 기다리지 않고 `hermes [--profile <name>] cron run <id>`로 바로 돌린다.
@@ -1019,8 +1088,8 @@ class Handler(BaseHTTPRequestHandler):
             soul.write_text(content)
             return self.send_json({"profile": name, "ok": True})
 
-        # PUT /profiles/<name>/cron/<job_id>  {"prompt","schedule","deliver_to","skills","enabled"}
-        # 전달된 필드만 해당 잡에 덮어쓰고 나머지(id·mode·script·실행상태 등)는 보존.
+        # PUT /profiles/<name>/cron/<job_id>  {"name","schedule","prompt","deliver","skills","enabled"} 중 일부
+        # 전달된 필드만 `hermes cron edit` / `pause` / `resume` 으로 반영한다.
         if len(parts) == 4 and parts[0] == "profiles" and parts[2] == "cron":
             name = self.check_profile(parts[1])
             if not name:
@@ -1037,25 +1106,33 @@ class Handler(BaseHTTPRequestHandler):
                     raise ValueError
             except ValueError:
                 return self.fail(400, "expected JSON object")
-            allowed = {"name", "prompt", "schedule", "deliver_to", "skills", "enabled"}
-            updates = {k: v for k, v in updates.items() if k in allowed}
-            path = cron_jobs_file(name)
-            if not path.is_file():
-                return self.fail(404, "cron jobs.json not found")
-            jobs, container = read_cron_jobs(name)
-            target = next(
-                (j for j in jobs if isinstance(j, dict) and str(j.get("id")) == job_id),
-                None,
-            )
-            if target is None:
+            jobs, _ = read_cron_jobs(name)
+            if not any(isinstance(j, dict) and str(j.get("id")) == job_id for j in jobs):
                 return self.fail(404, "unknown job")
-            target.update(updates)  # 편집된 키만 덮어쓰기, 나머지 보존
-            path.with_suffix(".json.bak").write_text(path.read_text(errors="replace"))
-            tmp = path.with_suffix(".json.tmp")
-            tmp.write_text(json.dumps(container, ensure_ascii=False, indent=2))
-            os.replace(str(tmp), str(path))  # 원자적 교체
+            args = cron_edit_args(updates)
+            if "schedule" in updates:
+                schedule = str(updates.get("schedule") or "").strip()
+                if not schedule:
+                    return self.fail(400, "schedule is empty")
+                args += ["--schedule", schedule]
+            if "prompt" in updates:
+                args += ["--prompt", str(updates.get("prompt") or "")]
+            if "skills" in updates:
+                skills = [str(sk).strip() for sk in (updates.get("skills") or []) if str(sk).strip()]
+                if skills:
+                    for sk in skills:
+                        args += ["--skill", sk]
+                else:
+                    args += ["--clear-skills"]
+            if args:
+                _, err = run_cron_cli(name, ["edit"] + args + [job_id])
+                if err:
+                    return self.fail(500, err)
+            if "enabled" in updates:
+                _, err = run_cron_cli(name, ["resume" if updates.get("enabled") else "pause", job_id])
+                if err:
+                    return self.fail(500, err)
             return self.send_json({"profile": name, "job": job_id, "ok": True})
-
         # PUT /profiles/<name>/model  {"model", "restart"?} — config.yaml 모델 반영
         if len(parts) == 3 and parts[0] == "profiles" and parts[2] == "model":
             name = self.check_profile(parts[1])
@@ -1112,8 +1189,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.fail(500, f"profile delete 실패: {detail}")
             return self.send_json({"profile": name, "ok": True})
 
-        # DELETE /profiles/<name>/cron/<job_id> — jobs.json에서 해당 잡 제거
-        # (read-modify-write, 컨테이너 형태 보존, .bak 백업 + 원자적 교체)
+        # DELETE /profiles/<name>/cron/<job_id> — `hermes cron remove`
         if len(parts) == 4 and parts[0] == "profiles" and parts[2] == "cron":
             name = self.check_profile(parts[1])
             if not name:
@@ -1121,26 +1197,13 @@ class Handler(BaseHTTPRequestHandler):
             job_id = parts[3]
             if not SAFE_NAME.match(job_id):
                 return self.fail(400, "invalid job id")
-            path = cron_jobs_file(name)
-            if not path.is_file():
-                return self.fail(404, "cron jobs.json not found")
-            jobs, container = read_cron_jobs(name)
-            new_jobs = [
-                j for j in jobs
-                if not (isinstance(j, dict) and str(j.get("id")) == job_id)
-            ]
-            if len(new_jobs) == len(jobs):
+            jobs, _ = read_cron_jobs(name)
+            if not any(isinstance(j, dict) and str(j.get("id")) == job_id for j in jobs):
                 return self.fail(404, "unknown job")
-            if isinstance(container, dict):
-                container["jobs"] = new_jobs
-            else:
-                container = new_jobs  # 최상위가 리스트인 형태
-            path.with_suffix(".json.bak").write_text(path.read_text(errors="replace"))
-            tmp = path.with_suffix(".json.tmp")
-            tmp.write_text(json.dumps(container, ensure_ascii=False, indent=2))
-            os.replace(str(tmp), str(path))  # 원자적 교체
+            _, err = run_cron_cli(name, ["remove", job_id])
+            if err:
+                return self.fail(500, err)
             return self.send_json({"profile": name, "job": job_id, "ok": True})
-
         return self.fail(404, "not found")
 
     def log_message(self, fmt, *args):

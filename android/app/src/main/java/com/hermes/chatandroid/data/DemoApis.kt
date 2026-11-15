@@ -67,6 +67,41 @@ class DemoHermesApi(private val wordDelayMs: Long = 40L) : HermesApi("", "") {
 class DemoBridgeApi : BridgeApi("", "") {
     override suspend fun fetchProfiles() = DemoData.profiles.map { BridgeProfile(it.name, it.port) }
     override suspend fun upload(bytes: ByteArray, filename: String, profile: String) = "/demo/uploads/$filename"
+
+    // 칸반·크론: 둘러보기용 읽기 전용 샘플 (쓰기는 무시)
+    private val demoTasks = listOf(
+        KanbanTask("t_demo1", "주간 안전 점검 보고서 초안", "현장 사진 12장 정리 후 요약", KanbanStatus.RUNNING, "safety"),
+        KanbanTask("t_demo2", "위키 링크 깨짐 점검", "", KanbanStatus.READY, "wiki"),
+        KanbanTask("t_demo3", "포트폴리오 리밸런싱 검토", "", KanbanStatus.BLOCKED, "invest", error = "시세 API 응답 없음"),
+        KanbanTask("t_demo4", "논문 3편 요약", "", KanbanStatus.DONE, "opus", result = "요약 3건을 위키에 저장"),
+    )
+
+    override suspend fun fetchKanbanBoards() =
+        listOf(KanbanBoardSummary("default", "Default", demoTasks.groupingBy { it.status.key }.eachCount()))
+
+    override suspend fun fetchKanbanBoard(board: String) = KanbanBoard("default", "Default", demoTasks)
+
+    override suspend fun fetchKanbanTask(board: String, taskId: String) =
+        KanbanTaskDetail(demoTasks.first { it.id == taskId }, emptyList(), emptyList())
+
+    override suspend fun createKanbanTask(board: String, title: String, detail: String, assignee: String, mode: KanbanCreateMode) {}
+    override suspend fun createKanbanBoard(name: String) {}
+    override suspend fun kanbanAction(board: String, taskId: String, action: String, reason: String?) {}
+
+    override suspend fun fetchCronJobs(profile: String) = when (profile) {
+        "default" -> listOf(
+            CronJob("c_demo1", "default", "아침 브리핑", "오늘 일정과 날씨를 요약해 보내줘", "0 7 * * *", "telegram",
+                nextRunAt = "2026-11-16T07:00:00+09:00", lastRunAt = "2026-11-15T07:00:40+09:00", lastStatus = "ok"),
+            CronJob("c_demo2", "default", "주간 회고", "이번 주 작업을 정리해줘", "0 18 * * 5", "origin", enabled = false, state = "paused"),
+        )
+        else -> emptyList()
+    }
+
+    override suspend fun createCronJob(form: CronForm) {}
+    override suspend fun updateCronJob(profile: String, jobId: String, old: CronForm, new: CronForm) {}
+    override suspend fun setCronEnabled(profile: String, jobId: String, enabled: Boolean) {}
+    override suspend fun runCronJob(profile: String, jobId: String) {}
+    override suspend fun deleteCronJob(profile: String, jobId: String) {}
 }
 
 /** 데모 모드 봇 서버 페이크: 봇/채널/메시지/승인/작업 위치를 메모리에 유지. */

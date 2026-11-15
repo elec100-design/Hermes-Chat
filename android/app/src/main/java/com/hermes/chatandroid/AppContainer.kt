@@ -11,9 +11,18 @@ import com.hermes.chatandroid.net.BotApi
 import com.hermes.chatandroid.net.BridgeApi
 import com.hermes.chatandroid.net.HermesApi
 import com.hermes.chatandroid.net.defaultHttpClient
+import com.hermes.chatandroid.notify.BotNotifier
+import com.hermes.chatandroid.notify.MemoryNotifyStore
+import com.hermes.chatandroid.notify.Notifications
+import com.hermes.chatandroid.notify.PrefsNotifyStore
+import com.hermes.chatandroid.shortcut.Shortcuts
 
 /** 수동 DI. 팩토리는 호출 시점의 최신 설정으로 클라이언트를 만든다(설정 변경 즉시 반영). */
-class AppContainer(val settingsRepository: SettingsRepository) {
+class AppContainer(
+    val settingsRepository: SettingsRepository,
+    /** 봇 답장·승인 알림 판정(앱 폴링과 WorkManager 가 공유). */
+    val notifier: BotNotifier = BotNotifier(MemoryNotifyStore()),
+) {
     val httpClient = defaultHttpClient()
     val profileDiscovery = ProfileDiscovery()
 
@@ -28,6 +37,9 @@ class AppContainer(val settingsRepository: SettingsRepository) {
      */
     val botActivity: MutableMap<Int, Long> = java.util.concurrent.ConcurrentHashMap()
     fun touchBotActivity(botId: Int) { botActivity[botId] = System.currentTimeMillis() }
+
+    /** 봇 채팅을 열었을 때(채널 id, 제목, DM 이면 봇) — 앱이 바로가기·타일 기록을 연결한다. */
+    var onChatOpened: ((Int, String, com.hermes.chatandroid.data.Bot?) -> Unit)? = null
 
     /** 선택된(또는 지정한) 프로필의 게이트웨이. host/프로필 미설정이면 null. */
     fun hermesApi(profile: ProfileEntry? = null): HermesApi? {
@@ -56,6 +68,10 @@ class HermesApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        container = AppContainer(SettingsRepository(AndroidSettingsStore(this)))
+        container = AppContainer(SettingsRepository(AndroidSettingsStore(this)), BotNotifier(PrefsNotifyStore(this)))
+        Notifications.createChannels(this)
+        container.onChatOpened = { id, title, bot -> Shortcuts.chatOpened(this, id, title, bot) }
+        val s = container.settingsRepository.current
+        Notifications.schedule(this, s.notificationsEnabled && !s.demoMode && s.botBaseUrl != null)
     }
 }

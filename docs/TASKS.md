@@ -377,12 +377,34 @@
 
 | ID | 작업 | 파일 | 상태 |
 |----|------|------|------|
-| T-170 | 봇 홈(대화/승인/더보기 탭)·온보딩(봇 서버 우선)·설정 재구성 + BotApi 전 엔드포인트(봇 수정·발견·헬스·steps·첨부·채널 관리·워크스페이스) + 프로필 검색 401 안내 | `android/…/net/BotApi.kt`, `…/ui/AppNav.kt`, `…/ui/{onboarding,settings,bots}` | NEEDS-BUILD (11-13 로컬 빌드·단위테스트 통과 6953ba1, 폴드 설치됨·봇 서버 미기동으로 실서버 미검증) |
-| T-171 | 봇 채팅 고도화 — 첨부 업로드·실행 단계(steps) 표시·마크다운·정체색 말풍선 | `…/ui/bots/chat` | NEEDS-BUILD (11-13 로컬 빌드·단위테스트 통과 6953ba1, 폴드 설치됨·봇 서버 미기동으로 실서버 미검증) |
-| T-172 | 봇 프로필 — 이름·아바타·페르소나·승인 정책 편집, 보관, 헬스·발견 (지난 세션은 T-175로 이관) | `…/ui/bots/profile` | NEEDS-BUILD (11-13 로컬 빌드·단위테스트 통과 6953ba1, 폴드 설치됨·봇 서버 미기동으로 실서버 미검증) |
-| T-173 | 채널 관리 — 제목·주제·봇끼리 대화 수정, 멤버 추가/제거, 삭제 | `…/ui/bots/channel` | NEEDS-BUILD (11-13 로컬 빌드·단위테스트 통과 6953ba1, 폴드 설치됨·봇 서버 미기동으로 실서버 미검증) |
-| T-174 | 워크스페이스 — 목록·폴더 추가·리포 클론·상태·커밋·푸시·삭제 | `…/ui/workspaces` | NEEDS-BUILD (11-13 로컬 빌드·단위테스트 통과 6953ba1, 폴드 설치됨·봇 서버 미기동으로 실서버 미검증) |
-| T-175 | 2차: 칸반·크론·대시보드·봇별 지난 세션(게이트웨이 세션 — 멀티플렉스는 Hermes-bot 경유 프록시 필요) 부가 기능 | — | TODO |
+| T-170 | 봇 홈(대화/승인/더보기 탭)·온보딩(봇 서버 우선)·설정 재구성 + BotApi 전 엔드포인트(봇 수정·발견·헬스·steps·첨부·채널 관리·워크스페이스) + 프로필 검색 401 안내 | `android/…/net/BotApi.kt`, `…/ui/AppNav.kt`, `…/ui/{onboarding,settings,bots}` | DONE (11-15 폴드 실기기 APK 설치·실서버 :8900 확인 — 봇 14개 연결·DM·실행 단계 표시) |
+| T-171 | 봇 채팅 고도화 — 첨부 업로드·실행 단계(steps) 표시·마크다운·정체색 말풍선 | `…/ui/bots/chat` | DONE (11-15 폴드 실기기 APK 설치·실서버 :8900 확인 — 봇 14개 연결·DM·실행 단계 표시) |
+| T-172 | 봇 프로필 — 이름·아바타·페르소나·승인 정책 편집, 보관, 헬스·발견 (지난 세션은 T-175로 이관) | `…/ui/bots/profile` | DONE (11-15 폴드 실기기 APK 설치·실서버 :8900 확인 — 봇 14개 연결·DM·실행 단계 표시) |
+| T-173 | 채널 관리 — 제목·주제·봇끼리 대화 수정, 멤버 추가/제거, 삭제 | `…/ui/bots/channel` | DONE (11-15 폴드 실기기 APK 설치·실서버 :8900 확인 — 봇 14개 연결·DM·실행 단계 표시) |
+| T-174 | 워크스페이스 — 목록·폴더 추가·리포 클론·상태·커밋·푸시·삭제 | `…/ui/workspaces` | DONE (11-15 폴드 실기기 APK 설치·실서버 :8900 확인 — 봇 14개 연결·DM·실행 단계 표시) |
+| T-175 | 2차: 칸반·크론·대시보드·봇별 지난 세션(게이트웨이 세션 — 멀티플렉스는 Hermes-bot 경유 프록시 필요) 부가 기능 | — | → Phase 27(T-178~182)로 분할 |
+| T-176 | 폴드 대응 적응형 레이아웃 — 커버(좁은 창): 봇 홈을 목록↔채팅 전체 화면 전환으로(자동 열림 드로어 제거), 채팅 중 하단 탭 숨김 / 내부(폭 600dp+): 하단 탭 대신 왼쪽 내비게이션 레일, 사이드바+채팅 2단 유지, 단일 컬럼 화면 본문 720dp(온보딩 560dp) 가운데 정렬 | `…/ui/AppNav.kt`, `…/ui/bots/BotsScreen.kt`, `…/ui/components/Common.kt`, 단일 컬럼 화면들 | DONE (11-15 폴드 실기기 APK 설치·실서버 :8900 확인 — 봇 14개 연결·DM·실행 단계 표시) |
+
+## Phase 27 — Android 미구현 기능 이식 (2026-11-15, iOS 대비 갭)
+
+> 순서대로 하나씩: 구현 → `./gradlew :app:testDebugUnitTest :app:assembleDebug` → 18888 배포 → 폴드 실기기 확인 → DONE.
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-177 | 마크다운 표(GFM table) 렌더링 — 헤더+구분선(`|---|`) 감지 시 `MdBlock.Table`, 열 폭=셀 최대 폭(최대 220dp, 넘으면 줄바꿈)·행 높이 정렬 격자, 말풍선보다 넓으면 가로 스크롤, 헤더 굵게·옅은 배경, 셀 안 인라인 마크다운·`\|` 이스케이프. 구분선 전(스트리밍 중)은 텍스트 유지. 봇·세션 채팅 공통(`MessageBubble`) | `…/ui/components/MarkdownLite.kt`, `…/ui/components/MarkdownTable.kt`(신규), `…/ui/components/MessageBubble.kt`, `test/…/MarkdownLiteTest.kt` | DONE (11-15 폴드 실기기 확인 — 봇 답변 표 정상 렌더링) |
+| T-178 | 봇 프로필 "지난 세션" — 봇 게이트웨이 포트로 직결해 세션 목록·열기(기존 `ChatScreen` 재사용) | `…/ui/bots/profile`, `…/ui/sessions` | DROPPED (11-15 사용자 결정 — 지난 세션은 대시보드 세션 화면으로 대체) |
+| T-179 | 대시보드 WebView(:8000, 더보기 > 대시보드) — 쿠키 로그인 유지·핀치 줌(viewport 덮어쓰기)·**폴드 커버=모바일 / 펼침(600dp+)=데스크톱 UA+1024px 자동 전환**(툴바 토글은 임시)·외부 링크는 브라우저·뒤로가기=웹 history·WebView MATCH_PARENT + `h-dvh` 보정 주입(WebView 에서 100dvh=0 으로 본문 틀이 접히던 문제)·textZoom 100. `BridgeClient`는 T-180으로 이관 | `…/ui/more/DashboardScreen.kt`(신규), `…/ui/more/MoreScreen.kt`, `…/ui/AppNav.kt`, `…/data/Settings.kt` | DONE (11-15 폴드 실기기 확인 — 세션 등 본문 정상 표시) |
+| T-180 | `BridgeClient`(:8765, 토큰 401 분리·업로드 120s) + 프로필 관리 — SOUL 편집·모델 선택·게이트웨이 재시작·로그·생성/삭제 | `…/ui/bots/profile` | DROPPED (11-15 사용자 결정 — 대시보드(프로필·모델·설정·로그·재시작) 또는 봇에게 지시로 대체) |
+| T-181 | 칸반 탭 — 보드 선택·새 보드, 커버: 상태 필터 칩(진행 중 묶음)+카드 목록 / 펼침: 상태별 컬럼 보드, 카드(상태 색 띠·담당·실행 중·오류·갱신 시각), 상세 시트(본문·결과·오류·댓글 작성·이력·상태 전이 실행/보류/재개/완료/보관), 작업 추가(담당 프로필·시작 방식). Bridge 에 `GET /kanban/<board>/tasks/<id>`(댓글·이벤트)와 결과·오류 필드 추가 | `…/ui/kanban/*`(신규), `…/data/OpsModels.kt`(신규), `…/net/BridgeApi.kt`, `…/data/DemoApis.kt`, `…/ui/AppNav.kt`, `server/hermes_bridge.py` | DONE (11-15 폴드 실기기 확인 — 칸반 탭 동작) |
+| T-182 | 크론 탭 — 전 프로필 크론 모아보기·프로필 필터, 카드(사람이 읽는 일정·다음 실행·마지막 성공/실패·오류), 켜기/끄기 스위치, 지금 실행·편집·삭제, 편집 화면(일정 프리셋·시각 선택·결과 보내기·스킬). **Bridge 크론 쓰기를 `hermes cron create/edit/pause/resume/remove` CLI 경유로 교체** — 기존 PUT/POST 는 실제 jobs.json 의 `schedule` 객체를 문자열로 덮어써 파일을 깨뜨릴 수 있었음(iOS 도 같은 엔드포인트, payload 호환 유지) | `…/ui/cron/*`(신규), `…/data/OpsModels.kt`, `…/net/BridgeApi.kt`, `server/hermes_bridge.py` | DONE (11-15 폴드 실기기 확인 — 크론 탭 동작) |
+| T-183 | ~~음성 입력~~ — 사용자 결정(11-15): 키보드 Typeless 사용으로 앱 내 음성 입력 불필요. 응답 읽기(TTS)만 필요 시 재검토 | — | DROPPED |
+| T-184 | 알림 — 봇 답장 완료·승인 요청. 앱이 보이는 동안 30초(기존 승인 배지 폴링 대체), 백그라운드는 WorkManager 15분 주기(**의존성 `androidx.work:work-runtime-ktx` 2.10.0 추가**). 봇 서버에 새 메시지 API 가 없어 봇·채널 미리보기 변화가 있는 채널만 메시지를 읽고, 채널별 마지막 확인 id 이후의 완료된 봇 답만 알림(첫 실행은 기준점만 기록). 보고 있는 채팅·이미 본 답은 제외, 알림 탭 시 해당 채팅/승인 탭으로 이동. 채널 2개(봇 답장 기본, 승인 요청 높음), POST_NOTIFICATIONS 최초 1회 요청, 설정 > 알림 스위치 | `…/notify/*`(신규), `…/ui/AppNav.kt`, `…/MainActivity.kt`, `…/AppContainer.kt`, `…/data/Settings.kt`, `…/ui/settings/SettingsScreen.kt`, `…/ui/bots/BotChatScreen.kt`, `res/drawable/ic_stat_hermes.xml`, `test/…/BotNotifierTest.kt` | DONE (11-15 폴드 실기기 확인 — 알림 동작) |
+| T-185 | 파일 브라우저·스킬 목록 | — | DROPPED (11-15 사용자 결정 — 대시보드 파일·스킬 메뉴로 대체) |
+| T-186 | Deep think 토론방 | — | TODO |
+| T-187 | 핸즈프리 Live 모드(침묵 자동 전송·문장 단위 TTS·BT SCO·포그라운드 서비스) | — | TODO |
+| T-188 | 글라스 사진 자동 전송(MediaStore ContentObserver) | — | TODO |
+| T-189 | 진입 단축 — 앱 아이콘 길게 누르기: 정적 바로가기(승인·칸반·크론) + 봇 DM 을 열 때마다 동적 바로가기(봇 아바타 아이콘, 런처가 최근순 정리·홈 화면 고정 가능) / 빠른 설정 타일 "Hermes": 마지막으로 연 봇 대화를 바로 열기(부제에 봇 이름). 글라스 탭(MediaSession)은 연결할 동작이 Live 모드라 T-187 로 이관 | `…/shortcut/*`(신규), `res/xml/shortcuts.xml`, `res/drawable/ic_shortcut_*.xml`, `AndroidManifest.xml`, `…/notify/OpenRequest.kt`, `…/ui/AppNav.kt`, `…/AppContainer.kt`, `…/ui/bots/BotChatScreen.kt` | NEEDS-BUILD (11-15 로컬 빌드·단위테스트 통과, 실기기 미검증) |
+| T-190 | 다국어(en/zh) 문자열 추출 | `res/values*` | TODO |
 
 ## Phase A — 앱스토어 상품화 Phase 0: 컴플라이언스 + 다국어 기반
 
@@ -453,3 +475,5 @@
 | 11-13 | ccr-29d493c3-z8tex2 @ b579721 | ANDROID BUILD SUCCESSFUL | Claude Code 맥미니 로컬 — `./gradlew clean :app:testDebugUnitTest :app:assembleDebug :app:bundleRelease` 통과(AGP 8.9.3, compileSdk/targetSdk 36). 단위 테스트 34개 통과(DemoMode 5 추가), `app-release.aab` 생성(미서명). 임시 키스토어로 assembleRelease 서명 확인 후 삭제. 실기기 미검증 |
 | 11-13 | ccr-29d493c3-z8tex2 @ 6953ba1 | ANDROID BUILD SUCCESSFUL | Claude Code 맥미니 로컬 — Phase 26 봇 중심 재구성(T-170~174) `clean :app:testDebugUnitTest :app:assembleDebug` 통과, 단위 테스트 58개. Galaxy Z Fold(SM-F971N)에 adb 설치·실행 확인. 맥미니 Hermes-bot LaunchAgent(`ai.hermes.bot`)가 빈 배포 폴더(`~/Documents/Hermes-bot`)를 가리켜 :8900 미기동 → 실서버 검증 대기 |
 | 11-13 | ccr-29d493c3-z8tex2 @ e0b8819 | BUILD SUCCEEDED + TEST SUCCEEDED | iOS Simulator(generic/platform=iOS Simulator) 빌드 및 `HermesChatTests`(iPhone 17, SSEParserTests 20 + ChatRecoveryTests 14 = 34건) 전체 통과. `origin/main` 머지·T-149 통합·구 T-158/159→T-167/168 재번호 반영 |
+| 11-15 | claude/android-fold-ui @ 08d74ce | ANDROID 실기기 검증 | 사용자 Galaxy Z Fold에 debug APK(18888 배포) 설치·실서버(:8900) 확인 — 연결 테스트(봇 14개), 봇 목록·DM·실행 단계·더보기·설정 정상. T-170~176 DONE. 마크다운 표 미렌더링 발견 → T-177 |
+| 11-15 | claude/android-fold-ui @ 2a20cbe | ANDROID 실기기 검증 | 사용자 폴드에서 대시보드 WebView 본문 표시 확인 — T-179 DONE. 진단(버그) 버튼은 확인 후 제거 |

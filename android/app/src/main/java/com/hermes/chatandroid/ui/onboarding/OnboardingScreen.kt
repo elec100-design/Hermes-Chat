@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -66,6 +67,7 @@ import com.hermes.chatandroid.ui.components.ErrorBanner
 import com.hermes.chatandroid.ui.components.HermesCard
 import com.hermes.chatandroid.ui.components.HermesTextField
 import com.hermes.chatandroid.ui.components.IconBadge
+import com.hermes.chatandroid.ui.components.readableWidth
 import com.hermes.chatandroid.ui.theme.hermesColors
 import kotlinx.coroutines.launch
 
@@ -102,7 +104,7 @@ fun OnboardingScreen(
     ) {
         Column(
             Modifier
-                .fillMaxSize()
+                .fillMaxHeight().readableWidth(560.dp)
                 .statusBarsPadding()
                 .navigationBarsPadding()
                 .padding(horizontal = 20.dp, vertical = 16.dp),
