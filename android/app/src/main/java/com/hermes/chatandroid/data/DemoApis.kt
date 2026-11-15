@@ -67,6 +67,7 @@ class DemoHermesApi(private val wordDelayMs: Long = 40L) : HermesApi("", "") {
 class DemoBridgeApi : BridgeApi("", "") {
     override suspend fun fetchProfiles() = DemoData.profiles.map { BridgeProfile(it.name, it.port) }
     override suspend fun upload(bytes: ByteArray, filename: String, profile: String) = "/demo/uploads/$filename"
+    override suspend fun fetchRaw(relativePath: String): ByteArray = throw java.io.IOException("데모 모드에는 파일이 없습니다")
 
     // 칸반·크론: 둘러보기용 읽기 전용 샘플 (쓰기는 무시)
     private val demoTasks = listOf(

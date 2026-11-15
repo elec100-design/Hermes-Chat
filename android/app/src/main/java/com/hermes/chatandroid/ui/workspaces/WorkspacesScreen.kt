@@ -383,7 +383,7 @@ fun WorkspacesScreen(
 
 @Composable
 private fun WorkspaceCard(ws: Workspace, onClick: () -> Unit) {
-    val tint = if (ws.isRepo) MaterialTheme.colorScheme.primary else Color(0xFF0EA5E9)
+    val tint = if (ws.isRepo) MaterialTheme.colorScheme.primary else Color(0xFF4F86A8)
     HermesCard(
         onClick = onClick,
         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),

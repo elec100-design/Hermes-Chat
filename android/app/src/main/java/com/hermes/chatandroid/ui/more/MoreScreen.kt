@@ -141,7 +141,7 @@ fun MoreScreen(
 
             MoreActionCard(
                 icon = Icons.Rounded.Speed,
-                tint = Color(0xFF10B981),
+                tint = Color(0xFF4C8C5F),
                 title = "대시보드",
                 subtitle = settings.dashboardUrl?.takeIf { !settings.demoMode } ?: "데모 모드에서는 사용할 수 없습니다",
                 onClick = onOpenDashboard.takeIf { settings.dashboardUrl != null && !settings.demoMode },
@@ -155,7 +155,7 @@ fun MoreScreen(
             )
             MoreActionCard(
                 icon = Icons.Rounded.FolderOpen,
-                tint = Color(0xFF0EA5E9),
+                tint = Color(0xFF4F86A8),
                 title = "워크스페이스",
                 subtitle = "봇이 작업할 폴더와 GitHub 리포 관리",
                 onClick = onOpenWorkspaces,

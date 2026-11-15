@@ -405,6 +405,9 @@ iOS 실사용 오류 3건(사진 늦음·묻기 전 사진 설명·글 판독 �
 `LiveAudio`(통화 모드 BT SCO 고정, SpeechRecognizer ko-KR, TTS 큐) + `LiveService`(포그라운드·MediaSession 탭). 사진은 사용자 발화와 함께만 전송.
 **제약(DAT 1.0.1)**: 스트림 최대 720×1280, 프레임 YUV 레이아웃 미문서화(그래서 프레임 대신 사진), Inputs·Speech·standalone Photo 는 experimental(Developer Center 승인 필요할 수 있음), 글라스 단일 탭이 스트림을 PAUSED 로 만들 수 있음.
 **후속 후보**: in-stream 사진 해상도가 글 판독에 부족하면 standalone `camera.photo`(FULL/HIGH, 스트림 정지 필요), Gemini 실시간 모드(B안), Hermes 텔레그램 동시 게시.
+**11-16 개편(TASKS T-191~T-195)**: Live 는 별도 화면이 아니라 **봇 채팅 입력 카드의 Live 버튼 + Live 바**로 동작하고, 글라스 설정은 설정 화면으로 옮겼다.
+검증된 사실 — hermes-agent `vision_analyze` 는 긴 변 1568px 또는 base64 256KB(`vision.embed_target_bytes` 기본값)를 넘는 이미지를 **반으로** 줄인다. 그래서 앱이 1568px·190KB 이하로 맞춰 올린다(그 이상 화질은 봇에게 전달되지 않음 — 더 작은 글씨는 가운데 크롭/타일 전송이 후속 후보).
+채팅의 첨부 사진은 Bridge `GET /files/raw` 로 받아 표시한다(Hermes-bot 에는 첨부 다운로드 경로 없음).
 
 ## 4. 위험 요소 / 주의
 1. **새 Swift 파일은 반드시 `project.pbxproj`에 등록** (objectVersion 77, 명시적 파일 참조 — 자동 동기화 폴더 아님). 절차는 HANDOFF.md §4. *이번 커밋은 기존 파일만 수정해서 pbxproj 변경 없음.*

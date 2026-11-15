@@ -46,6 +46,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.hermes.chatandroid.data.BotAttachment
 import com.hermes.chatandroid.data.BotStep
+import com.hermes.chatandroid.net.AttachmentImageStore
+import com.hermes.chatandroid.ui.components.AttachmentImage
 import com.hermes.chatandroid.ui.components.AnimatedTypingBubble
 import com.hermes.chatandroid.ui.theme.hermesColors
 
@@ -74,37 +76,59 @@ fun readPendingFile(resolver: ContentResolver, uri: Uri, id: Long): PendingBotFi
     return PendingBotFile(id, filename, resolver.getType(uri), out.toByteArray())
 }
 
-/** 메시지에 붙은 첨부 — 서버에 첨부 다운로드 경로가 없어 파일명 칩으로 보여 준다. */
+/**
+ * 메시지에 붙은 첨부. 이미지는 [images] 로 원본을 받아 잘리지 않게 보여 주고(누르면 원본 뷰어),
+ * 그 밖의 파일·받을 수 없는 이미지는 파일명 칩으로 보여 준다.
+ */
 @Composable
-fun BotAttachmentChips(items: List<BotAttachment>, modifier: Modifier = Modifier) {
+fun BotAttachmentChips(
+    items: List<BotAttachment>,
+    modifier: Modifier = Modifier,
+    images: AttachmentImageStore? = null,
+    alignEnd: Boolean = false,
+) {
     if (items.isEmpty()) return
-    val hc = MaterialTheme.hermesColors
-    Row(modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        items.forEach { a ->
-            Surface(
-                shape = RoundedCornerShape(10.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerLow,
-                border = BorderStroke(1.dp, hc.cardBorder),
-            ) {
-                Row(
-                    Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Icon(
-                        if (a.isImage) Icons.Rounded.Image else Icons.Rounded.AttachFile,
-                        contentDescription = null,
-                        modifier = Modifier.size(15.dp),
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
-                    Text(
-                        a.name,
-                        style = MaterialTheme.typography.labelMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
+    val (pictures, files) = items.partition { it.isImage && images != null }
+    Column(
+        modifier,
+        horizontalAlignment = if (alignEnd) Alignment.End else Alignment.Start,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        pictures.forEach { a ->
+            AttachmentImage(images!!, a, fallback = { AttachmentChip(a) })
+        }
+        if (files.isNotEmpty()) {
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                files.forEach { a -> AttachmentChip(a) }
             }
+        }
+    }
+}
+
+@Composable
+private fun AttachmentChip(a: BotAttachment) {
+    Surface(
+        shape = RoundedCornerShape(10.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        border = BorderStroke(1.dp, MaterialTheme.hermesColors.cardBorder),
+    ) {
+        Row(
+            Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Icon(
+                if (a.isImage) Icons.Rounded.Image else Icons.Rounded.AttachFile,
+                contentDescription = null,
+                modifier = Modifier.size(15.dp),
+                tint = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+                a.name,
+                style = MaterialTheme.typography.labelMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }

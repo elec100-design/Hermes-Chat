@@ -13,20 +13,22 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -38,11 +40,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.hermes.chatandroid.ui.theme.hermesColors
 
-/** 채팅 화면 하단 플로팅 알약형 입력 바. */
+/**
+ * 채팅 화면 하단 입력 카드. 위 = 글 입력, 아래 = 도구 줄(왼쪽: 첨부 + [leadingActions], 오른쪽: [trailingActions] + 보내기).
+ * 넓은 화면에서는 가운데 정렬·최대 폭 제한.
+ */
 @Composable
 fun ChatComposerDock(
     value: String,
@@ -56,11 +63,15 @@ fun ChatComposerDock(
     onStop: (() -> Unit)? = null,
     placeholder: String = "메시지를 입력하세요…",
     topContent: (@Composable ColumnScope.() -> Unit)? = null,
+    /** 첨부(+) 버튼 오른쪽에 붙는 도구(작업 폴더 등). */
+    leadingActions: (@Composable RowScope.() -> Unit)? = null,
+    /** 보내기 버튼 왼쪽에 붙는 도구(Live 등). */
+    trailingActions: (@Composable RowScope.() -> Unit)? = null,
 ) {
     val hc = MaterialTheme.hermesColors
     Surface(
         modifier = modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface,
+        color = MaterialTheme.colorScheme.background,
         tonalElevation = 0.dp,
     ) {
         Column(
@@ -68,127 +79,158 @@ fun ChatComposerDock(
                 .fillMaxWidth()
                 .navigationBarsPadding()
                 .imePadding(),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            HorizontalDivider(thickness = 0.7.dp, color = hc.cardBorder)
             if (topContent != null) {
                 Column(
-                    Modifier.fillMaxWidth().padding(top = 6.dp),
+                    Modifier.widthIn(max = ComposerMaxWidth).fillMaxWidth().padding(top = 6.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                     content = topContent,
                 )
             }
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.Bottom,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            Surface(
+                modifier = Modifier
+                    .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 10.dp)
+                    .widthIn(max = ComposerMaxWidth)
+                    .fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.surface,
+                border = BorderStroke(1.dp, hc.cardBorder),
+                shadowElevation = 2.dp,
             ) {
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.surfaceContainer,
-                    border = BorderStroke(1.dp, hc.cardBorder),
-                    modifier = Modifier.size(44.dp),
-                ) {
-                    IconButton(onClick = onAttach, enabled = attachEnabled) {
-                        Icon(
-                            Icons.Rounded.Add,
-                            contentDescription = "파일 첨부",
-                            tint = if (attachEnabled) MaterialTheme.colorScheme.onSurface
-                            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                        )
-                    }
-                }
-
-                Surface(
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(24.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerLow,
-                    border = BorderStroke(1.dp, hc.cardBorder),
-                ) {
+                Column {
                     Box(
                         Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 11.dp),
+                            .padding(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 6.dp),
                         contentAlignment = Alignment.CenterStart,
                     ) {
                         if (value.isEmpty()) {
                             Text(
                                 placeholder,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                                maxLines = 1,
                             )
                         }
                         BasicTextField(
                             value = value,
                             onValueChange = onValueChange,
                             maxLines = 6,
-                            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                            textStyle = MaterialTheme.typography.bodyLarge.copy(
                                 color = MaterialTheme.colorScheme.onSurface,
                             ),
                             cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                             modifier = Modifier.fillMaxWidth(),
                         )
                     }
-                }
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        ComposerIconButton(
+                            icon = Icons.Rounded.Add,
+                            contentDescription = "파일 첨부",
+                            onClick = onAttach,
+                            enabled = attachEnabled,
+                        )
+                        leadingActions?.invoke(this)
+                        Spacer(Modifier.weight(1f))
+                        trailingActions?.invoke(this)
 
-                when {
-                    onStop != null && sending -> {
-                        Surface(
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.errorContainer,
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.35f)),
-                            modifier = Modifier.size(44.dp),
-                        ) {
-                            IconButton(onClick = onStop) {
-                                Icon(
-                                    Icons.Rounded.Stop,
-                                    contentDescription = "중지",
-                                    tint = MaterialTheme.colorScheme.error,
-                                )
-                            }
-                        }
-                    }
-                    else -> {
-                        val activeBg by animateColorAsState(
-                            if (sendEnabled && !sending) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.surfaceContainerHigh,
-                            animationSpec = tween(160),
-                            label = "sendBg",
-                        )
-                        val activeFg by animateColorAsState(
-                            if (sendEnabled && !sending) MaterialTheme.colorScheme.onPrimary
-                            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                            animationSpec = tween(160),
-                            label = "sendFg",
-                        )
-                        Surface(
-                            shape = CircleShape,
-                            color = activeBg,
-                            modifier = Modifier.size(44.dp),
-                        ) {
-                            if (sending) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    CircularProgressIndicator(
-                                        Modifier.size(18.dp),
-                                        strokeWidth = 2.dp,
-                                        color = MaterialTheme.colorScheme.primary,
-                                    )
+                        when {
+                            onStop != null && sending -> {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.size(ComposerButtonSize),
+                                ) {
+                                    IconButton(onClick = onStop) {
+                                        Icon(
+                                            Icons.Rounded.Stop,
+                                            contentDescription = "중지",
+                                            tint = MaterialTheme.colorScheme.surface,
+                                            modifier = Modifier.size(20.dp),
+                                        )
+                                    }
                                 }
-                            } else {
-                                IconButton(onClick = onSend, enabled = sendEnabled) {
-                                    Icon(
-                                        Icons.AutoMirrored.Rounded.Send,
-                                        contentDescription = "보내기",
-                                        tint = activeFg,
-                                        modifier = Modifier.size(20.dp),
-                                    )
+                            }
+                            else -> {
+                                val activeBg by animateColorAsState(
+                                    if (sendEnabled && !sending) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    animationSpec = tween(160),
+                                    label = "sendBg",
+                                )
+                                val activeFg by animateColorAsState(
+                                    if (sendEnabled && !sending) MaterialTheme.colorScheme.onPrimary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
+                                    animationSpec = tween(160),
+                                    label = "sendFg",
+                                )
+                                Surface(
+                                    shape = CircleShape,
+                                    color = activeBg,
+                                    modifier = Modifier.size(ComposerButtonSize),
+                                ) {
+                                    if (sending) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            CircularProgressIndicator(
+                                                Modifier.size(18.dp),
+                                                strokeWidth = 2.dp,
+                                                color = MaterialTheme.colorScheme.primary,
+                                            )
+                                        }
+                                    } else {
+                                        IconButton(onClick = onSend, enabled = sendEnabled) {
+                                            Icon(
+                                                Icons.Rounded.ArrowUpward,
+                                                contentDescription = "보내기",
+                                                tint = activeFg,
+                                                modifier = Modifier.size(20.dp),
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+/** 입력 카드 최대 폭(폴드 펼침 화면에서 줄이 너무 길어지지 않게). */
+val ComposerMaxWidth = 760.dp
+val ComposerButtonSize = 40.dp
+
+/** 입력 카드 도구 줄의 테두리 원형 아이콘 버튼. */
+@Composable
+fun ComposerIconButton(
+    icon: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    tint: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+) {
+    Surface(
+        shape = CircleShape,
+        color = Color.Transparent,
+        border = BorderStroke(1.dp, MaterialTheme.hermesColors.cardBorder),
+        modifier = modifier.size(ComposerButtonSize),
+    ) {
+        IconButton(onClick = onClick, enabled = enabled) {
+            Icon(
+                icon,
+                contentDescription = contentDescription,
+                tint = if (enabled) tint else tint.copy(alpha = 0.4f),
+                modifier = Modifier.size(20.dp),
+            )
         }
     }
 }

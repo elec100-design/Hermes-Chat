@@ -406,7 +406,7 @@ private fun TaskDetailSheet(
             }
 
             if (t.detail.isNotBlank()) Block("내용") { SelectionContainer { Text(t.detail, style = MaterialTheme.typography.bodyMedium) } }
-            t.result?.let { Block("결과", tint = Color(0xFF22C55E)) { SelectionContainer { Text(it, style = MaterialTheme.typography.bodyMedium) } } }
+            t.result?.let { Block("결과", tint = Color(0xFF4C8C5F)) { SelectionContainer { Text(it, style = MaterialTheme.typography.bodyMedium) } } }
             t.error?.let {
                 Block("오류" + if (t.failures > 0) " (연속 ${t.failures}회)" else "", tint = MaterialTheme.colorScheme.error) {
                     SelectionContainer { Text(it, style = MaterialTheme.typography.bodySmall) }

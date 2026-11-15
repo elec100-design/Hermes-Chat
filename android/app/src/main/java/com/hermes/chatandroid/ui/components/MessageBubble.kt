@@ -50,7 +50,7 @@ import com.hermes.chatandroid.net.ThinkFilter
 import com.hermes.chatandroid.ui.theme.hermesColors
 import kotlinx.coroutines.delay
 
-/** 채팅 말풍선. 사용자 = 오른쪽(브랜드 그라데이션), 봇 = 왼쪽(토널 카드). 본문은 <think> 제거 후 마크다운 렌더. */
+/** 채팅 메시지. 사용자 = 오른쪽 말풍선, 봇 = 왼쪽 본문(말풍선 없음). 본문은 <think> 제거 후 마크다운 렌더. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MessageBubble(
@@ -68,6 +68,8 @@ fun MessageBubble(
 ) {
     val visible = ThinkFilter.strip(text)
     val hc = MaterialTheme.hermesColors
+    // 사용자 = 오른쪽 말풍선, 봇 = 말풍선 없이 본문만(긴 답·표·코드를 넓게 읽도록). containerColor 를 주면 봇도 카드로.
+    val plain = !isUser && containerColor == null && borderColor == null
     val shape = if (isUser) {
         RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomEnd = 6.dp, bottomStart = 20.dp)
     } else {
@@ -79,29 +81,24 @@ fun MessageBubble(
         contentAlignment = if (isUser) Alignment.CenterEnd else Alignment.CenterStart,
     ) {
         // 폴더블(Z Fold) 등 넓은 화면에서도 가독성을 위해 최대 폭 제한
-        val maxBubbleWidth = minOf(maxWidth * 0.85f, 540.dp)
+        val maxBubbleWidth = if (plain) minOf(maxWidth, 720.dp) else minOf(maxWidth * 0.85f, 540.dp)
         val fg = if (isUser) hc.onUserBubble else MaterialTheme.colorScheme.onSurface
         val bubbleBrush: Brush = when {
             containerColor != null -> SolidColor(containerColor)
             isUser -> Brush.linearGradient(listOf(hc.userBubbleStart, hc.userBubbleEnd))
-            else -> SolidColor(MaterialTheme.colorScheme.surface)
+            else -> SolidColor(Color.Transparent)
         }
-        val resolvedBorder = when {
-            borderColor != null -> borderColor
-            isUser -> null
-            else -> hc.cardBorder
-        }
-        val inlineCodeBg = if (isUser) Color.White.copy(alpha = 0.18f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
-        val linkColor = if (isUser) Color.White else MaterialTheme.colorScheme.primary
+        val inlineCodeBg = if (isUser) fg.copy(alpha = 0.08f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
+        val linkColor = MaterialTheme.colorScheme.primary
 
         Column(
             Modifier
                 .widthIn(max = maxBubbleWidth)
                 .clip(shape)
                 .background(bubbleBrush, shape)
-                .then(if (resolvedBorder != null) Modifier.border(1.dp, resolvedBorder, shape) else Modifier)
+                .then(if (borderColor != null) Modifier.border(1.dp, borderColor, shape) else Modifier)
                 .then(if (onLongClick != null) Modifier.combinedClickable(onClick = {}, onLongClick = onLongClick) else Modifier)
-                .padding(horizontal = 14.dp, vertical = 10.dp),
+                .padding(horizontal = if (plain) 2.dp else 14.dp, vertical = if (plain) 2.dp else 10.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             if (label != null) {
@@ -126,7 +123,7 @@ fun MessageBubble(
                                 )
                             }
                             is MdBlock.Quote -> {
-                                val barColor = if (isUser) Color.White.copy(alpha = 0.5f) else MaterialTheme.colorScheme.primary
+                                val barColor = MaterialTheme.colorScheme.primary
                                 Box(
                                     Modifier
                                         .fillMaxWidth()

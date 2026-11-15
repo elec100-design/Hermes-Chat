@@ -186,7 +186,7 @@ fun OnboardingScreen(
                             )
                             FeatureHighlightCard(
                                 icon = Icons.Rounded.Forum,
-                                tint = Color(0xFF0EA5E9),
+                                tint = Color(0xFF4F86A8),
                                 title = "봇 DM & 멀티 에이전트 채널",
                                 desc = "각 프로필 봇과의 1:1 대화는 물론 채널에서 @멘션으로 협업할 수 있습니다.",
                             )
@@ -256,7 +256,7 @@ fun OnboardingScreen(
                         2 -> {
                             StepHeader(
                                 icon = Icons.Rounded.Hub,
-                                tint = Color(0xFF0EA5E9),
+                                tint = Color(0xFF4F86A8),
                                 title = "게이트웨이 (선택 사항)",
                                 subtitle = "봇 서버 외에 각 봇의 예전 게이트웨이 세션을 열 때 필요합니다. 나중에 설정해도 됩니다.",
                             )

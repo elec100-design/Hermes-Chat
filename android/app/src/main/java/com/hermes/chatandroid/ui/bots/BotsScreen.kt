@@ -82,7 +82,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.hermes.chatandroid.AppContainer
-import com.hermes.chatandroid.live.LiveTarget
 import com.hermes.chatandroid.data.Bot
 import com.hermes.chatandroid.data.BotChannel
 import com.hermes.chatandroid.ui.components.EmptyState
@@ -163,7 +162,8 @@ fun BotsScreen(
     onOpenBotProfile: (botId: Int) -> Unit,
     onOpenChannelSettings: (channelId: Int) -> Unit,
     modifier: Modifier = Modifier,
-    onOpenLive: (LiveTarget, List<String>) -> Unit = { _, _ -> },
+    onOpenSettings: () -> Unit = {},
+    onOpenWorkspaces: () -> Unit = {},
 ) {
     val vm: BotsViewModel = viewModel(factory = viewModelFactory { initializer { BotsViewModel(container) } })
     val state by vm.state.collectAsStateWithLifecycle()
@@ -266,7 +266,8 @@ fun BotsScreen(
                         onBack = null,
                         onOpenBotProfile = onOpenBotProfile,
                         onOpenChannelSettings = onOpenChannelSettings,
-                        onOpenLive = onOpenLive,
+                        onOpenSettings = onOpenSettings,
+                        onOpenWorkspaces = onOpenWorkspaces,
                     )
                 }
             }
@@ -295,7 +296,8 @@ fun BotsScreen(
                         onBack = { onSelectChannel(null) },
                         onOpenBotProfile = onOpenBotProfile,
                         onOpenChannelSettings = onOpenChannelSettings,
-                        onOpenLive = onOpenLive,
+                        onOpenSettings = onOpenSettings,
+                        onOpenWorkspaces = onOpenWorkspaces,
                     )
                 }
             }
@@ -731,7 +733,8 @@ private fun ChatDetailPane(
     onBack: (() -> Unit)?,
     onOpenBotProfile: (Int) -> Unit,
     onOpenChannelSettings: (Int) -> Unit,
-    onOpenLive: (LiveTarget, List<String>) -> Unit,
+    onOpenSettings: () -> Unit,
+    onOpenWorkspaces: () -> Unit,
 ) {
     val hc = MaterialTheme.hermesColors
     when {
@@ -773,7 +776,8 @@ private fun ChatDetailPane(
                     modifier = Modifier.fillMaxSize(),
                     onOpenBotProfile = onOpenBotProfile,
                     onOpenChannelSettings = onOpenChannelSettings,
-                    onOpenLive = onOpenLive,
+                    onOpenSettings = onOpenSettings,
+                    onOpenWorkspaces = onOpenWorkspaces,
                 )
             }
         }

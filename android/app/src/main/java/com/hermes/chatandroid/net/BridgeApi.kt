@@ -48,6 +48,10 @@ open class BridgeApi(
             ?: throw ApiException(0, "업로드 응답에 path 가 없습니다")
     }
 
+    /** HERMES_HOME 기준 상대경로의 파일 원본(`GET /files/raw`, 20MB 이하). 첨부 이미지 표시용. */
+    open suspend fun fetchRaw(relativePath: String): ByteArray =
+        http.fetchBytes(req("files/raw?path=" + URLEncoder.encode(relativePath, "UTF-8")).build())
+
     private fun req(path: String) = Request.Builder().url(joinUrl(baseUrl, path)).bearer(token)
     private fun seg(v: String) = URLEncoder.encode(v, "UTF-8").replace("+", "%20")
 

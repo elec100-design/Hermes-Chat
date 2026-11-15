@@ -33,8 +33,8 @@ fun botErrorText(e: Throwable): String =
     else e.message?.takeIf { it.isNotBlank() } ?: "알 수 없는 오류"
 
 private val TonePalette = listOf(
-    Color(0xFF5B8DEF), Color(0xFF2CB67D), Color(0xFFF59E0B),
-    Color(0xFFEC4899), Color(0xFF8B5CF6), Color(0xFF06B6D4),
+    Color(0xFF5B8FB9), Color(0xFF5A9A6E), Color(0xFFC99A2E),
+    Color(0xFFC4688A), Color(0xFF8B77B8), Color(0xFF4F9DA6),
 )
 
 /** tone 1..6 → 포인트 색. null/범위 밖 = 기본(null). */

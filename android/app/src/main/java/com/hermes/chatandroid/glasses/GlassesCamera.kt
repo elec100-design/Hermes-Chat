@@ -56,8 +56,14 @@ enum class PhotoSize(val label: String, val resolution: PhotoResolution, val qua
     BEST("최고화질", PhotoResolution.FULL, PhotoQuality.HIGH),
 }
 
-/** 글라스에서 찍은 사진(업로드용 JPEG + 화면 미리보기). */
-class GlassesPhoto(val jpeg: ByteArray, val preview: Bitmap, val sourceWidth: Int, val sourceHeight: Int) {
+/** 글라스에서 찍은 사진(업로드용 JPEG). [width]×[height] = 올리는 크기, source = 글라스가 보낸 크기. */
+class GlassesPhoto(
+    val jpeg: ByteArray,
+    val width: Int,
+    val height: Int,
+    val sourceWidth: Int,
+    val sourceHeight: Int,
+) {
     /** 글라스→폰 수신 시간·크기(화면 표시·튜닝용). */
     var transferMs: Long = 0
     var receivedKB: Int = 0
@@ -96,13 +102,29 @@ class GlassesCamera(private val appContext: Context) {
     private var jobs = mutableListOf<Job>()
     private val captureLock = Mutex()
 
+    private var autoConnect = false
+
+    /**
+     * Live 시작·촬영 직전에 부른다: 초기화하고, 등록·카메라 권한이 이미 갖춰져 있으면 세션까지 연다
+     * (설정 화면을 거치지 않아도, 글라스가 세션을 끊은 뒤에도 다시 붙게). BLUETOOTH_CONNECT 허용 후에만 호출.
+     */
+    fun ensureConnected() {
+        autoConnect = true
+        if (!_state.value.initialized) initialize() else scope.launch { refreshPermission() }
+    }
+
     /** BLUETOOTH_CONNECT 허용 후 1회. 실패는 state.error 로. */
     fun initialize() {
         if (_state.value.initialized) return
         Wearables.initialize(appContext)
             .onSuccess {
                 _state.update { it.copy(initialized = true, error = null) }
-                scope.launch { Wearables.registrationState.collect { r -> _state.update { it.copy(registration = r) } } }
+                scope.launch {
+                    Wearables.registrationState.collect { r ->
+                        _state.update { it.copy(registration = r) }
+                        if (autoConnect && r == RegistrationState.REGISTERED) refreshPermission()
+                    }
+                }
                 scope.launch {
                     Wearables.devices.collect { d ->
                         _state.update { it.copy(deviceCount = d.size) }
@@ -143,7 +165,10 @@ class GlassesCamera(private val appContext: Context) {
     suspend fun refreshPermission() {
         if (!_state.value.initialized) return
         Wearables.checkPermissionStatus(Permission.CAMERA)
-            .onSuccess { s -> _state.update { it.copy(cameraPermission = s == PermissionStatus.Granted) } }
+            .onSuccess { s ->
+                _state.update { it.copy(cameraPermission = s == PermissionStatus.Granted) }
+                if (autoConnect) connect()
+            }
             .onFailure { e, _ -> fail("카메라 권한 확인 실패: ${e.description}") }
     }
 
@@ -184,9 +209,9 @@ class GlassesCamera(private val appContext: Context) {
     }
 
     /**
-     * 시야 사진 1장(업로드용 긴 변 [maxSide]px·JPEG 92). 세션이 없으면 null. 동시 호출은 직렬화.
+     * 시야 사진 1장(업로드용 긴 변 [maxSide]px·[VISION_MAX_BYTES] 이하 JPEG). 세션이 없으면 null. 동시 호출은 직렬화.
      */
-    suspend fun capture(size: PhotoSize = PhotoSize.BALANCED, maxSide: Int = 2560): GlassesPhoto? = captureLock.withLock {
+    suspend fun capture(size: PhotoSize = PhotoSize.BALANCED, maxSide: Int = VISION_MAX_SIDE): GlassesPhoto? = captureLock.withLock {
         val s = session ?: return null
         if (!_state.value.cameraReady) return null
         _state.update { it.copy(transfer = 0f) }
@@ -300,7 +325,16 @@ class GlassesCamera(private val appContext: Context) {
         private const val TAG = "GlassesCamera"
 
         /**
-         * 이미지 바이트(JPEG/HEIC) → 바로 세운 JPEG + 미리보기.
+         * 봇(hermes-agent `vision_analyze`)이 줄이지 않고 그대로 보는 한도 — 11-16 실측·소스 확인:
+         * 긴 변 1568px 또는 base64 256KB 를 넘으면 해상도를 **반으로** 줄인다(1920×1080 → 960×540, 글 판독 불가).
+         * 그래서 폰에서 미리 이 한도에 맞춰 보낸다.
+         */
+        const val VISION_MAX_SIDE = 1568
+        const val VISION_MAX_BYTES = 190 * 1024
+        private val JPEG_QUALITIES = intArrayOf(92, 88, 84, 80, 76, 72, 68, 62)
+
+        /**
+         * 이미지 바이트(JPEG/HEIC) → 바로 세운 업로드용 JPEG.
          * EXIF 회전을 직접 적용한다. EXIF 가 없는데 가로로 누운 사진이면 글라스 카메라(세로 센서)
          * 기준으로 시계 방향 90° 돌린다(11-15 실측: 1440×1080 이 왼쪽으로 누워 옴).
          */
@@ -321,11 +355,14 @@ class GlassesCamera(private val appContext: Context) {
             val scale = minOf(1f, maxSide.toFloat() / maxOf(src.width, src.height))
             val m = Matrix().apply { if (scale < 1f) postScale(scale, scale); if (degrees != 0) postRotate(degrees.toFloat()) }
             val out = if (m.isIdentity) src else Bitmap.createBitmap(src, 0, 0, src.width, src.height, m, true)
-            val jpeg = ByteArrayOutputStream().use { os -> out.compress(Bitmap.CompressFormat.JPEG, 92, os); os.toByteArray() }
-            val previewScale = minOf(1f, 480f / maxOf(out.width, out.height))
-            val preview = Bitmap.createScaledBitmap(out, (out.width * previewScale).toInt(), (out.height * previewScale).toInt(), true)
+            // 화질을 낮춰 가며 용량 한도 안에 드는 첫 결과를 쓴다(한도를 넘으면 봇 쪽에서 해상도를 반으로 줄인다).
+            var jpeg = ByteArray(0)
+            for (q in JPEG_QUALITIES) {
+                jpeg = ByteArrayOutputStream().use { os -> out.compress(Bitmap.CompressFormat.JPEG, q, os); os.toByteArray() }
+                if (jpeg.size <= VISION_MAX_BYTES) break
+            }
             val (w, h) = if (degrees % 180 != 0) bounds.outHeight to bounds.outWidth else bounds.outWidth to bounds.outHeight
-            return GlassesPhoto(jpeg, preview, w, h)
+            return GlassesPhoto(jpeg, out.width, out.height, w, h)
         }
 
         /** 순수 함수(테스트용): EXIF 값과 크기로 시계 방향 회전 각도. */
