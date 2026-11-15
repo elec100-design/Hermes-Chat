@@ -377,13 +377,34 @@
 
 | ID | 작업 | 파일 | 상태 |
 |----|------|------|------|
-| T-170 | 봇 홈(대화/승인/더보기 탭)·온보딩(봇 서버 우선)·설정 재구성 + BotApi 전 엔드포인트(봇 수정·발견·헬스·steps·첨부·채널 관리·워크스페이스) + 프로필 검색 401 안내 | `android/…/net/BotApi.kt`, `…/ui/AppNav.kt`, `…/ui/{onboarding,settings,bots}` | NEEDS-BUILD (11-13 로컬 빌드·단위테스트 통과 6953ba1, 폴드 설치됨·봇 서버 미기동으로 실서버 미검증) |
-| T-171 | 봇 채팅 고도화 — 첨부 업로드·실행 단계(steps) 표시·마크다운·정체색 말풍선 | `…/ui/bots/chat` | NEEDS-BUILD (11-13 로컬 빌드·단위테스트 통과 6953ba1, 폴드 설치됨·봇 서버 미기동으로 실서버 미검증) |
-| T-172 | 봇 프로필 — 이름·아바타·페르소나·승인 정책 편집, 보관, 헬스·발견 (지난 세션은 T-175로 이관) | `…/ui/bots/profile` | NEEDS-BUILD (11-13 로컬 빌드·단위테스트 통과 6953ba1, 폴드 설치됨·봇 서버 미기동으로 실서버 미검증) |
-| T-173 | 채널 관리 — 제목·주제·봇끼리 대화 수정, 멤버 추가/제거, 삭제 | `…/ui/bots/channel` | NEEDS-BUILD (11-13 로컬 빌드·단위테스트 통과 6953ba1, 폴드 설치됨·봇 서버 미기동으로 실서버 미검증) |
-| T-174 | 워크스페이스 — 목록·폴더 추가·리포 클론·상태·커밋·푸시·삭제 | `…/ui/workspaces` | NEEDS-BUILD (11-13 로컬 빌드·단위테스트 통과 6953ba1, 폴드 설치됨·봇 서버 미기동으로 실서버 미검증) |
-| T-175 | 2차: 칸반·크론·대시보드·봇별 지난 세션(게이트웨이 세션 — 멀티플렉스는 Hermes-bot 경유 프록시 필요) 부가 기능 | — | TODO |
-| T-176 | 폴드 대응 적응형 레이아웃 — 커버(좁은 창): 봇 홈을 목록↔채팅 전체 화면 전환으로(자동 열림 드로어 제거), 채팅 중 하단 탭 숨김 / 내부(폭 600dp+): 하단 탭 대신 왼쪽 내비게이션 레일, 사이드바+채팅 2단 유지, 단일 컬럼 화면 본문 720dp(온보딩 560dp) 가운데 정렬 | `…/ui/AppNav.kt`, `…/ui/bots/BotsScreen.kt`, `…/ui/components/Common.kt`, 단일 컬럼 화면들 | NEEDS-BUILD (11-14 로컬 빌드·단위테스트 통과, 폴드 실기기 미검증) |
+| T-170 | 봇 홈(대화/승인/더보기 탭)·온보딩(봇 서버 우선)·설정 재구성 + BotApi 전 엔드포인트(봇 수정·발견·헬스·steps·첨부·채널 관리·워크스페이스) + 프로필 검색 401 안내 | `android/…/net/BotApi.kt`, `…/ui/AppNav.kt`, `…/ui/{onboarding,settings,bots}` | DONE (11-15 폴드 실기기 APK 설치·실서버 :8900 확인 — 봇 14개 연결·DM·실행 단계 표시) |
+| T-171 | 봇 채팅 고도화 — 첨부 업로드·실행 단계(steps) 표시·마크다운·정체색 말풍선 | `…/ui/bots/chat` | DONE (11-15 폴드 실기기 APK 설치·실서버 :8900 확인 — 봇 14개 연결·DM·실행 단계 표시) |
+| T-172 | 봇 프로필 — 이름·아바타·페르소나·승인 정책 편집, 보관, 헬스·발견 (지난 세션은 T-175로 이관) | `…/ui/bots/profile` | DONE (11-15 폴드 실기기 APK 설치·실서버 :8900 확인 — 봇 14개 연결·DM·실행 단계 표시) |
+| T-173 | 채널 관리 — 제목·주제·봇끼리 대화 수정, 멤버 추가/제거, 삭제 | `…/ui/bots/channel` | DONE (11-15 폴드 실기기 APK 설치·실서버 :8900 확인 — 봇 14개 연결·DM·실행 단계 표시) |
+| T-174 | 워크스페이스 — 목록·폴더 추가·리포 클론·상태·커밋·푸시·삭제 | `…/ui/workspaces` | DONE (11-15 폴드 실기기 APK 설치·실서버 :8900 확인 — 봇 14개 연결·DM·실행 단계 표시) |
+| T-175 | 2차: 칸반·크론·대시보드·봇별 지난 세션(게이트웨이 세션 — 멀티플렉스는 Hermes-bot 경유 프록시 필요) 부가 기능 | — | → Phase 27(T-178~182)로 분할 |
+| T-176 | 폴드 대응 적응형 레이아웃 — 커버(좁은 창): 봇 홈을 목록↔채팅 전체 화면 전환으로(자동 열림 드로어 제거), 채팅 중 하단 탭 숨김 / 내부(폭 600dp+): 하단 탭 대신 왼쪽 내비게이션 레일, 사이드바+채팅 2단 유지, 단일 컬럼 화면 본문 720dp(온보딩 560dp) 가운데 정렬 | `…/ui/AppNav.kt`, `…/ui/bots/BotsScreen.kt`, `…/ui/components/Common.kt`, 단일 컬럼 화면들 | DONE (11-15 폴드 실기기 APK 설치·실서버 :8900 확인 — 봇 14개 연결·DM·실행 단계 표시) |
+
+## Phase 27 — Android 미구현 기능 이식 (2026-11-15, iOS 대비 갭)
+
+> 순서대로 하나씩: 구현 → `./gradlew :app:testDebugUnitTest :app:assembleDebug` → 18888 배포 → 폴드 실기기 확인 → DONE.
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-177 | 마크다운 표(GFM table) 렌더링 — 봇/세션 채팅 말풍선에서 `| a | b |` 원문 노출 수정 | `…/ui/components/MarkdownLite.kt` | TODO |
+| T-178 | 봇 프로필 "지난 세션" — 봇 게이트웨이 포트로 직결해 세션 목록·열기(기존 `ChatScreen` 재사용) | `…/ui/bots/profile`, `…/ui/sessions` | TODO |
+| T-179 | `BridgeClient`(:8765, 토큰 401 분리·업로드 120s) + 대시보드 WebView | `…/net/BridgeApi.kt`, `…/ui/more` | TODO |
+| T-180 | 프로필 관리 — SOUL 편집·모델 선택·게이트웨이 재시작·로그·생성/삭제 | `…/ui/bots/profile` | TODO |
+| T-181 | 칸반 — 보드 목록·보드·태스크 생성/액션 (Bridge 경유, CLI 쓰기) | `…/ui/kanban` | TODO |
+| T-182 | 크론 — 조회·편집·켜기/끄기·즉시 실행·삭제 | `…/ui/cron` | TODO |
+| T-183 | 음성 입력(SpeechRecognizer ko-KR)·응답 읽기(TextToSpeech) | `…/ui/components/ChatComposer.kt`, `…/voice` | TODO |
+| T-184 | 알림 — 응답 완료·승인 대기 (POST_NOTIFICATIONS) | — | TODO |
+| T-185 | 파일 브라우저·스킬 목록 | — | TODO |
+| T-186 | Deep think 토론방 | — | TODO |
+| T-187 | 핸즈프리 Live 모드(침묵 자동 전송·문장 단위 TTS·BT SCO·포그라운드 서비스) | — | TODO |
+| T-188 | 글라스 사진 자동 전송(MediaStore ContentObserver) | — | TODO |
+| T-189 | 진입 단축 — 앱 바로가기·빠른 설정 타일·MediaSession 글라스 탭 | — | TODO |
+| T-190 | 다국어(en/zh) 문자열 추출 | `res/values*` | TODO |
 
 ## Phase A — 앱스토어 상품화 Phase 0: 컴플라이언스 + 다국어 기반
 
@@ -454,3 +475,4 @@
 | 11-13 | ccr-29d493c3-z8tex2 @ b579721 | ANDROID BUILD SUCCESSFUL | Claude Code 맥미니 로컬 — `./gradlew clean :app:testDebugUnitTest :app:assembleDebug :app:bundleRelease` 통과(AGP 8.9.3, compileSdk/targetSdk 36). 단위 테스트 34개 통과(DemoMode 5 추가), `app-release.aab` 생성(미서명). 임시 키스토어로 assembleRelease 서명 확인 후 삭제. 실기기 미검증 |
 | 11-13 | ccr-29d493c3-z8tex2 @ 6953ba1 | ANDROID BUILD SUCCESSFUL | Claude Code 맥미니 로컬 — Phase 26 봇 중심 재구성(T-170~174) `clean :app:testDebugUnitTest :app:assembleDebug` 통과, 단위 테스트 58개. Galaxy Z Fold(SM-F971N)에 adb 설치·실행 확인. 맥미니 Hermes-bot LaunchAgent(`ai.hermes.bot`)가 빈 배포 폴더(`~/Documents/Hermes-bot`)를 가리켜 :8900 미기동 → 실서버 검증 대기 |
 | 11-13 | ccr-29d493c3-z8tex2 @ e0b8819 | BUILD SUCCEEDED + TEST SUCCEEDED | iOS Simulator(generic/platform=iOS Simulator) 빌드 및 `HermesChatTests`(iPhone 17, SSEParserTests 20 + ChatRecoveryTests 14 = 34건) 전체 통과. `origin/main` 머지·T-149 통합·구 T-158/159→T-167/168 재번호 반영 |
+| 11-15 | claude/android-fold-ui @ 08d74ce | ANDROID 실기기 검증 | 사용자 Galaxy Z Fold에 debug APK(18888 배포) 설치·실서버(:8900) 확인 — 연결 테스트(봇 14개), 봇 목록·DM·실행 단계·더보기·설정 정상. T-170~176 DONE. 마크다운 표 미렌더링 발견 → T-177 |
