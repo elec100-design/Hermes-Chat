@@ -66,6 +66,7 @@ import com.hermes.chatandroid.ui.bots.BotsScreen
 import com.hermes.chatandroid.ui.bots.channel.ChannelSettingsScreen
 import com.hermes.chatandroid.ui.bots.profile.BotProfileScreen
 import com.hermes.chatandroid.ui.chat.ChatScreen
+import com.hermes.chatandroid.ui.more.DashboardScreen
 import com.hermes.chatandroid.ui.more.MoreScreen
 import com.hermes.chatandroid.ui.onboarding.OnboardingScreen
 import com.hermes.chatandroid.ui.settings.SettingsScreen
@@ -81,6 +82,7 @@ object Routes {
     const val MORE = "more"
     const val SETTINGS = "settings"
     const val WORKSPACES = "workspaces"
+    const val DASHBOARD = "dashboard"
     /** 게이트웨이 세션 채팅. [port] 가 -1 이면 설정의 선택 프로필, 아니면 그 봇 게이트웨이 포트. */
     const val CHAT = "chat/{sessionId}?port={port}"
     const val BOT_CHAT = "botChat/{channelId}"
@@ -271,6 +273,7 @@ fun AppNav(container: AppContainer) {
                         container = container,
                         onOpenSettings = { navController.navigate(Routes.SETTINGS) },
                         onOpenWorkspaces = { navController.navigate(Routes.WORKSPACES) },
+                        onOpenDashboard = { navController.navigate(Routes.DASHBOARD) },
                         modifier = mod,
                     )
                 }
@@ -282,6 +285,9 @@ fun AppNav(container: AppContainer) {
                         modifier = mod,
                         onBack = { navController.popBackStack() },
                     )
+                }
+                composable(Routes.DASHBOARD) {
+                    DashboardScreen(container, onBack = { navController.popBackStack() }, modifier = mod)
                 }
                 composable(Routes.WORKSPACES) {
                     WorkspacesScreen(container, onBack = { navController.popBackStack() }, modifier = mod)

@@ -393,11 +393,11 @@
 |----|------|------|------|
 | T-177 | 마크다운 표(GFM table) 렌더링 — 봇/세션 채팅 말풍선에서 `| a | b |` 원문 노출 수정 | `…/ui/components/MarkdownLite.kt` | TODO |
 | T-178 | 봇 프로필 "지난 세션" — 봇 게이트웨이 포트로 직결해 세션 목록·열기(기존 `ChatScreen` 재사용) | `…/ui/bots/profile`, `…/ui/sessions` | TODO |
-| T-179 | `BridgeClient`(:8765, 토큰 401 분리·업로드 120s) + 대시보드 WebView | `…/net/BridgeApi.kt`, `…/ui/more` | TODO |
-| T-180 | 프로필 관리 — SOUL 편집·모델 선택·게이트웨이 재시작·로그·생성/삭제 | `…/ui/bots/profile` | TODO |
+| T-179 | 대시보드 WebView(:8000, 더보기 > 대시보드) — 쿠키 로그인 유지·핀치 줌(viewport 덮어쓰기)·**폴드 커버=모바일 / 펼침(600dp+)=데스크톱 UA+1024px 자동 전환**(툴바 토글은 임시)·외부 링크는 브라우저·뒤로가기=웹 history. `BridgeClient`는 T-180으로 이관 | `…/ui/more/DashboardScreen.kt`(신규), `…/ui/more/MoreScreen.kt`, `…/ui/AppNav.kt`, `…/data/Settings.kt` | NEEDS-BUILD (11-15 로컬 빌드·단위테스트 통과, 폴드 실기기 미검증) |
+| T-180 | `BridgeClient`(:8765, 토큰 401 분리·업로드 120s) + 프로필 관리 — SOUL 편집·모델 선택·게이트웨이 재시작·로그·생성/삭제 | `…/ui/bots/profile` | TODO |
 | T-181 | 칸반 — 보드 목록·보드·태스크 생성/액션 (Bridge 경유, CLI 쓰기) | `…/ui/kanban` | TODO |
 | T-182 | 크론 — 조회·편집·켜기/끄기·즉시 실행·삭제 | `…/ui/cron` | TODO |
-| T-183 | 음성 입력(SpeechRecognizer ko-KR)·응답 읽기(TextToSpeech) | `…/ui/components/ChatComposer.kt`, `…/voice` | TODO |
+| T-183 | ~~음성 입력~~ — 사용자 결정(11-15): 키보드 Typeless 사용으로 앱 내 음성 입력 불필요. 응답 읽기(TTS)만 필요 시 재검토 | — | DROPPED |
 | T-184 | 알림 — 응답 완료·승인 대기 (POST_NOTIFICATIONS) | — | TODO |
 | T-185 | 파일 브라우저·스킬 목록 | — | TODO |
 | T-186 | Deep think 토론방 | — | TODO |

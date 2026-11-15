@@ -36,9 +36,18 @@ data class Settings(
 
     val botBaseUrl: String? get() = normalizeUrl(botHost, 8900)
 
+    /** 맥미니 대시보드(:8000). 게이트웨이 호스트가 없으면 봇 서버 호스트를 쓴다. */
+    val dashboardUrl: String?
+        get() {
+            val h = cleanHost.substringBefore(':').ifEmpty { hostOnly(botHost) }
+            return if (h.isEmpty()) null else "http://$h:$DASHBOARD_PORT"
+        }
+
     val botConfigured: Boolean get() = demoMode || botHost.isNotBlank()
 
     companion object {
+        const val DASHBOARD_PORT = 8000
+
         /** "http://100.1.2.3:8900/x" -> "100.1.2.3" (스킴·포트·경로 제거). */
         fun hostOnly(raw: String): String =
             raw.trim().removePrefix("http://").removePrefix("https://").substringBefore('/').substringBefore(':')
