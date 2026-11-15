@@ -10,6 +10,7 @@
     <string name="tab_kanban">칸반</string>
     <string name="tab_cron">크론</string>
     <string name="tab_more">더보기</string>
+    <string name="shortcut_approvals_long">승인 요청 확인</string>
     <string name="loading">불러오는 중…</string>
     <string name="retry">다시 시도</string>
     <string name="back">뒤로</string>

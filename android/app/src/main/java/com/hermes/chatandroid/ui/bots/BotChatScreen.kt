@@ -187,6 +187,9 @@ class BotChatViewModel(private val container: AppContainer, private val channelI
                 val dm = if (ch != null) null else runCatching { api.fetchBots(false).firstOrNull { it.dmChannelId == channelId } }.getOrNull()
                 val msgs = api.fetchMessages(channelId)
                 _state.update { it.copy(loading = false, channel = ch ?: it.channel, dmBot = dm ?: it.dmBot, error = null) }
+                if (!container.settingsRepository.current.demoMode) {
+                    container.onChatOpened?.invoke(channelId, dm?.displayName ?: ch?.let { "#${it.title}" } ?: "대화", dm)
+                }
                 follower.submit(msgs)
             } catch (e: Exception) {
                 _state.update { it.copy(loading = false, error = botErrorText(e)) }

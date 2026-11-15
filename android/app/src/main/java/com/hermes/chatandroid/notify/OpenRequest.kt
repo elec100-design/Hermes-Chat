@@ -6,12 +6,15 @@ import android.content.Intent
 sealed interface OpenRequest {
     data class Channel(val channelId: Int) : OpenRequest
     data object Approvals : OpenRequest
+    /** 정적 바로가기: approvals | kanban | cron */
+    data class Tab(val route: String) : OpenRequest
 
     companion object {
         fun from(intent: Intent?): OpenRequest? = when {
             intent == null -> null
             intent.hasExtra(Notifications.EXTRA_CHANNEL) -> Channel(intent.getIntExtra(Notifications.EXTRA_CHANNEL, 0))
             intent.getBooleanExtra(Notifications.EXTRA_APPROVALS, false) -> Approvals
+            intent.getStringExtra("open_tab") != null -> Tab(intent.getStringExtra("open_tab")!!)
             else -> null
         }
     }

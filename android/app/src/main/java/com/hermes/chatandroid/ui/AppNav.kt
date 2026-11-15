@@ -224,6 +224,7 @@ fun AppNav(
         when (openRequest) {
             is OpenRequest.Channel -> { selectedBotChannelId = openRequest.channelId; navigateTab(ChatsTab) }
             OpenRequest.Approvals -> navigateTab(ApprovalsTab)
+            is OpenRequest.Tab -> Tabs.firstOrNull { it.route == openRequest.route }?.let(navigateTab)
             null -> return@LaunchedEffect
         }
         onOpenHandled()
