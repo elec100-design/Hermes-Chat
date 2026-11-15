@@ -47,8 +47,10 @@ class LiveTextTest {
     }
 
     @Test fun wantsPhotoOnVisionWords() {
-        assertTrue(LiveText.wantsPhoto("이거 뭐야"))
+        assertTrue(LiveText.wantsPhoto("사진 찍어"))
+        assertTrue(LiveText.wantsPhoto("이거 보여?"))
         assertTrue(LiveText.wantsPhoto("메뉴판 읽어줘"))
+        assertFalse(LiveText.wantsPhoto("이거 뭐야"))
         assertFalse(LiveText.wantsPhoto("오늘 일정 알려줘"))
     }
 

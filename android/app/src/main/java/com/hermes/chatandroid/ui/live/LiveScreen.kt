@@ -58,6 +58,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hermes.chatandroid.AppContainer
+import com.hermes.chatandroid.glasses.PhotoSize
 import com.hermes.chatandroid.live.LivePhase
 import com.hermes.chatandroid.live.LiveTarget
 import com.hermes.chatandroid.live.VisionMode
@@ -162,8 +163,14 @@ fun LiveScreen(
                     FilterChip(selected = ui.vision == m, onClick = { live.setVision(m) }, label = { Text(m.label) })
                 }
             }
+            Text("사진 크기 (클수록 글이 잘 보이지만 전송이 느려요)", style = MaterialTheme.typography.labelLarge)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                PhotoSize.entries.forEach { sz ->
+                    FilterChip(selected = ui.photoSize == sz, onClick = { live.setPhotoSize(sz) }, label = { Text(sz.label) })
+                }
+            }
             Text(
-                "사진은 항상 내 질문과 함께만 보내요. 무엇을 물을지 말하기 전에는 봇이 사진을 보지 않아요.",
+                "\"사진 찍어\", \"이거 보여\", \"읽어줘\"처럼 말하면 그때 고화질로 찍어 질문과 함께 보내요. 사진만 따로 보내지 않아요.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -264,9 +271,10 @@ private fun GlassesCard(
                 state.cameraPermission != true -> "글라스 카메라 권한이 필요해요" to ("카메라 권한 요청" to onRequestCamera)
                 state.update != null && !state.cameraReady ->
                     "글라스 업데이트가 필요해요 — Meta AI 앱에서 업데이트 후 돌아와 '카메라 켜기'" to ("업데이트 열기" to onUpdate)
-                state.cameraReady -> "카메라 연결됨 · 사진 촬영 가능" to ("끄기" to onDisconnect)
-                state.session != null -> "글라스 연결 중… (${state.stream ?: state.session})" to ("끄기" to onDisconnect)
-                else -> "글라스 ${state.deviceCount}대 발견 · 카메라 꺼짐" to ("카메라 켜기" to onConnect)
+                state.transfer != null -> "사진 받는 중… ${(state.transfer * 100).toInt()}%" to null
+                state.cameraReady -> "연결됨 · \"사진 찍어\", \"이거 보여\"라고 하면 찍어요" to ("끄기" to onDisconnect)
+                state.session != null -> "글라스 연결 중… (${state.session})" to ("끄기" to onDisconnect)
+                else -> "글라스 ${state.deviceCount}대 발견 · 연결 안 됨" to ("글라스 연결" to onConnect)
             }
             Text(status, style = MaterialTheme.typography.bodyMedium)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

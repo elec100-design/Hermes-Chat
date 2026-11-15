@@ -6,14 +6,13 @@ import com.hermes.chatandroid.data.BotAttachment
 import com.hermes.chatandroid.data.BotStreamEvent
 import com.hermes.chatandroid.glasses.GlassesCamera
 import com.hermes.chatandroid.glasses.GlassesPhoto
+import com.hermes.chatandroid.glasses.PhotoSize
 import com.hermes.chatandroid.net.BotApi
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,7 +24,6 @@ enum class LivePhase { IDLE, LISTENING, THINKING, SPEAKING, WAITING }
 
 /** 시야 사진을 붙이는 방식. */
 enum class VisionMode(val label: String) {
-    ALWAYS("말할 때마다"),
     ON_REQUEST("요청할 때만"),
     OFF("끔"),
 }
@@ -43,7 +41,8 @@ data class LiveUi(
     val photoInfo: String? = null,
     /** 다음 발화에 붙을 수동 촬영 사진이 있음. */
     val photoPending: Boolean = false,
-    val vision: VisionMode = VisionMode.ALWAYS,
+    val vision: VisionMode = VisionMode.ON_REQUEST,
+    val photoSize: PhotoSize = PhotoSize.BALANCED,
     val bluetooth: Boolean = false,
     val error: String? = null,
 )
@@ -66,7 +65,6 @@ class LiveController(
     val ui: StateFlow<LiveUi> = _ui.asStateFlow()
 
     private var turnJob: Job? = null
-    private var photoTask: Deferred<GlassesPhoto?>? = null
     private var manualPhoto: GlassesPhoto? = null
     private var silenceCount = 0
     private var streamEnded = false
@@ -95,14 +93,14 @@ class LiveController(
     fun stop() {
         if (!active) return
         turnJob?.cancel(); turnJob = null
-        photoTask?.cancel(); photoTask = null
         audio.cancelListening()
         audio.release()
-        _ui.update { LiveUi(vision = it.vision) }
+        _ui.update { LiveUi(vision = it.vision, photoSize = it.photoSize) }
         onActiveChanged(false)
     }
 
     fun setVision(mode: VisionMode) = _ui.update { it.copy(vision = mode) }
+    fun setPhotoSize(size: PhotoSize) = _ui.update { it.copy(photoSize = size) }
 
     /** 화면 버튼·글라스 탭 공용: 대기→듣기, 듣는 중→바로 보내기, 낭독 중→끼어들기. */
     fun primary() {
@@ -126,15 +124,14 @@ class LiveController(
     /** 지금 시야를 찍어 두고, 다음 발화와 함께 보낸다(사진만 보내지 않음). */
     fun takePhotoNow() {
         scope.launch {
-            val p = glasses.capture()
+            val p = glasses.capture(_ui.value.photoSize)
             if (p == null) { _ui.update { it.copy(error = glasses.state.value.error ?: "글라스 카메라가 준비되지 않았습니다") }; return@launch }
             manualPhoto = p
             showPhoto(p, pending = true)
             // 듣는 중이면 안내 음성이 인식에 섞이지 않게 멈췄다가, 다 읽은 뒤 다시 듣는다.
             if (_ui.value.phase == LivePhase.LISTENING || _ui.value.phase == LivePhase.WAITING) {
                 audio.cancelListening()
-                photoTask?.cancel(); photoTask = null
-                streamEnded = true
+                        streamEnded = true
                 _ui.update { it.copy(phase = LivePhase.SPEAKING, partial = "") }
                 audio.speak("사진 받았어요. 질문해 주세요.")
                 if (!audio.isSpeaking) listen()
@@ -146,17 +143,9 @@ class LiveController(
 
     private fun listen() {
         if (!active) return
-        photoTask?.cancel(); photoTask = null
         _ui.update { it.copy(phase = LivePhase.LISTENING, partial = "") }
         audio.listen(object : LiveAudio.Listener {
             override fun onPartial(text: String) = _ui.update { it.copy(partial = text) }
-
-            override fun onEndOfSpeech() {
-                // 촬영(BT 전송 수 초)을 인식 마무리와 겹쳐 지연을 줄인다. 요청형 모드는 결과를 보고 결정.
-                if (_ui.value.vision == VisionMode.ALWAYS && manualPhoto == null && glasses.state.value.cameraReady) {
-                    photoTask = scope.async { glasses.capture() }
-                }
-            }
 
             override fun onResult(text: String) {
                 silenceCount = 0
@@ -164,8 +153,7 @@ class LiveController(
             }
 
             override fun onSilence() {
-                photoTask?.cancel(); photoTask = null
-                if (!active || _ui.value.phase != LivePhase.LISTENING) return
+                        if (!active || _ui.value.phase != LivePhase.LISTENING) return
                 silenceCount++
                 if (silenceCount >= MAX_SILENCE) _ui.update { it.copy(phase = LivePhase.WAITING, partial = "") }
                 else listen()
@@ -184,7 +172,18 @@ class LiveController(
         streamEnded = false
         turnJob = scope.launch {
             try {
-                val photo = pickPhoto(text)
+                val photo = when (val p = pickPhoto(text)) {
+                    PhotoPick.None -> null
+                    is PhotoPick.Got -> p.photo
+                    is PhotoPick.Failed -> {
+                        // 사진을 요청했는데 못 받았으면 보내지 않는다(사진 없이 엉뚱하게 답하는 것 방지).
+                        _ui.update { it.copy(phase = LivePhase.SPEAKING, error = p.reason) }
+                        streamEnded = true
+                        audio.speak("${p.reason} 다시 말해 주세요.")
+                        if (!audio.isSpeaking) listen()
+                        return@launch
+                    }
+                }
                 val attachments = mutableListOf<BotAttachment>()
                 if (photo != null) {
                     showPhoto(photo, pending = false)
@@ -204,18 +203,22 @@ class LiveController(
         }
     }
 
-    private suspend fun pickPhoto(text: String): GlassesPhoto? {
-        manualPhoto?.let { manualPhoto = null; photoTask?.cancel(); photoTask = null; return it }
-        val pending = photoTask
-        photoTask = null
-        if (pending != null) return withTimeoutOrNull(PHOTO_TIMEOUT_MS) { pending.await() }
-        val wants = when (_ui.value.vision) {
-            VisionMode.ALWAYS -> true
-            VisionMode.ON_REQUEST -> LiveText.wantsPhoto(text)
-            VisionMode.OFF -> false
-        }
-        if (!wants || !glasses.state.value.cameraReady) return null
-        return withTimeoutOrNull(PHOTO_TIMEOUT_MS) { glasses.capture() }
+    private sealed interface PhotoPick {
+        data object None : PhotoPick
+        data class Got(val photo: GlassesPhoto) : PhotoPick
+        data class Failed(val reason: String) : PhotoPick
+    }
+
+    /** 사진을 요청한 발화면 다 받을 때까지 기다린다(고화질 BT 전송은 수십 초 걸릴 수 있음). */
+    private suspend fun pickPhoto(text: String): PhotoPick {
+        manualPhoto?.let { manualPhoto = null; return PhotoPick.Got(it) }
+        val wants = _ui.value.vision == VisionMode.ON_REQUEST && LiveText.wantsPhoto(text)
+        if (!wants) return PhotoPick.None
+        if (!glasses.state.value.cameraReady) return PhotoPick.Failed("글라스 카메라가 연결되어 있지 않아요.")
+        audio.speak("사진 찍을게요.")
+        val p = withTimeoutOrNull(PHOTO_TIMEOUT_MS) { glasses.capture(_ui.value.photoSize) }
+            ?: return PhotoPick.Failed("사진을 받지 못했어요.")
+        return PhotoPick.Got(p)
     }
 
     private suspend fun streamReply(api: BotApi, channelId: Int, jobId: Int, replyMessageId: Int?) {
@@ -260,7 +263,7 @@ class LiveController(
         _ui.update {
             it.copy(
                 photo = p.preview,
-                photoInfo = "원본 ${p.sourceWidth}×${p.sourceHeight} · ${p.jpeg.size / 1024}KB",
+                photoInfo = "원본 ${p.sourceWidth}×${p.sourceHeight} · 수신 ${p.receivedKB}KB / ${"%.1f".format(p.transferMs / 1000.0)}초",
                 photoPending = pending,
             )
         }
@@ -268,6 +271,7 @@ class LiveController(
 
     companion object {
         const val MAX_SILENCE = 4
-        const val PHOTO_TIMEOUT_MS = 8_000L
+        /** 고화질 사진 BT 전송 포함 최대 대기. */
+        const val PHOTO_TIMEOUT_MS = 60_000L
     }
 }

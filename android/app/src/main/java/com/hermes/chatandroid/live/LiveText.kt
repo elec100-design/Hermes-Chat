@@ -49,13 +49,10 @@ object LiveText {
         .replace(Regex("""[ \t]+"""), " ")
         .trim()
 
-    private val visionWords = listOf(
-        "읽어", "글자", "글씨", "텍스트", "써 있", "써있", "적혀", "번역", "메뉴판", "표지판", "문서", "영수증",
-        "봐 줘", "봐줘", "보여", "보이", "이거", "저거", "이게", "저게", "여기", "앞에", "사진", "찍어",
-    )
+    /** 사진을 찍으라는 명시적 요청(사용자 결정 11-15: "사진 찍어", "이거 보여" 같은 말에서만 촬영). */
+    private val photoWords = listOf("사진", "찍어", "보여", "봐줘", "봐 줘", "봐봐", "읽어")
 
-    /** "요청할 때만" 모드에서 시야 사진을 붙일 발화인지. */
-    fun wantsPhoto(utterance: String): Boolean = visionWords.any { utterance.contains(it) }
+    fun wantsPhoto(utterance: String): Boolean = photoWords.any { utterance.contains(it) }
 
     /** 채널(멤버 여러 명)이면 대상 봇 멘션을 붙인다. 이미 @로 시작하면 그대로. */
     fun withMention(utterance: String, mentionSlug: String?): String {
