@@ -97,6 +97,8 @@ fun DashboardScreen(
             settings.useWideViewPort = true
             settings.loadWithOverviewMode = true
             settings.cacheMode = WebSettings.LOAD_DEFAULT
+            // 시스템 글꼴 크기 배율을 무시 — 대시보드 사이드바 메뉴가 커진 글꼴에 밀려 0줄로 찌그러지는 것 방지
+            settings.textZoom = 100
             CookieManager.getInstance().setAcceptCookie(true)
         }
     }
