@@ -395,8 +395,8 @@
 | T-178 | 봇 프로필 "지난 세션" — 봇 게이트웨이 포트로 직결해 세션 목록·열기(기존 `ChatScreen` 재사용) | `…/ui/bots/profile`, `…/ui/sessions` | DROPPED (11-15 사용자 결정 — 지난 세션은 대시보드 세션 화면으로 대체) |
 | T-179 | 대시보드 WebView(:8000, 더보기 > 대시보드) — 쿠키 로그인 유지·핀치 줌(viewport 덮어쓰기)·**폴드 커버=모바일 / 펼침(600dp+)=데스크톱 UA+1024px 자동 전환**(툴바 토글은 임시)·외부 링크는 브라우저·뒤로가기=웹 history·WebView MATCH_PARENT + `h-dvh` 보정 주입(WebView 에서 100dvh=0 으로 본문 틀이 접히던 문제)·textZoom 100. `BridgeClient`는 T-180으로 이관 | `…/ui/more/DashboardScreen.kt`(신규), `…/ui/more/MoreScreen.kt`, `…/ui/AppNav.kt`, `…/data/Settings.kt` | DONE (11-15 폴드 실기기 확인 — 세션 등 본문 정상 표시) |
 | T-180 | `BridgeClient`(:8765, 토큰 401 분리·업로드 120s) + 프로필 관리 — SOUL 편집·모델 선택·게이트웨이 재시작·로그·생성/삭제 | `…/ui/bots/profile` | DROPPED (11-15 사용자 결정 — 대시보드(프로필·모델·설정·로그·재시작) 또는 봇에게 지시로 대체) |
-| T-181 | 칸반 — 보드 목록·보드·태스크 생성/액션 (Bridge 경유, CLI 쓰기) | `…/ui/kanban` | TODO |
-| T-182 | 크론 — 조회·편집·켜기/끄기·즉시 실행·삭제 | `…/ui/cron` | TODO |
+| T-181 | 칸반 탭 — 보드 선택·새 보드, 커버: 상태 필터 칩(진행 중 묶음)+카드 목록 / 펼침: 상태별 컬럼 보드, 카드(상태 색 띠·담당·실행 중·오류·갱신 시각), 상세 시트(본문·결과·오류·댓글 작성·이력·상태 전이 실행/보류/재개/완료/보관), 작업 추가(담당 프로필·시작 방식). Bridge 에 `GET /kanban/<board>/tasks/<id>`(댓글·이벤트)와 결과·오류 필드 추가 | `…/ui/kanban/*`(신규), `…/data/OpsModels.kt`(신규), `…/net/BridgeApi.kt`, `…/data/DemoApis.kt`, `…/ui/AppNav.kt`, `server/hermes_bridge.py` | NEEDS-BUILD (11-15 로컬 빌드·단위테스트 72개 통과, 브리지 재배포·실기기 미검증) |
+| T-182 | 크론 탭 — 전 프로필 크론 모아보기·프로필 필터, 카드(사람이 읽는 일정·다음 실행·마지막 성공/실패·오류), 켜기/끄기 스위치, 지금 실행·편집·삭제, 편집 화면(일정 프리셋·시각 선택·결과 보내기·스킬). **Bridge 크론 쓰기를 `hermes cron create/edit/pause/resume/remove` CLI 경유로 교체** — 기존 PUT/POST 는 실제 jobs.json 의 `schedule` 객체를 문자열로 덮어써 파일을 깨뜨릴 수 있었음(iOS 도 같은 엔드포인트, payload 호환 유지) | `…/ui/cron/*`(신규), `…/data/OpsModels.kt`, `…/net/BridgeApi.kt`, `server/hermes_bridge.py` | NEEDS-BUILD (11-15 로컬 빌드·단위테스트 통과, 브리지 재배포·실기기 미검증) |
 | T-183 | ~~음성 입력~~ — 사용자 결정(11-15): 키보드 Typeless 사용으로 앱 내 음성 입력 불필요. 응답 읽기(TTS)만 필요 시 재검토 | — | DROPPED |
 | T-184 | 알림 — 응답 완료·승인 대기 (POST_NOTIFICATIONS) | — | TODO |
 | T-185 | 파일 브라우저·스킬 목록 | — | TODO |

@@ -19,7 +19,6 @@ import androidx.compose.material.icons.rounded.Dns
 import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Speed
-import androidx.compose.material.icons.rounded.Upcoming
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -44,7 +43,7 @@ import com.hermes.chatandroid.ui.components.StatusPill
 import com.hermes.chatandroid.ui.components.readableWidth
 import com.hermes.chatandroid.ui.theme.hermesColors
 
-/** 더보기 탭: 연결 요약, 대시보드, 설정, 워크스페이스, 그리고 2차 예정 기능 자리. */
+/** 더보기 탭: 연결 요약, 대시보드, 설정, 워크스페이스. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MoreScreen(
@@ -162,21 +161,6 @@ fun MoreScreen(
                 onClick = onOpenWorkspaces,
             )
 
-            Spacer(Modifier.height(2.dp))
-            Text(
-                "로드맵",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 4.dp),
-            )
-            MoreActionCard(
-                icon = Icons.Rounded.Upcoming,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                title = "칸반 · 크론",
-                subtitle = "2차 업데이트로 제공될 예정입니다",
-                trailingBadge = "예정",
-                onClick = null,
-            )
         }
     }
 }

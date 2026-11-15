@@ -25,8 +25,12 @@ import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.outlined.Chat
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.ViewKanban
 import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.ViewKanban
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.HorizontalDivider
@@ -66,6 +70,8 @@ import com.hermes.chatandroid.ui.bots.BotsScreen
 import com.hermes.chatandroid.ui.bots.channel.ChannelSettingsScreen
 import com.hermes.chatandroid.ui.bots.profile.BotProfileScreen
 import com.hermes.chatandroid.ui.chat.ChatScreen
+import com.hermes.chatandroid.ui.cron.CronScreen
+import com.hermes.chatandroid.ui.kanban.KanbanScreen
 import com.hermes.chatandroid.ui.more.DashboardScreen
 import com.hermes.chatandroid.ui.more.MoreScreen
 import com.hermes.chatandroid.ui.onboarding.OnboardingScreen
@@ -79,6 +85,8 @@ object Routes {
     /** 홈(대화) — 봇 DM 목록 + 채널. */
     const val BOTS = "bots"
     const val APPROVALS = "approvals"
+    const val KANBAN = "kanban"
+    const val CRON = "cron"
     const val MORE = "more"
     const val SETTINGS = "settings"
     const val WORKSPACES = "workspaces"
@@ -105,14 +113,18 @@ private data class Tab(
 
 private val ChatsTab = Tab(Routes.BOTS, R.string.tab_chats, Icons.AutoMirrored.Filled.Chat, Icons.AutoMirrored.Outlined.Chat)
 private val ApprovalsTab = Tab(Routes.APPROVALS, R.string.tab_approvals, Icons.Filled.Notifications, Icons.Outlined.Notifications)
+private val KanbanTab = Tab(Routes.KANBAN, R.string.tab_kanban, Icons.Filled.ViewKanban, Icons.Outlined.ViewKanban)
+private val CronTab = Tab(Routes.CRON, R.string.tab_cron, Icons.Filled.Schedule, Icons.Outlined.Schedule)
 private val MoreTab = Tab(Routes.MORE, R.string.tab_more, Icons.Filled.GridView, Icons.Outlined.GridView)
-private val Tabs = listOf(ChatsTab, ApprovalsTab, MoreTab)
+private val Tabs = listOf(ChatsTab, ApprovalsTab, KanbanTab, CronTab, MoreTab)
 private val TopRoutes = Tabs.map { it.route }.toSet()
 
 /** 탭 바가 보이는 화면(설정은 더보기의 하위라 더보기 탭이 선택된 채 표시). */
 private fun tabOf(route: String?): Tab? = when (route) {
     Routes.BOTS -> ChatsTab
     Routes.APPROVALS -> ApprovalsTab
+    Routes.KANBAN -> KanbanTab
+    Routes.CRON -> CronTab
     Routes.MORE, Routes.SETTINGS -> MoreTab
     else -> null
 }
@@ -267,6 +279,12 @@ fun AppNav(container: AppContainer) {
                 }
                 composable(Routes.APPROVALS) {
                     ApprovalsScreen(container, modifier = mod)
+                }
+                composable(Routes.KANBAN) {
+                    KanbanScreen(container, modifier = mod)
+                }
+                composable(Routes.CRON) {
+                    CronScreen(container, modifier = mod)
                 }
                 composable(Routes.MORE) {
                     MoreScreen(
