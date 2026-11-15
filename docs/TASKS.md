@@ -393,7 +393,7 @@
 |----|------|------|------|
 | T-177 | 마크다운 표(GFM table) 렌더링 — 헤더+구분선(`|---|`) 감지 시 `MdBlock.Table`, 열 폭=셀 최대 폭(최대 220dp, 넘으면 줄바꿈)·행 높이 정렬 격자, 말풍선보다 넓으면 가로 스크롤, 헤더 굵게·옅은 배경, 셀 안 인라인 마크다운·`\|` 이스케이프. 구분선 전(스트리밍 중)은 텍스트 유지. 봇·세션 채팅 공통(`MessageBubble`) | `…/ui/components/MarkdownLite.kt`, `…/ui/components/MarkdownTable.kt`(신규), `…/ui/components/MessageBubble.kt`, `test/…/MarkdownLiteTest.kt` | NEEDS-BUILD (11-15 로컬 빌드·단위테스트 66개 통과, 폴드 실기기 미검증) |
 | T-178 | 봇 프로필 "지난 세션" — 봇 게이트웨이 포트로 직결해 세션 목록·열기(기존 `ChatScreen` 재사용) | `…/ui/bots/profile`, `…/ui/sessions` | TODO |
-| T-179 | 대시보드 WebView(:8000, 더보기 > 대시보드) — 쿠키 로그인 유지·핀치 줌(viewport 덮어쓰기)·**폴드 커버=모바일 / 펼침(600dp+)=데스크톱 UA+1024px 자동 전환**(툴바 토글은 임시)·외부 링크는 브라우저·뒤로가기=웹 history. `BridgeClient`는 T-180으로 이관 | `…/ui/more/DashboardScreen.kt`(신규), `…/ui/more/MoreScreen.kt`, `…/ui/AppNav.kt`, `…/data/Settings.kt` | NEEDS-BUILD (11-15 로컬 빌드·단위테스트 통과, 폴드 실기기 미검증) |
+| T-179 | 대시보드 WebView(:8000, 더보기 > 대시보드) — 쿠키 로그인 유지·핀치 줌(viewport 덮어쓰기)·**폴드 커버=모바일 / 펼침(600dp+)=데스크톱 UA+1024px 자동 전환**(툴바 토글은 임시)·외부 링크는 브라우저·뒤로가기=웹 history·WebView MATCH_PARENT + `h-dvh` 보정 주입(WebView 에서 100dvh=0 으로 본문 틀이 접히던 문제)·textZoom 100. `BridgeClient`는 T-180으로 이관 | `…/ui/more/DashboardScreen.kt`(신규), `…/ui/more/MoreScreen.kt`, `…/ui/AppNav.kt`, `…/data/Settings.kt` | DONE (11-15 폴드 실기기 확인 — 세션 등 본문 정상 표시) |
 | T-180 | `BridgeClient`(:8765, 토큰 401 분리·업로드 120s) + 프로필 관리 — SOUL 편집·모델 선택·게이트웨이 재시작·로그·생성/삭제 | `…/ui/bots/profile` | TODO |
 | T-181 | 칸반 — 보드 목록·보드·태스크 생성/액션 (Bridge 경유, CLI 쓰기) | `…/ui/kanban` | TODO |
 | T-182 | 크론 — 조회·편집·켜기/끄기·즉시 실행·삭제 | `…/ui/cron` | TODO |
@@ -476,3 +476,4 @@
 | 11-13 | ccr-29d493c3-z8tex2 @ 6953ba1 | ANDROID BUILD SUCCESSFUL | Claude Code 맥미니 로컬 — Phase 26 봇 중심 재구성(T-170~174) `clean :app:testDebugUnitTest :app:assembleDebug` 통과, 단위 테스트 58개. Galaxy Z Fold(SM-F971N)에 adb 설치·실행 확인. 맥미니 Hermes-bot LaunchAgent(`ai.hermes.bot`)가 빈 배포 폴더(`~/Documents/Hermes-bot`)를 가리켜 :8900 미기동 → 실서버 검증 대기 |
 | 11-13 | ccr-29d493c3-z8tex2 @ e0b8819 | BUILD SUCCEEDED + TEST SUCCEEDED | iOS Simulator(generic/platform=iOS Simulator) 빌드 및 `HermesChatTests`(iPhone 17, SSEParserTests 20 + ChatRecoveryTests 14 = 34건) 전체 통과. `origin/main` 머지·T-149 통합·구 T-158/159→T-167/168 재번호 반영 |
 | 11-15 | claude/android-fold-ui @ 08d74ce | ANDROID 실기기 검증 | 사용자 Galaxy Z Fold에 debug APK(18888 배포) 설치·실서버(:8900) 확인 — 연결 테스트(봇 14개), 봇 목록·DM·실행 단계·더보기·설정 정상. T-170~176 DONE. 마크다운 표 미렌더링 발견 → T-177 |
+| 11-15 | claude/android-fold-ui @ 2a20cbe | ANDROID 실기기 검증 | 사용자 폴드에서 대시보드 WebView 본문 표시 확인 — T-179 DONE. 진단(버그) 버튼은 확인 후 제거 |
