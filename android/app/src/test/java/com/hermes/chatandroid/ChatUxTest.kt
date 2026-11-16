@@ -82,6 +82,16 @@ class ChatUxTest {
         assertEquals("main", ChatUx.gitButtonLabel(loading = false, failed = false, branch = "main"))
     }
 
+    @Test fun glassesErrorMapsOnlyKnownStrings() {
+        val known = "All discovered devices are powered off or disconnected"
+        assertEquals("안경 전원이 꺼졌거나 연결이 끊겼습니다", ChatUx.glassesErrorText(known))
+        assertEquals(
+            "안경 전원이 꺼졌거나 연결이 끊겼습니다",
+            ChatUx.glassesErrorText("DAT: $known (code 3)"),
+        )
+        assertEquals("Your glasses need an update", ChatUx.glassesErrorText("Your glasses need an update"))
+    }
+
     @Test fun pathKeepsTheLastFolder() {
         val path = "/Users/macmini/orca/HermesChat"
         val shown = ChatUx.middleEllipsisPath(path, 24)

@@ -86,4 +86,10 @@ object ChatUx {
         val head = if (headRoom > 0) clean.take(headRoom) else ""
         return head + "…" + tailKeep
     }
+
+    /** 아는 글라스 오류만 한국어로. 모르는 문자열은 그대로 둔다. */
+    fun glassesErrorText(raw: String): String = when {
+        raw.contains("All discovered devices are powered off or disconnected") -> "안경 전원이 꺼졌거나 연결이 끊겼습니다"
+        else -> raw
+    }
 }

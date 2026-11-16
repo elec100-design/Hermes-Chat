@@ -67,7 +67,21 @@ private fun phaseColor(phase: LivePhase): Color = when (phase) {
 @Composable
 fun LiveButton(phase: LivePhase?, onClick: () -> Unit, modifier: Modifier = Modifier) {
     if (phase == null || phase == LivePhase.IDLE) {
-        ComposerIconButton(Icons.Rounded.GraphicEq, "Live 대화 시작", onClick, modifier)
+        Surface(
+            modifier = modifier.height(ComposerButtonSize).clip(CircleShape).clickable(onClick = onClick),
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            border = BorderStroke(1.dp, MaterialTheme.hermesColors.cardBorder),
+        ) {
+            Row(
+                Modifier.padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Icon(Icons.Rounded.GraphicEq, contentDescription = null, modifier = Modifier.size(18.dp))
+                Text("Live", style = MaterialTheme.typography.labelLarge)
+            }
+        }
         return
     }
     val color = phaseColor(phase)

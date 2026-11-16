@@ -459,6 +459,14 @@
 | T-207 | Git 버튼과 작업 경로 — 불러오는 중·브랜치 없음·오류를 나누고, 넓은 헤더는 경로를 가운데서 줄여 끝 폴더·브랜치·변경 수를 보이게 함 | `android/…/data/ChatUx.kt`, `…/ui/workspaces/GitActions.kt`, `test/…/ChatUxTest.kt` | NEEDS-BUILD |
 | T-208 | 크론 카드 — 접히면 이름·다음 실행·마지막 성공/실패만. cron 식과 프롬프트는 펼쳤을 때만. 추가 버튼이 마지막 카드를 가리지 않게 목록 아래 여백. 실패 필터·실행 기록은 만들지 않음 | `android/…/ui/cron/CronScreen.kt` | NEEDS-BUILD |
 | T-209 | 에이전트 칩을 누르면 커서가 맨 앞이 아니라 @이름 뒤에 있게. BasicTextField String 오버로드는 바깥에서 글을 바꾸면 선택을 0에 남긴다 | `android/…/data/ComposerCaret.kt`, `…/ui/components/ChatComposer.kt`, `…/ui/bots/BotChatScreen.kt` | NEEDS-BUILD |
+| T-215 | Live 버튼에 Live 글자. 글라스 오류는 아는 문구만 한국어로 바꾸고 원문은 자세히에 둔다. 오류가 있으면 업데이트 후 다시 연결을 숨긴다. 촬영 크기 안내는 짧게 | `android/…/data/ChatUx.kt`, `…/ui/bots/chat/LiveBar.kt`, `…/ui/settings/GlassesSettings.kt`, `test/…/ChatUxTest.kt` | NEEDS-BUILD |
+
+**T-215 실기기 검증 체크리스트** (미실행):
+커버:
+1. 봇 채팅 입력 카드의 Live 버튼에 아이콘과 Live 글자가 보이는지
+펼침:
+2. 글라스 전원이 꺼져 연결이 실패하면 한국어 안내와 원문 자세히가 같이 보이는지. 업데이트가 필요한데 오류가 있으면 "업데이트 후 다시 연결"이 숨는지
+3. 더보기 > 메타 글라스 촬영 크기 안내가 "보통 권장. 작은 글씨가 안 읽히면 최고화질."인지
 
 **T-209 실기기 검증 체크리스트** (미실행 — 6b6197a 단위 113·assembleDebug·lintDebug 통과):
 커버:

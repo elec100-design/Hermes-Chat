@@ -16,7 +16,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -33,7 +32,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -129,14 +127,14 @@ fun GlassesSettings(container: AppContainer) {
         Text(status, style = MaterialTheme.typography.bodyMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             action?.let { (label, fn) -> OutlinedButton(onClick = fn, shape = CircleShape) { Text(label) } }
-            if (state.update != null && !state.cameraReady && state.cameraPermission == true) {
+            if (state.update != null && !state.cameraReady && state.cameraPermission == true && state.error == null) {
                 OutlinedButton(onClick = glasses::connect, shape = CircleShape) { Text("업데이트 후 다시 연결") }
             }
         }
-        state.error?.let {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(it, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-                IconButton(onClick = glasses::clearError) { Icon(Icons.Rounded.Close, contentDescription = "오류 닫기") }
+        state.error?.let { raw ->
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(com.hermes.chatandroid.data.ChatUx.glassesErrorText(raw), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                Text("자세히: $raw", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
 
@@ -161,9 +159,7 @@ fun GlassesSettings(container: AppContainer) {
             }
         }
         Text(
-            "봇이 줄이지 않고 그대로 보는 크기는 긴 변 1568px까지라, 사진은 그 크기에 맞춰 보내요. " +
-                "'보통'이면 충분하고 '최고화질'은 글라스 전송만 느려집니다. " +
-                "사진은 Live 중 말로 요청할 때만 찍어 질문과 함께 보내요.",
+            "보통 권장. 작은 글씨가 안 읽히면 최고화질.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
