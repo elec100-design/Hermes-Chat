@@ -1,9 +1,21 @@
 package com.hermes.chatandroid.ui.workspaces
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -17,15 +29,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Folder
@@ -38,7 +49,6 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -46,21 +56,21 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -74,19 +84,21 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.hermes.chatandroid.AppContainer
 import com.hermes.chatandroid.data.Bot
+import com.hermes.chatandroid.data.BotChannel
 import com.hermes.chatandroid.data.BrowseResult
 import com.hermes.chatandroid.data.PushRequestResult
 import com.hermes.chatandroid.data.Workspace
 import com.hermes.chatandroid.data.WorkspaceStatus
+import com.hermes.chatandroid.data.workChatsByWorkspace
+import com.hermes.chatandroid.ui.bots.BotChatScreen
+import com.hermes.chatandroid.ui.bots.ChannelAvatarGroup
 import com.hermes.chatandroid.ui.bots.botErrorText
 import com.hermes.chatandroid.ui.components.EmptyState
 import com.hermes.chatandroid.ui.components.ErrorBanner
-import com.hermes.chatandroid.ui.components.HermesCard
 import com.hermes.chatandroid.ui.components.HermesTextField
 import com.hermes.chatandroid.ui.components.IconBadge
 import com.hermes.chatandroid.ui.components.LoadingBox
 import com.hermes.chatandroid.ui.components.StatusPill
-import com.hermes.chatandroid.ui.components.readableWidth
 import com.hermes.chatandroid.ui.theme.hermesColors
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -97,6 +109,9 @@ data class WorkspacesUiState(
     val loading: Boolean = true,
     val refreshing: Boolean = false,
     val items: List<Workspace> = emptyList(),
+    /** 작업 채팅 = 작업 폴더가 지정된 채널. 워크스페이스별로 묶어 보여 준다. */
+    val channels: List<BotChannel> = emptyList(),
+    val bots: List<Bot> = emptyList(),
     val error: String? = null,
     /** 추가/클론 진행 중. */
     val adding: Boolean = false,
@@ -141,7 +156,15 @@ class WorkspacesViewModel(private val container: AppContainer) : ViewModel() {
         viewModelScope.launch {
             try {
                 val list = api.fetchWorkspaces()
-                _state.update { it.copy(loading = false, refreshing = false, items = list, error = null) }
+                // 작업 채팅·봇 목록은 부가 정보 — 실패해도 워크스페이스 목록은 보여 준다
+                val channels = runCatching { api.fetchChannels() }.getOrNull()
+                val bots = runCatching { api.fetchBots() }.getOrNull()
+                _state.update {
+                    it.copy(
+                        loading = false, refreshing = false, items = list, error = null,
+                        channels = channels ?: it.channels, bots = bots ?: it.bots,
+                    )
+                }
             } catch (e: Exception) {
                 _state.update { it.copy(loading = false, refreshing = false, error = botErrorText(e)) }
             }
@@ -194,6 +217,23 @@ class WorkspacesViewModel(private val container: AppContainer) : ViewModel() {
                 _state.update { it.copy(adding = false) }
                 refresh()
                 onDone()
+            } catch (e: Exception) {
+                _state.update { it.copy(adding = false, addError = botErrorText(e)) }
+            }
+        }
+    }
+
+    /** [ws] 폴더에서 일하는 작업 채팅(채널)을 만든다 — 채널 작업 폴더 = 워크스페이스 경로. */
+    fun createWorkChat(ws: Workspace, title: String, botIds: List<Int>, onCreated: (Int) -> Unit) {
+        val api = container.botApi() ?: run { _state.update { it.copy(addError = noServer()) }; return }
+        if (_state.value.adding) return
+        _state.update { it.copy(adding = true, addError = null) }
+        viewModelScope.launch {
+            try {
+                val ch = api.createChannel(title.trim(), botIds = botIds, workdir = ws.path)
+                _state.update { it.copy(adding = false, channels = it.channels + ch.copy(workdir = ch.workdir ?: ws.path)) }
+                onCreated(ch.id)
+                refresh()
             } catch (e: Exception) {
                 _state.update { it.copy(adding = false, addError = botErrorText(e)) }
             }
@@ -278,99 +318,102 @@ class WorkspacesViewModel(private val container: AppContainer) : ViewModel() {
     val lastRemoveNote = MutableStateFlow<String?>(null)
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * 워크스페이스 탭(T-198): 워크스페이스마다 작업 채팅을 여러 개 열어 코딩 작업을 나눠 진행한다.
+ * 넓은 창 = 목록 + 채팅 나란히, 좁은 창 = 목록 ↔ 채팅 전환(채팅 중엔 AppNav 가 탭 바를 숨긴다).
+ */
 @Composable
 fun WorkspacesScreen(
     container: AppContainer,
-    onBack: () -> Unit,
+    selectedChannelId: Int?,
+    onSelectChannel: (channelId: Int?) -> Unit,
     modifier: Modifier = Modifier,
+    onOpenBotProfile: (botId: Int) -> Unit = {},
+    onOpenChannelSettings: (channelId: Int) -> Unit = {},
+    onOpenGlasses: () -> Unit = {},
 ) {
     val vm: WorkspacesViewModel = viewModel(factory = viewModelFactory { initializer { WorkspacesViewModel(container) } })
     val state by vm.state.collectAsStateWithLifecycle()
     val detail by vm.detail.collectAsStateWithLifecycle()
-    val removeNote by vm.lastRemoveNote.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { vm.refresh(initial = true) }
-    var menuOpen by remember { mutableStateOf(false) }
     var showBrowse by remember { mutableStateOf(false) }
     var showClone by remember { mutableStateOf(false) }
+    var newChatFor by remember { mutableStateOf<Workspace?>(null) }
+    var sidebarExpanded by rememberSaveable { mutableStateOf(true) }
+    val hc = MaterialTheme.hermesColors
+    val chats = remember(state.items, state.channels) { workChatsByWorkspace(state.items, state.channels) }
 
-    Scaffold(
-        modifier = modifier,
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
-            TopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
-                title = { Text("워크스페이스", style = MaterialTheme.typography.headlineSmall) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "뒤로") }
-                },
-                actions = {
-                    IconButton(onClick = { vm.refresh() }, enabled = !state.refreshing) {
-                        Icon(Icons.Rounded.Refresh, contentDescription = "새로고침")
-                    }
-                },
-            )
-        },
-        floatingActionButton = {
-            Box {
-                FloatingActionButton(
-                    onClick = { menuOpen = true },
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    shape = CircleShape,
-                ) { Icon(Icons.Rounded.Add, contentDescription = "추가") }
-                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    DropdownMenuItem(
-                        text = { Text("폴더 추가") },
-                        leadingIcon = { Icon(Icons.Rounded.Folder, null) },
-                        onClick = { menuOpen = false; vm.clearAddError(); vm.browse(null); showBrowse = true },
-                    )
-                    DropdownMenuItem(
-                        text = { Text("리포 클론") },
-                        leadingIcon = { Icon(Icons.Rounded.Code, null) },
-                        onClick = { menuOpen = false; vm.clearAddError(); showClone = true },
-                    )
-                }
-            }
-        },
-    ) { padding ->
-        Column(Modifier.padding(padding).fillMaxHeight().readableWidth()) {
-            state.error?.let { ErrorBanner(it, onRetry = { vm.refresh() }) }
-            removeNote?.let {
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerLow,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+    // 지워진 채널을 가리키고 있으면 선택 해제
+    LaunchedEffect(state.loading, state.error, state.channels, selectedChannelId) {
+        if (state.loading || state.error != null) return@LaunchedEffect
+        if (selectedChannelId != null && state.channels.none { it.id == selectedChannelId }) onSelectChannel(null)
+    }
+
+    val listPane: @Composable () -> Unit = {
+        WorkspaceListPane(
+            state = state,
+            vm = vm,
+            chats = chats,
+            selectedChannelId = selectedChannelId,
+            onSelectChannel = { onSelectChannel(it) },
+            onNewChat = { vm.clearAddError(); newChatFor = it },
+            onAddFolder = { vm.clearAddError(); vm.browse(null); showBrowse = true },
+            onClone = { vm.clearAddError(); showClone = true },
+        )
+    }
+    val chatPane: @Composable (Int, (() -> Unit)?) -> Unit = { chId, onBack ->
+        BotChatScreen(
+            container,
+            channelId = chId,
+            onBack = onBack,
+            onMenuClick = if (onBack == null) ({ sidebarExpanded = !sidebarExpanded }) else null,
+            onOpenBotProfile = onOpenBotProfile,
+            onOpenChannelSettings = onOpenChannelSettings,
+            onOpenGlasses = onOpenGlasses,
+            // 이미 워크스페이스 탭 — 좁은 창에서는 목록으로 돌아간다
+            onOpenWorkspaces = { if (onBack != null) onBack() else sidebarExpanded = true },
+        )
+    }
+
+    BoxWithConstraints(modifier.fillMaxSize()) {
+        val isWide = maxWidth >= 600.dp
+        val listWidth = (maxWidth * 0.36f).coerceIn(260.dp, 330.dp)
+        if (isWide) {
+            Row(Modifier.fillMaxSize()) {
+                AnimatedVisibility(
+                    visible = sidebarExpanded || selectedChannelId == null,
+                    enter = expandHorizontally() + fadeIn(),
+                    exit = shrinkHorizontally() + fadeOut(),
                 ) {
-                    Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(it, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-                        TextButton(onClick = { vm.lastRemoveNote.value = null }) { Text("확인") }
+                    Row(Modifier.fillMaxHeight()) {
+                        Surface(Modifier.width(listWidth).fillMaxHeight(), color = MaterialTheme.colorScheme.surface) { listPane() }
+                        VerticalDivider(thickness = 0.7.dp, color = hc.cardBorder)
                     }
                 }
+                Box(Modifier.weight(1f).fillMaxHeight()) {
+                    if (selectedChannelId != null) chatPane(selectedChannelId, null)
+                    else EmptyState(
+                        title = "작업 채팅을 선택하세요",
+                        subtitle = "워크스페이스의 + 버튼으로 새 작업 채팅을 열 수 있습니다.",
+                        icon = Icons.Rounded.Code,
+                    )
+                }
             }
-            when {
-                state.loading -> LoadingBox(label = "워크스페이스를 불러오는 중…")
-                else -> PullToRefreshBox(isRefreshing = state.refreshing, onRefresh = { vm.refresh() }, modifier = Modifier.weight(1f)) {
-                    if (state.items.isEmpty()) {
-                        EmptyState(
-                            title = "등록된 작업 위치가 없습니다",
-                            subtitle = "오른쪽 아래 + 버튼으로 서버 폴더를 추가하거나 Git 리포지토리를 클론하세요.",
-                            icon = Icons.Rounded.FolderOpen,
-                        )
-                    } else {
-                        LazyColumn(
-                            Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp),
-                        ) {
-                            items(state.items, key = { it.id }) { ws ->
-                                WorkspaceCard(ws) {
-                                    vm.lastRemoveNote.value = null
-                                    vm.openDetail(ws)
-                                }
-                            }
-                        }
-                    }
+        } else {
+            AnimatedContent(
+                targetState = selectedChannelId,
+                transitionSpec = {
+                    val forward = targetState != null
+                    (slideInHorizontally(tween(240)) { if (forward) it / 4 else -it / 4 } + fadeIn(tween(200)))
+                        .togetherWith(fadeOut(tween(160)))
+                },
+                label = "workspaceListDetail",
+            ) { chId ->
+                if (chId == null) {
+                    listPane()
+                } else {
+                    BackHandler { onSelectChannel(null) }
+                    chatPane(chId) { onSelectChannel(null) }
                 }
             }
         }
@@ -378,59 +421,248 @@ fun WorkspacesScreen(
 
     if (showBrowse) BrowseDialog(vm, onDismiss = { showBrowse = false })
     if (showClone) CloneDialog(vm, onDismiss = { showClone = false })
+    newChatFor?.let { ws ->
+        NewWorkChatDialog(
+            ws = ws,
+            bots = state.bots.filter { !it.isArchived },
+            defaultTitle = "${ws.label} 작업 ${(chats[ws.id]?.size ?: 0) + 1}",
+            busy = state.adding,
+            error = state.addError,
+            onDismiss = { newChatFor = null },
+            onCreate = { title, botIds ->
+                vm.createWorkChat(ws, title, botIds) { chId -> newChatFor = null; onSelectChannel(chId) }
+            },
+        )
+    }
     detail?.let { d -> DetailSheet(d, vm) }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun WorkspaceCard(ws: Workspace, onClick: () -> Unit) {
-    val tint = if (ws.isRepo) MaterialTheme.colorScheme.primary else Color(0xFF4F86A8)
-    HermesCard(
-        onClick = onClick,
-        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
-    ) {
+private fun WorkspaceListPane(
+    state: WorkspacesUiState,
+    vm: WorkspacesViewModel,
+    chats: Map<Int, List<BotChannel>>,
+    selectedChannelId: Int?,
+    onSelectChannel: (Int) -> Unit,
+    onNewChat: (Workspace) -> Unit,
+    onAddFolder: () -> Unit,
+    onClone: () -> Unit,
+) {
+    val removeNote by vm.lastRemoveNote.collectAsStateWithLifecycle()
+    var menuOpen by remember { mutableStateOf(false) }
+    Column(Modifier.fillMaxSize()) {
+        // 오른쪽 채팅의 TopAppBar 와 높이를 64dp 로 맞춘다
         Row(
-            Modifier.fillMaxWidth(),
+            Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surface)
+                .statusBarsPadding()
+                .height(64.dp)
+                .padding(start = 16.dp, end = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            IconBadge(
-                icon = if (ws.isRepo) Icons.Rounded.Code else Icons.Rounded.Folder,
-                tint = tint,
-                size = 44.dp,
-            )
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        ws.label,
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false),
+            Text("워크스페이스", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            IconButton(onClick = { vm.refresh() }, enabled = !state.refreshing) {
+                Icon(Icons.Rounded.Refresh, contentDescription = "새로고침")
+            }
+            Box {
+                IconButton(onClick = { menuOpen = true }) { Icon(Icons.Rounded.Add, contentDescription = "워크스페이스 추가") }
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    DropdownMenuItem(
+                        text = { Text("폴더 추가") },
+                        leadingIcon = { Icon(Icons.Rounded.Folder, null) },
+                        onClick = { menuOpen = false; onAddFolder() },
                     )
-                    if (ws.isRepo) {
-                        StatusPill(
-                            text = ws.defaultBranch ?: "repo",
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.primary,
-                        )
+                    DropdownMenuItem(
+                        text = { Text("리포 클론") },
+                        leadingIcon = { Icon(Icons.Rounded.Code, null) },
+                        onClick = { menuOpen = false; onClone() },
+                    )
+                }
+            }
+        }
+        HorizontalDivider(thickness = 0.7.dp, color = MaterialTheme.hermesColors.cardBorder)
+        state.error?.let { ErrorBanner(it, onRetry = { vm.refresh() }) }
+        removeNote?.let {
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+            ) {
+                Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(it, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                    TextButton(onClick = { vm.lastRemoveNote.value = null }) { Text("확인") }
+                }
+            }
+        }
+        when {
+            state.loading -> LoadingBox(label = "워크스페이스를 불러오는 중…")
+            else -> PullToRefreshBox(isRefreshing = state.refreshing, onRefresh = { vm.refresh() }, modifier = Modifier.weight(1f)) {
+                if (state.items.isEmpty()) {
+                    EmptyState(
+                        title = "등록된 작업 위치가 없습니다",
+                        subtitle = "위의 + 버튼으로 서버 폴더를 추가하거나 Git 리포지토리를 클론하세요.",
+                        icon = Icons.Rounded.FolderOpen,
+                    )
+                } else {
+                    LazyColumn(
+                        Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(start = 10.dp, end = 10.dp, top = 8.dp, bottom = 24.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        state.items.forEach { ws ->
+                            item(key = "ws-${ws.id}") {
+                                WorkspaceHeaderRow(
+                                    ws,
+                                    onOpen = { vm.lastRemoveNote.value = null; vm.openDetail(ws) },
+                                    onNewChat = { onNewChat(ws) },
+                                )
+                            }
+                            items(chats[ws.id].orEmpty(), key = { "ch-${it.id}" }) { ch ->
+                                WorkChatRow(ch, selected = ch.id == selectedChannelId, onClick = { onSelectChannel(ch.id) })
+                            }
+                            item(key = "new-${ws.id}") { NewChatRow(onClick = { onNewChat(ws) }) }
+                        }
                     }
                 }
+            }
+        }
+    }
+}
+
+/** 워크스페이스 한 줄 — 누르면 상태·커밋·제거 시트, 오른쪽 + 는 새 작업 채팅. */
+@Composable
+private fun WorkspaceHeaderRow(ws: Workspace, onOpen: () -> Unit, onNewChat: () -> Unit) {
+    val tint = if (ws.isRepo) MaterialTheme.colorScheme.primary else Color(0xFF4F86A8)
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onOpen)
+            .padding(start = 6.dp, top = 4.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        IconBadge(icon = if (ws.isRepo) Icons.Rounded.Code else Icons.Rounded.Folder, tint = tint, size = 32.dp, iconSize = 17.dp, shapeRadius = 9.dp)
+        Column(Modifier.weight(1f)) {
+            Text(ws.label, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                ws.path,
+                style = MaterialTheme.typography.labelSmall,
+                fontFamily = FontFamily.Monospace,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        IconButton(onClick = onNewChat) {
+            Icon(Icons.Rounded.Add, contentDescription = "${ws.label} 새 작업 채팅", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun WorkChatRow(ch: BotChannel, selected: Boolean, onClick: () -> Unit) {
+    val hc = MaterialTheme.hermesColors
+    val accent = MaterialTheme.colorScheme.primary
+    val sub = ch.preview?.takeIf { it.isNotBlank() } ?: ch.members.joinToString(" · ") { it.displayName }
+    Surface(
+        modifier = Modifier.fillMaxWidth().padding(start = 22.dp).clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        color = if (selected) accent.copy(alpha = if (hc.isDark) 0.18f else 0.10f) else Color.Transparent,
+        border = if (selected) BorderStroke(1.dp, accent.copy(alpha = if (hc.isDark) 0.42f else 0.30f)) else null,
+    ) {
+        Row(
+            Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            ChannelAvatarGroup(ch.members, size = 30.dp)
+            Column(Modifier.weight(1f)) {
                 Text(
-                    ws.path,
-                    style = MaterialTheme.typography.bodySmall,
-                    fontFamily = FontFamily.Monospace,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    ch.title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                if (sub.isNotBlank()) {
+                    Text(sub, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
             }
-            Icon(
-                Icons.Rounded.ChevronRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-            )
         }
     }
+}
+
+@Composable
+private fun NewChatRow(onClick: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(start = 22.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("새 작업 채팅", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun NewWorkChatDialog(
+    ws: Workspace,
+    bots: List<Bot>,
+    defaultTitle: String,
+    busy: Boolean,
+    error: String?,
+    onDismiss: () -> Unit,
+    onCreate: (title: String, botIds: List<Int>) -> Unit,
+) {
+    var title by remember(ws.id) { mutableStateOf(defaultTitle) }
+    var selected by remember(ws.id) { mutableStateOf(setOf<Int>()) }
+    AlertDialog(
+        onDismissRequest = { if (!busy) onDismiss() },
+        title = { Text("새 작업 채팅") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    "${ws.label} 폴더에서 일할 봇을 고르세요. 봇이 하나면 멘션 없이 바로 답합니다.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                HermesTextField(title, { title = it }, label = "제목", enabled = !busy)
+                if (bots.isEmpty()) {
+                    Text("사용할 수 있는 봇이 없습니다", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                } else {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        bots.forEach { b ->
+                            FilterChip(
+                                selected = b.id in selected,
+                                enabled = !busy,
+                                onClick = { selected = if (b.id in selected) selected - b.id else selected + b.id },
+                                label = { Text(b.displayName) },
+                            )
+                        }
+                    }
+                }
+                error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+            }
+        },
+        confirmButton = {
+            Button(
+                enabled = title.isNotBlank() && selected.isNotEmpty() && !busy,
+                shape = CircleShape,
+                onClick = { onCreate(title, selected.toList()) },
+            ) { Text(if (busy) "만드는 중…" else "열기") }
+        },
+        dismissButton = { TextButton(enabled = !busy, onClick = onDismiss) { Text("취소") } },
+    )
 }
 
 @Composable

@@ -409,6 +409,10 @@ iOS 실사용 오류 3건(사진 늦음·묻기 전 사진 설명·글 판독 �
 검증된 사실 — hermes-agent `vision_analyze` 는 긴 변 1568px 또는 base64 256KB(`vision.embed_target_bytes` 기본값)를 넘는 이미지를 **반으로** 줄인다. 그래서 앱이 1568px·190KB 이하로 맞춰 올린다(그 이상 화질은 봇에게 전달되지 않음 — 더 작은 글씨는 가운데 크롭/타일 전송이 후속 후보).
 채팅의 첨부 사진은 Bridge `GET /files/raw` 로 받아 표시한다(Hermes-bot 에는 첨부 다운로드 경로 없음).
 
+**11-16 사용량·워크스페이스 탭·git 팝업(TASKS T-197~T-199)**: 검증된 사실 — 맥미니의 `paseo usage --json` 이 에이전트 계정별 한도(Claude·Codex·Grok·Copilot·Cursor)를 준다. Antigravity 는 paseo 프로바이더이지만 사용량 항목이 없다. Bridge 가 이를 `GET /usage` 로 중계한다.
+작업 채팅은 새 백엔드가 아니라 **작업 폴더가 지정된 Hermes-bot 채널**이다(워크스페이스 = Hermes-bot 등록 작업 위치) — Paseo 데몬에는 붙지 않는다. 채널은 멘션이 없으면 아무도 답하지 않으므로, 봇이 하나뿐인 채널은 앱이 `@slug` 를 붙인다.
+풀·푸시·PR·병합·배포는 Hermes-bot 에 없어 Bridge `/git/*` 가 맡는다(Hermes-bot 의 푸시는 승인 항목을 만드는 별도 경로 — 워크스페이스 상세 시트의 "푸시 요청"은 그대로 그 경로). Bridge 는 앱이 보낸 명령 문자열을 실행하지 않는다: 정해진 git/gh 동작과 리포 안의 `scripts/deploy.sh`·`deploy.sh` 뿐.
+
 ## 4. 위험 요소 / 주의
 1. **새 Swift 파일은 반드시 `project.pbxproj`에 등록** (objectVersion 77, 명시적 파일 참조 — 자동 동기화 폴더 아님). 절차는 HANDOFF.md §4. *이번 커밋은 기존 파일만 수정해서 pbxproj 변경 없음.*
 2. `API_SERVER_HOST=0.0.0.0`은 Tailscale 사설망 전제. 공유기 포트포워딩으로 공인망 노출 금지.

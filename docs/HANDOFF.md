@@ -59,6 +59,13 @@ Claude Code (Xcode 내장/웹) ↔ Hermes+Step-3.7-flash (맥미니 상주) ↔ 
    launchctl load ~/Library/LaunchAgents/ai.hermes.bridge.plist
    curl -s http://127.0.0.1:8765/health   # {"status": "ok"} 확인
    ```
+   ⚠️ **맥미니 배포본은 바인드 주소가 다르다(2026-11-16 확인)** — `~/.hermes/bridge/hermes_bridge.py` 의 `main()` 은
+   `host = "100.83.59.60"`(Tailscale IP 만 수신), 저장소는 `"0.0.0.0"`. 위의 `cp` 를 그대로 쓰면 모든 인터페이스로
+   열리므로 그 줄을 보존해서 복사하고, 헬스 확인도 Tailscale 주소로 한다:
+   ```bash
+   sed 's/host, port = "0.0.0.0", 8765/host, port = "100.83.59.60", 8765/' ./server/hermes_bridge.py > ~/.hermes/bridge/hermes_bridge.py
+   curl -s http://100.83.59.60:8765/health
+   ```
    맥이 아닌 에이전트(웹/Grok 등)가 수정한 경우 TASKS.md에 `NEEDS-BUILD(브리지 재배포 필요)`로
    남기고, 사용자에게 위 3줄(복사+unload+load)을 맥미니에서 실행하라고 안내한다.
 

@@ -69,6 +69,28 @@ class DemoBridgeApi : BridgeApi("", "") {
     override suspend fun upload(bytes: ByteArray, filename: String, profile: String) = "/demo/uploads/$filename"
     override suspend fun fetchRaw(relativePath: String): ByteArray = throw java.io.IOException("데모 모드에는 파일이 없습니다")
 
+    override suspend fun fetchUsage(refresh: Boolean) = listOf(
+        UsageSource(
+            "claude:demo", "claude", "Claude", "demo@example.com", java.time.Instant.now().toString(),
+            UsageReport(
+                available = true, planLabel = "Pro",
+                windows = listOf(
+                    UsageWindow("Session", 17, java.time.Instant.now().plusSeconds(9_000).toString(), "ok"),
+                    UsageWindow("Weekly", 62, java.time.Instant.now().plusSeconds(400_000).toString(), "warning"),
+                ),
+            ),
+        ),
+        UsageSource("grok:demo", "grok", "Grok", report = UsageReport(available = false, problemStatus = 401, problemKind = "rejected")),
+    )
+
+    override suspend fun fetchGitStatus(path: String) = GitStatus(
+        branch = "feature/demo", dirty = true, files = listOf("README.md"), hasUpstream = true, ahead = 1,
+        hasRemote = true, defaultBranch = "main",
+    )
+
+    override suspend fun gitAction(path: String, action: GitAction, message: String?) =
+        GitResult("데모 모드 — 실제로 실행하지 않았습니다 (${action.label})")
+
     // 칸반·크론: 둘러보기용 읽기 전용 샘플 (쓰기는 무시)
     private val demoTasks = listOf(
         KanbanTask("t_demo1", "주간 안전 점검 보고서 초안", "현장 사진 12장 정리 후 요약", KanbanStatus.RUNNING, "safety"),

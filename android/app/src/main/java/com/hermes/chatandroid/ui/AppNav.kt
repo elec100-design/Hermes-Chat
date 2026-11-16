@@ -34,10 +34,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.outlined.Chat
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.ViewKanban
+import androidx.compose.material.icons.outlined.Code
+import androidx.compose.material.icons.outlined.DataUsage
 import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.Schedule
@@ -46,6 +49,7 @@ import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -89,6 +93,7 @@ import com.hermes.chatandroid.ui.onboarding.OnboardingScreen
 import com.hermes.chatandroid.ui.settings.GlassesSettingsScreen
 import com.hermes.chatandroid.ui.settings.SettingsScreen
 import com.hermes.chatandroid.ui.theme.hermesColors
+import com.hermes.chatandroid.ui.usage.UsageDialog
 import com.hermes.chatandroid.ui.workspaces.WorkspacesScreen
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
@@ -127,15 +132,17 @@ private data class Tab(
 private val ChatsTab = Tab(Routes.BOTS, R.string.tab_chats, Icons.AutoMirrored.Filled.Chat, Icons.AutoMirrored.Outlined.Chat)
 private val KanbanTab = Tab(Routes.KANBAN, R.string.tab_kanban, Icons.Filled.ViewKanban, Icons.Outlined.ViewKanban)
 private val CronTab = Tab(Routes.CRON, R.string.tab_cron, Icons.Filled.Schedule, Icons.Outlined.Schedule)
+private val WorkspacesTab = Tab(Routes.WORKSPACES, R.string.tab_workspaces, Icons.Filled.Code, Icons.Outlined.Code)
 private val MoreTab = Tab(Routes.MORE, R.string.tab_more, Icons.Filled.GridView, Icons.Outlined.GridView)
 private val DashboardTab = Tab(Routes.DASHBOARD, R.string.tab_dashboard, Icons.Filled.Speed, Icons.Outlined.Speed)
 // 승인은 탭이 아니라 대화 탭 헤더의 버튼(대기 건수 배지)으로 연다.
-private val Tabs = listOf(ChatsTab, KanbanTab, CronTab, DashboardTab, MoreTab)
+private val Tabs = listOf(ChatsTab, WorkspacesTab, KanbanTab, CronTab, DashboardTab, MoreTab)
 private val TopRoutes = Tabs.map { it.route }.toSet()
 
 /** 탭 바가 보이는 화면(승인은 대화의, 설정·글라스는 더보기의 하위라 그 탭이 선택된 채 표시). */
 private fun tabOf(route: String?): Tab? = when (route) {
     Routes.BOTS, Routes.APPROVALS -> ChatsTab
+    Routes.WORKSPACES -> WorkspacesTab
     Routes.KANBAN -> KanbanTab
     Routes.CRON -> CronTab
     Routes.DASHBOARD -> DashboardTab
@@ -166,6 +173,9 @@ fun AppNav(
     val currentRoute = backStack?.destination?.route
     val currentTab = tabOf(currentRoute)
     var selectedBotChannelId by rememberSaveable { mutableStateOf<Int?>(null) }
+    /** 워크스페이스 탭에서 열어 둔 작업 채팅. */
+    var selectedWorkChannelId by rememberSaveable { mutableStateOf<Int?>(null) }
+    var showUsage by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -197,9 +207,12 @@ fun AppNav(
         Notifications.schedule(context, notifyOn && settings.botBaseUrl != null)
     }
     // 보고 있는 봇 채팅은 알리지 않는다
-    LaunchedEffect(currentRoute, selectedBotChannelId, lifecycleState) {
-        container.notifier.activeChannelId =
-            if (currentRoute == Routes.BOTS && lifecycleState.isAtLeast(Lifecycle.State.STARTED)) selectedBotChannelId else null
+    LaunchedEffect(currentRoute, selectedBotChannelId, selectedWorkChannelId, lifecycleState) {
+        container.notifier.activeChannelId = if (!lifecycleState.isAtLeast(Lifecycle.State.STARTED)) null else when (currentRoute) {
+            Routes.BOTS -> selectedBotChannelId
+            Routes.WORKSPACES -> selectedWorkChannelId
+            else -> null
+        }
     }
     // 알림 권한(Android 13+): 처음 한 번만 묻는다. 거절하면 설정 > 알림에서 다시 켤 수 있다.
     val notifyPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
@@ -213,8 +226,10 @@ fun AppNav(
 
     val wide = isWideWindow()
     // 좁은 창(커버 화면)에서 봇 채팅을 연 상태면 탭 바를 숨겨 채팅·키보드 공간을 확보한다.
-    val inCompactChat = !wide && currentRoute == Routes.BOTS && selectedBotChannelId != null &&
-        container.botApi() != null
+    val inCompactChat = !wide && container.botApi() != null && (
+        (currentRoute == Routes.BOTS && selectedBotChannelId != null) ||
+            (currentRoute == Routes.WORKSPACES && selectedWorkChannelId != null)
+        )
     val navigateTab: (Tab) -> Unit = { tab ->
         navController.navigate(tab.route) {
             popUpTo(navController.graph.findStartDestination().id) { saveState = true }
@@ -260,6 +275,16 @@ fun AppNav(
                         label = { TabLabel(tab, selected) },
                     )
                 }
+                // 레일 맨 아래: 에이전트별 사용량 보드
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = { showUsage = true }) {
+                    Icon(
+                        Icons.Outlined.DataUsage,
+                        contentDescription = stringResource(R.string.usage_title),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Spacer(Modifier.height(12.dp))
             }
             VerticalDivider(thickness = 0.7.dp, color = MaterialTheme.hermesColors.cardBorder)
         }
@@ -337,7 +362,7 @@ fun AppNav(
                         onOpenChannelSettings = { navController.navigate(Routes.channelSettings(it)) },
                         modifier = mod,
                         onOpenGlasses = { navController.navigate(Routes.GLASSES) },
-                        onOpenWorkspaces = { navController.navigate(Routes.WORKSPACES) },
+                        onOpenWorkspaces = { navigateTab(WorkspacesTab) },
                         pendingApprovals = pendingCount,
                         onOpenApprovals = { navController.navigate(Routes.APPROVALS) { launchSingleTop = true } },
                     )
@@ -355,7 +380,7 @@ fun AppNav(
                     MoreScreen(
                         container = container,
                         onOpenSettings = { navController.navigate(Routes.SETTINGS) },
-                        onOpenWorkspaces = { navController.navigate(Routes.WORKSPACES) },
+                        onOpenUsage = { showUsage = true },
                         onOpenGlasses = { navController.navigate(Routes.GLASSES) },
                         modifier = mod,
                     )
@@ -376,7 +401,15 @@ fun AppNav(
                     GlassesSettingsScreen(container, onBack = { navController.popBackStack() }, modifier = mod)
                 }
                 composable(Routes.WORKSPACES) {
-                    WorkspacesScreen(container, onBack = { navController.popBackStack() }, modifier = mod)
+                    WorkspacesScreen(
+                        container,
+                        selectedChannelId = selectedWorkChannelId,
+                        onSelectChannel = { selectedWorkChannelId = it },
+                        modifier = mod,
+                        onOpenBotProfile = { navController.navigate(Routes.botProfile(it)) },
+                        onOpenChannelSettings = { navController.navigate(Routes.channelSettings(it)) },
+                        onOpenGlasses = { navController.navigate(Routes.GLASSES) },
+                    )
                 }
                 composable(
                     Routes.CHAT,
@@ -405,7 +438,7 @@ fun AppNav(
                         onOpenBotProfile = { navController.navigate(Routes.botProfile(it)) },
                         onOpenChannelSettings = { navController.navigate(Routes.channelSettings(it)) },
                         onOpenGlasses = { navController.navigate(Routes.GLASSES) },
-                        onOpenWorkspaces = { navController.navigate(Routes.WORKSPACES) },
+                        onOpenWorkspaces = { navigateTab(WorkspacesTab) },
                     )
                 }
                 composable(
@@ -435,7 +468,10 @@ fun AppNav(
                         onBack = { navController.popBackStack() },
                         onDeleted = {
                             if (selectedBotChannelId == chId) selectedBotChannelId = null
-                            navController.popBackStack(Routes.BOTS, inclusive = false)
+                            if (selectedWorkChannelId == chId) selectedWorkChannelId = null
+                            // 워크스페이스 탭에서 연 채널 설정이면 그 탭으로, 아니면 대화 홈으로
+                            if (navController.previousBackStackEntry?.destination?.route == Routes.WORKSPACES) navController.popBackStack()
+                            else navController.popBackStack(Routes.BOTS, inclusive = false)
                         },
                         modifier = mod,
                     )
@@ -443,6 +479,7 @@ fun AppNav(
             }
         }
     }
+    if (showUsage) UsageDialog(container, onDismiss = { showUsage = false })
 }
 
 @Composable

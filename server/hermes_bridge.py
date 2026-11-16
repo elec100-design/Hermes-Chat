@@ -9,6 +9,7 @@
   - 파일 업로드 (채팅 첨부용 — 업로드 후 경로를 메시지에 포함)
   - 내장 칸반 조회/조작 (~/.hermes/kanban.db — 게이트웨이 디스패처·대시보드와 동일 데이터.
     읽기는 sqlite 직접, 쓰기는 `hermes kanban` CLI 경유로 이벤트·디스패치 불변식 보존)
+  - 에이전트 계정 사용량(`paseo usage`), 작업 폴더 git 작업(상태·커밋·풀·푸시·PR·병합·배포)
 
 실행:
   HERMES_BRIDGE_TOKEN=<토큰> python3 hermes_bridge.py [--port 8765] [--host 0.0.0.0]
@@ -534,6 +535,189 @@ def run_kanban_cli(board, args, timeout=60):
     return proc.stdout, None
 
 
+# ── 사용량(paseo) · git 작업 (T-197/T-199) ─────────────────────────────────
+
+GIT_TIMEOUT = 120
+DEPLOY_TIMEOUT = 900
+# 배포 = 리포 안의 정해진 스크립트만 실행한다(앱이 보낸 명령 문자열은 실행하지 않는다).
+DEPLOY_SCRIPTS = ("scripts/deploy.sh", "deploy.sh")
+
+
+def tool_env():
+    """git/gh/paseo subprocess용 환경 — launchd PATH에 homebrew·~/.local/bin 보충."""
+    env = hermes_env()
+    env["PATH"] = os.pathsep.join(EXTRA_BIN_DIRS + [env.get("PATH", "/usr/bin:/bin")])
+    env["GIT_TERMINAL_PROMPT"] = "0"  # 자격증명 프롬프트로 멈추지 않게
+    env["GH_PROMPT_DISABLED"] = "1"
+    return env
+
+
+def run_tool(args, cwd=None, timeout=GIT_TIMEOUT):
+    """명령 하나 → (returncode, stdout, stderr). 실행파일 없음 127, 시간 초과 124."""
+    env = tool_env()
+    exe = shutil.which(args[0], path=env["PATH"])
+    if not exe:
+        return 127, "", f"{args[0]} 실행파일을 찾지 못했습니다"
+    try:
+        proc = subprocess.run(
+            [exe] + list(args[1:]), cwd=str(cwd) if cwd else None,
+            capture_output=True, text=True, timeout=timeout, env=env,
+        )
+    except subprocess.TimeoutExpired:
+        return 124, "", "시간이 초과되었습니다"
+    return proc.returncode, proc.stdout or "", proc.stderr or ""
+
+
+def git(repo, *args, timeout=GIT_TIMEOUT):
+    return run_tool(["git", "-c", "core.quotepath=false"] + list(args), cwd=repo, timeout=timeout)
+
+
+def git_toplevel(path):
+    """작업 폴더 → 그 폴더가 속한 git 저장소 최상위(Path). 홈 밖·저장소 아님은 None."""
+    if not path or not os.path.isabs(path):
+        return None
+    home = Path.home().resolve()
+    target = Path(path).resolve()
+    if not target.is_dir() or home not in target.parents:
+        return None
+    rc, out, _ = git(target, "rev-parse", "--show-toplevel", timeout=15)
+    if rc != 0 or not out.strip():
+        return None
+    top = Path(out.strip()).resolve()
+    return top if home in top.parents else None
+
+
+def tail_text(*chunks, limit=4000):
+    return "\n".join(c.strip() for c in chunks if c and c.strip())[-limit:]
+
+
+def git_pr(repo):
+    """현재 브랜치의 PR(gh) → {number,url,state,title} 또는 None."""
+    rc, out, _ = run_tool(["gh", "pr", "view", "--json", "number,url,state,title"], cwd=repo, timeout=20)
+    if rc != 0:
+        return None
+    try:
+        d = json.loads(out)
+    except ValueError:
+        return None
+    return {k: d.get(k) for k in ("number", "url", "state", "title")}
+
+
+def git_status(repo):
+    _, branch, _ = git(repo, "rev-parse", "--abbrev-ref", "HEAD", timeout=15)
+    _, porcelain, _ = git(repo, "status", "--porcelain", timeout=30)
+    files = [line[3:] for line in porcelain.splitlines() if line.strip()]
+    rc_up, _, _ = git(repo, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}", timeout=15)
+    ahead = behind = 0
+    if rc_up == 0:
+        rc, counts, _ = git(repo, "rev-list", "--left-right", "--count", "@{u}...HEAD", timeout=15)
+        nums = counts.split()
+        if rc == 0 and len(nums) == 2:
+            behind, ahead = int(nums[0]), int(nums[1])
+    rc_remote, remotes, _ = git(repo, "remote", timeout=15)
+    has_remote = rc_remote == 0 and bool(remotes.strip())
+    rc_head, head, _ = git(repo, "symbolic-ref", "--short", "refs/remotes/origin/HEAD", timeout=15)
+    default_branch = head.strip().split("/", 1)[-1] if rc_head == 0 and head.strip() else None
+    return {
+        "path": str(repo),
+        "branch": branch.strip(),
+        "dirty": bool(files),
+        "files": files,
+        "upstream": rc_up == 0,
+        "ahead": ahead,
+        "behind": behind,
+        "remote": has_remote,
+        "default_branch": default_branch,
+        "pr": git_pr(repo) if has_remote else None,
+        "deploy_script": next((s for s in DEPLOY_SCRIPTS if (repo / s).is_file()), None),
+    }
+
+
+def git_action(repo, action, payload):
+    """→ (결과 dict, None) 또는 (None, 오류 문구). 원격에 닿는 동작은 앱이 확인 창을 거친 뒤 부른다."""
+    _, branch, _ = git(repo, "rev-parse", "--abbrev-ref", "HEAD", timeout=15)
+    branch = branch.strip()
+
+    if action == "commit":
+        message = str(payload.get("message") or "").strip()
+        if not message:
+            return None, "커밋 메시지를 입력하세요"
+        rc, out, err = git(repo, "add", "-A")
+        if rc != 0:
+            return None, f"git add 실패: {tail_text(out, err, limit=500)}"
+        rc, out, err = git(repo, "commit", "-m", message)
+        if rc != 0:
+            return None, f"커밋 실패: {tail_text(out, err, limit=500)}"
+        _, sha, _ = git(repo, "rev-parse", "--short", "HEAD", timeout=15)
+        return {"output": tail_text(out, err), "sha": sha.strip()}, None
+
+    if action == "pull":
+        rc, out, err = git(repo, "pull", "--ff-only")
+        if rc != 0:
+            return None, f"풀 실패: {tail_text(out, err, limit=500)}"
+        return {"output": tail_text(out, err)}, None
+
+    if action == "push":
+        if not branch or branch == "HEAD":
+            return None, "브랜치가 없는 상태(detached HEAD)에서는 푸시할 수 없습니다"
+        rc_up, _, _ = git(repo, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}", timeout=15)
+        args = ["push"] if rc_up == 0 else ["push", "-u", "origin", branch]
+        rc, out, err = git(repo, *args)
+        if rc != 0:
+            return None, f"푸시 실패: {tail_text(out, err, limit=500)}"
+        return {"output": tail_text(out, err)}, None
+
+    if action == "pr":
+        existing = git_pr(repo)
+        if existing and existing.get("state") == "OPEN":
+            return {"output": f"이미 열린 PR #{existing.get('number')} 이 있습니다", "url": existing.get("url")}, None
+        args = ["gh", "pr", "create", "--fill"]
+        title = str(payload.get("title") or "").strip()
+        if title:
+            args += ["--title", title, "--body", str(payload.get("body") or "")]
+        rc, out, err = run_tool(args, cwd=repo)
+        if rc != 0:
+            return None, f"PR 생성 실패: {tail_text(out, err, limit=500)}"
+        url = next((w for w in out.split() if w.startswith("https://")), None)
+        return {"output": tail_text(out, err), "url": url}, None
+
+    if action == "merge":
+        rc, out, err = run_tool(["gh", "pr", "merge", "--merge"], cwd=repo)
+        if rc != 0:
+            return None, f"병합 실패: {tail_text(out, err, limit=500)}"
+        return {"output": tail_text(out, err) or "PR 을 병합했습니다"}, None
+
+    if action == "deploy":
+        script = next((s for s in DEPLOY_SCRIPTS if (repo / s).is_file()), None)
+        if not script:
+            return None, "배포 스크립트가 없습니다 (리포에 scripts/deploy.sh 또는 deploy.sh 필요)"
+        rc, out, err = run_tool(["bash", script], cwd=repo, timeout=DEPLOY_TIMEOUT)
+        if rc != 0:
+            return None, f"배포 실패 (exit {rc}): {tail_text(out, err, limit=1500)}"
+        return {"output": tail_text(out, err) or "배포 스크립트를 실행했습니다", "script": script}, None
+
+    return None, "unknown action"
+
+
+def read_usage(refresh=False):
+    """`paseo usage --json` → (계정 사용량 목록, None) 또는 (None, 오류 문구). 아이콘 SVG 는 뺀다."""
+    args = ["paseo", "usage", "--json"] + (["--refresh"] if refresh else [])
+    rc, out, err = run_tool(args, timeout=60)
+    if rc == 127:
+        return None, "paseo 실행파일을 찾지 못했습니다"
+    try:
+        data = json.loads(out)
+    except ValueError:
+        return None, f"paseo usage 실패: {tail_text(out, err, limit=300)}"
+    if isinstance(data, dict):
+        message = (data.get("error") or {}).get("message") or "paseo usage 실패"
+        return None, message
+    for item in data:
+        if isinstance(item, dict):
+            item.pop("icon", None)
+    return data, None
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "HermesBridge/1.0"
 
@@ -604,6 +788,20 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json({"status": "ok", "service": "hermes-bridge"})
         if not self.authorized():
             return self.fail(401, "unauthorized")
+
+        # GET /usage[?refresh=1] — 에이전트 계정 사용량(paseo usage, T-197)
+        if parts == ["usage"]:
+            data, err = read_usage(query.get("refresh") in ("1", "true"))
+            if err:
+                return self.fail(502, err)
+            return self.send_json({"data": data})
+
+        # GET /git/status?path=<작업 폴더 절대경로> — 브랜치·변경·앞섬/뒤처짐·PR·배포 스크립트 (T-199)
+        if parts == ["git", "status"]:
+            repo = git_toplevel(query.get("path", ""))
+            if repo is None:
+                return self.fail(404, "git 저장소가 아닙니다")
+            return self.send_json(git_status(repo))
 
         # GET /files?path=<HERMES_HOME 기준 상대경로> — 디렉터리 목록 (읽기전용)
         if parts == ["files"]:
@@ -759,6 +957,25 @@ class Handler(BaseHTTPRequestHandler):
         parts = [p for p in self.path.split("?")[0].split("/") if p]
         if not self.authorized():
             return self.fail(401, "unauthorized")
+
+        # POST /git/<commit|pull|push|pr|merge|deploy>  {"path", "message"?, "title"?, "body"?} (T-199)
+        if len(parts) == 2 and parts[0] == "git":
+            raw = self.read_body(256 * 1024)
+            try:
+                payload = json.loads(raw or b"{}")
+                if not isinstance(payload, dict):
+                    raise ValueError
+            except ValueError:
+                return self.fail(400, 'expected JSON {"path": ...}')
+            repo = git_toplevel(str(payload.get("path") or ""))
+            if repo is None:
+                return self.fail(404, "git 저장소가 아닙니다")
+            result, err = git_action(repo, parts[1], payload)
+            if err == "unknown action":
+                return self.fail(404, "not found")
+            if err:
+                return self.fail(400, err)
+            return self.send_json({"ok": True, **result})
 
         # POST /profiles  {"name", "port"?, "api_key"?, "soul"?, "model"?} — 프로필 완전 생성
         # `hermes profile create <name> --clone-from default`로 default를 복제(config.yaml/.env/

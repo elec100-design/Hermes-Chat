@@ -16,7 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Dns
-import androidx.compose.material.icons.rounded.FolderOpen
+import androidx.compose.material.icons.rounded.DataUsage
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -43,13 +43,13 @@ import com.hermes.chatandroid.ui.components.StatusPill
 import com.hermes.chatandroid.ui.components.readableWidth
 import com.hermes.chatandroid.ui.theme.hermesColors
 
-/** 더보기 탭: 연결 요약, 설정, 워크스페이스, 메타 글라스. (대시보드는 탭으로 나갔다.) */
+/** 더보기 탭: 연결 요약, 설정, 사용량, 메타 글라스. (대시보드·워크스페이스는 탭으로 나갔다.) */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MoreScreen(
     container: AppContainer,
     onOpenSettings: () -> Unit,
-    onOpenWorkspaces: () -> Unit,
+    onOpenUsage: () -> Unit,
     onOpenGlasses: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -147,11 +147,11 @@ fun MoreScreen(
                 onClick = onOpenSettings,
             )
             MoreActionCard(
-                icon = Icons.Rounded.FolderOpen,
+                icon = Icons.Rounded.DataUsage,
                 tint = Color(0xFF4F86A8),
-                title = "워크스페이스",
-                subtitle = "봇이 작업할 폴더와 GitHub 리포 관리",
-                onClick = onOpenWorkspaces,
+                title = "사용량",
+                subtitle = "Claude · Grok 등 에이전트 계정별 한도와 재설정 시각",
+                onClick = onOpenUsage,
             )
             MoreActionCard(
                 icon = Icons.Rounded.Visibility,

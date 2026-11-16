@@ -34,7 +34,7 @@
   - `ViewModels/` — `ChatViewModel`, `DiscussionViewModel`, `BotChatViewModel`
   - `Services/` — `HermesAPIClient`(게이트웨이), `BridgeClient`(Bridge), `BotClient`(Hermes-bot 서버), `AppDefaults`(설정/영속화), `SpeechService`, `VoiceConversationController` 등
   - `Resources/` — `Info.plist`, `Assets.xcassets`
-  - `server/hermes_bridge.py` — 게이트웨이가 못 하는 것(프로필 목록/생성/삭제·재시작·SOUL·업로드·칸반·크론·모델 카탈로그)을 담당하는 stdlib 단일 파일
+  - `server/hermes_bridge.py` — 게이트웨이가 못 하는 것(프로필 목록/생성/삭제·재시작·SOUL·업로드·칸반·크론·모델 카탈로그·에이전트 사용량·작업 폴더 git)을 담당하는 stdlib 단일 파일
   - `android/` — Kotlin + Jetpack Compose MVP (빌드는 HANDOFF §3 "Android 빌드" 참조)
 - 핵심 원칙(PLAN §1): **세션/대화는 항상 프로필별 게이트웨이 API로 직접**, 게이트웨이가 못 하는 것만 Bridge로, 칸반은 hermes-agent **내장 칸반(kanban.db)이 단일 진실원본**
 
@@ -93,5 +93,5 @@
 
 ---
 
-**마지막 업데이트**: 2026-11-12
+**마지막 업데이트**: 2026-11-16
 **Claude 버전 선호**: 최신 Claude (Opus / Sonnet)
