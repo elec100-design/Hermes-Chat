@@ -460,7 +460,7 @@
 | T-208 | 크론 카드 — 접히면 이름·다음 실행·마지막 성공/실패만. cron 식과 프롬프트는 펼쳤을 때만. 추가 버튼이 마지막 카드를 가리지 않게 목록 아래 여백. 실패 필터·실행 기록은 만들지 않음 | `android/…/ui/cron/CronScreen.kt` | NEEDS-BUILD |
 | T-209 | 에이전트 칩을 누르면 커서가 맨 앞이 아니라 @이름 뒤에 있게. BasicTextField String 오버로드는 바깥에서 글을 바꾸면 선택을 0에 남긴다 | `android/…/data/ComposerCaret.kt`, `…/ui/components/ChatComposer.kt`, `…/ui/bots/BotChatScreen.kt` | NEEDS-BUILD |
 
-**T-209 실기기 검증 체크리스트** (미실행 — 7bed866 단위 113·assembleDebug·lintDebug 통과):
+**T-209 실기기 검증 체크리스트** (미실행 — 6b6197a 단위 113·assembleDebug·lintDebug 통과):
 커버:
 1. 봇 2명 채널에서 @grok 칩을 누르면 입력창에 `@grok ` 가 들어가고, 커서가 이름 앞이 아니라 뒤(공백 다음)에 있는지
 펼침:
