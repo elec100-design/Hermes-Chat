@@ -461,7 +461,7 @@
 | T-209 | 에이전트 칩을 누르면 커서가 맨 앞이 아니라 @이름 뒤에 있게. BasicTextField String 오버로드는 바깥에서 글을 바꾸면 선택을 0에 남긴다 | `android/…/data/ComposerCaret.kt`, `…/ui/components/ChatComposer.kt`, `…/ui/bots/BotChatScreen.kt` | NEEDS-BUILD |
 | T-215 | Live 버튼에 Live 글자. 글라스 오류는 아는 문구만 한국어로 바꾸고 원문은 자세히에 둔다. 오류가 있으면 업데이트 후 다시 연결을 숨긴다. 촬영 크기 안내는 짧게 | `android/…/data/ChatUx.kt`, `…/ui/bots/chat/LiveBar.kt`, `…/ui/settings/GlassesSettings.kt`, `test/…/ChatUxTest.kt` | NEEDS-BUILD |
 
-**T-215 실기기 검증 체크리스트** (미실행):
+**T-215 실기기 검증 체크리스트** (미실행 — 59e1b37 단위 114·assembleDebug·lintDebug 통과):
 커버:
 1. 봇 채팅 입력 카드의 Live 버튼에 아이콘과 Live 글자가 보이는지
 펼침:
@@ -568,3 +568,4 @@
 | 11-16 | claude/android-workspace-tab @ 5ee8531 | ANDROID 실기기 검증 | 사용자 Galaxy Z Fold 에 debug APK(18888 배포) 설치 — 사용량 팝업·작업 탭(작업 채팅)·git 작업 팝업 동작 확인. T-197~T-199 DONE |
 | 11-16 | claude/hermes-chat-improvements-wc6g8f (T-200~T-202) | ANDROID BUILD SUCCESSFUL | Claude Code 클라우드 컨테이너 — `:app:testDebugUnitTest :app:assembleDebug` 통과(JDK 21, SDK platform 36), 단위 테스트 101개(토론 파서·API 2건 추가). 화면은 눈으로 확인하지 못했다(에뮬레이터 없음) — 맥미니 빌드 APK 로 Phase 28 체크리스트 수행 필요. 서버는 Hermes-bot P32(pytest 276 통과 + 실제 uvicorn·러너 루프로 토론 한 판 HTTP 구동 확인) |
 | 11-16 | claude/hermes-chat-improvements-wc6g8f @ a0acc65 | ANDROID BUILD SUCCESSFUL | T-205 `./gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug` 통과, 단위 테스트 107개. 실기기 미검증 |
+| 11-16 | claude/hermes-chat-improvements-wc6g8f @ 59e1b37 | ANDROID BUILD SUCCESSFUL | T-215 `./gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug` 통과, 단위 테스트 114개. 실기기 미검증 |
