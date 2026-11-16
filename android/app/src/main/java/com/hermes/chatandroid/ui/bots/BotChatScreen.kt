@@ -104,6 +104,7 @@ import com.hermes.chatandroid.ui.components.ErrorBanner
 import com.hermes.chatandroid.ui.components.LoadingBox
 import com.hermes.chatandroid.ui.components.MessageBubble
 import com.hermes.chatandroid.ui.theme.hermesColors
+import com.hermes.chatandroid.ui.workspaces.GitMenuButton
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -133,6 +134,15 @@ data class BotChatUiState(
 ) {
     /** 이 대화에 지정된 작업 폴더(DM = 봇 기본 폴더, 채널 = 채널 폴더). */
     val workdir: String? get() = (dmBot?.workdir ?: channel?.workdir)?.takeIf { it.isNotBlank() }
+}
+
+/**
+ * 봇이 하나뿐인 채널(작업 채팅)은 멘션 없이도 그 봇이 답하게 `@slug` 를 붙인다 —
+ * 서버는 채널에서 멘션이 없으면 아무도 답하지 않는다. 이미 멘션이 있거나 봇이 둘 이상이면 그대로.
+ */
+internal fun soloMention(body: String, channel: BotChannel?): String {
+    val only = channel?.takeIf { !it.isDm }?.members?.singleOrNull() ?: return body
+    return if (Regex("(^|\\s)@\\S").containsMatchIn(body)) body else "@${only.slug} $body".trim()
 }
 
 class BotChatViewModel(private val container: AppContainer, private val channelId: Int) : ViewModel() {
@@ -296,7 +306,7 @@ class BotChatViewModel(private val container: AppContainer, private val channelI
                 val uploaded = withContext(Dispatchers.IO) {
                     files.map { api.uploadAttachment(channelId, it.name, it.bytes, it.mime) }
                 }
-                val r = api.postMessage(channelId, body, uploaded, workdir = channelWorkdirForSend())
+                val r = api.postMessage(channelId, soloMention(body, _state.value.channel), uploaded, workdir = channelWorkdirForSend())
                 _state.update { it.copy(pending = emptyList()) }
                 onSent()
                 _state.value.dmBot?.let { container.touchBotActivity(it.id) }
@@ -469,6 +479,8 @@ fun BotChatScreen(
                         }
                     },
                     actions = {
+                        // 작업 폴더가 있는 대화: 커밋·푸시·PR·병합·배포
+                        state.workdir?.let { wd -> GitMenuButton(container, wd, showLabel = wide) }
                         if (headerAction != null) {
                             IconButton(onClick = headerAction) {
                                 Icon(Icons.Rounded.Tune, contentDescription = "정보 및 설정")

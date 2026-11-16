@@ -411,6 +411,9 @@
 | T-194 | 채팅에서 작업 폴더 선택 — 입력 카드의 첨부(+) 옆 **폴더 버튼** → 등록 워크스페이스 목록 시트(지정 안 함 포함, "워크스페이스 관리" 바로가기). DM = 그 봇의 기본 폴더(`PATCH /api/bots/<id>` workdir), 채널 = 채널 폴더(`PATCH /api/channels/<id>`) + 서버가 봇 폴더를 채널 폴더보다 앞세우므로 등록된 위치면 메시지 단위 `workdir` 로도 전달. 넓은 화면은 폴더 이름까지 표시 | `…/ui/bots/chat/WorkspacePicker.kt`(신규), `…/ui/bots/BotChatScreen.kt` | NEEDS-BUILD (11-16 로컬 빌드·단위테스트 93개 통과, 실기기 미검증) |
 | T-195 | 디자인 개편(Claude 앱 풍) — 팔레트: 크림 바탕(#FAF9F5)·클레이 강조(#BA5634, 다크 #D97757)·따뜻한 회색 표면, 다크는 #262624 계열. 제목 세리프. 채팅: 사용자 = 회색 말풍선, **봇 = 말풍선 없이 본문**(이름 줄 + 넓은 본문, 최대 760dp 가운데 정렬). 입력 = 카드형(위 글 입력, 아래 도구 줄: + · 폴더 … Live · 보내기↑). 봇 tone 색·바로가기·런처 아이콘 색을 팔레트에 맞춤 | `…/ui/theme/Theme.kt`, `…/ui/components/ChatComposer.kt`, `…/ui/components/MessageBubble.kt`, `…/ui/bots/BotUi.kt`, `res/drawable/ic_launcher_*.xml`, `res/drawable/ic_shortcut_*.xml` 외 | NEEDS-BUILD (11-16 로컬 빌드·단위테스트 93개 통과, 실기기 미검증) |
 | T-196 | 탭 재구성(11-16 사용자 요청) — 탭 5개 = 대화·칸반·크론·**대시보드**·더보기(커버 하단 바·펼침 레일 공통). 대시보드는 더보기에서 탭으로 승격(데모 모드는 빈 안내). **승인 탭 폐지** → 대화 탭 헤더(새로고침 왼쪽)의 종 버튼, 대기 건수 배지(대화 탭 아이콘에도 배지). 승인 화면은 뒤로 버튼이 있는 하위 화면, 알림·바로가기도 그 화면으로. **글라스 설정**은 설정에서 빼 더보기 > 도구 및 관리 > "메타 글라스 · Live" 화면으로(Live 바의 카메라 버튼도 여기로) | `…/ui/AppNav.kt`, `…/ui/bots/BotsScreen.kt`, `…/ui/more/MoreScreen.kt`, `…/ui/more/DashboardScreen.kt`, `…/ui/settings/GlassesSettings.kt`, `…/ui/settings/SettingsScreen.kt`, `res/values/strings.xml` | NEEDS-BUILD (11-16 로컬 빌드·단위테스트 93개·lint 통과, 실기기 미검증) |
+| T-197 | 에이전트별 사용량 보드 팝업(11-16 사용자 요청) — 펼침 레일 맨 아래 **사용량 버튼**, 커버는 더보기 > 사용량. 계정별 카드: 플랜·사용 가능 여부·한도 창(5시간/주간 등) 진행 막대·재설정까지 남은 시간·크레딧·마지막 업데이트. 지금 못 읽는 계정(401 등)은 사유 + 마지막 성공 값을 흐리게. Claude·Grok·Antigravity 를 앞에 정렬. 데이터 = **Bridge `GET /usage[?refresh=1]`** → 맥미니 `paseo usage --json`(아이콘 SVG 제거). **Antigravity 는 paseo 가 사용량을 제공하지 않아 현재 목록에 없음**(paseo 가 주면 자동 표시) | `…/ui/usage/UsageDialog.kt`(신규), `…/data/DevModels.kt`(신규), `…/net/BridgeApi.kt`, `…/ui/AppNav.kt`, `…/ui/more/MoreScreen.kt`, `server/hermes_bridge.py`, 테스트 `DevParsersTest` | NEEDS-BUILD (11-16 로컬 빌드·단위테스트 99개·lint 통과, Bridge 재배포·실서버 `/usage` 응답 확인, 실기기 미검증) |
+| T-198 | 워크스페이스 탭(11-16 사용자 요청, Paseo 식 구조) — 탭 6개 = 대화·**작업**·칸반·크론·대시보드·더보기(더보기의 워크스페이스 항목은 탭으로 승격). 워크스페이스마다 **작업 채팅을 여러 개** 열어 코딩 작업을 나눠 진행: 작업 채팅 = 작업 폴더가 그 워크스페이스인 Hermes-bot 채널(`POST /api/channels` workdir), 목록은 채널 workdir 로 워크스페이스에 묶음(하위 폴더 포함, 가장 깊은 워크스페이스 우선). 펼침 = 목록 + 채팅 나란히, 커버 = 목록 ↔ 채팅 전환(채팅 중 탭 바 숨김). 워크스페이스 줄 탭 = 기존 상태·커밋·제거 시트, + = 새 작업 채팅(제목·봇 선택), 헤더 + = 폴더 추가/리포 클론. **봇이 하나뿐인 채널은 멘션 없이 보내도 `@slug` 를 자동으로 붙여** 바로 답함(서버는 채널에서 멘션이 없으면 무응답) | `…/ui/workspaces/WorkspacesScreen.kt`, `…/ui/AppNav.kt`, `…/ui/bots/BotChatScreen.kt`, `…/data/DevModels.kt`, `res/values/strings.xml` | NEEDS-BUILD (11-16 로컬 빌드·단위테스트 99개·lint 통과, 실기기 미검증) |
+| T-199 | 채팅 오른쪽 위 **git 작업 팝업**(11-16 사용자 요청) — 작업 폴더가 있는 대화(DM·채널) 상단에 git 버튼(펼침은 브랜치 이름 표시). 메뉴: 상태 요약(브랜치·변경 수·↑앞섬 ↓뒤처짐) / 커밋…(전체 add) / 풀(ff-only) / 푸시 / PR 만들기·PR 보기 / 병합(`gh pr merge --merge`) / 배포 / 새로고침. 푸시·PR·병합·배포는 확인 창을 거치고 결과 출력을 창으로 보여 줌. **Bridge `GET /git/status?path=`, `POST /git/<commit\|pull\|push\|pr\|merge\|deploy>`** — 맥미니의 git/gh 자격증명 사용(토큰 저장 없음), 경로는 홈 아래 git 저장소만. **배포 = 리포 안의 `scripts/deploy.sh` 또는 `deploy.sh` 만 실행**(앱이 보낸 명령 문자열은 실행하지 않음, 최대 15분) — 스크립트가 없으면 메뉴 비활성 | `…/ui/workspaces/GitActions.kt`(신규), `…/ui/bots/BotChatScreen.kt`, `…/net/BridgeApi.kt`, `…/data/{DevModels,DemoApis}.kt`, `server/hermes_bridge.py` | NEEDS-BUILD (11-16 로컬 빌드·단위테스트 99개·lint 통과, Bridge 재배포·실서버 `/git/status` 응답 확인, 푸시·PR·병합·배포 실행과 실기기는 미검증) |
 
 **T-187/T-188 실기기 검증 체크리스트** (폴드 + 메타 글라스, Meta AI 앱 개발자 모드 ON):
 1. 봇 DM 상단 헤드셋 버튼 → Live 화면. 글라스 카드: 블루투스 권한 → "Meta AI에서 연결" → 앱 복귀 후 "카메라 권한 요청" → "카메라 켜기" → "카메라 연결됨"
@@ -423,6 +426,13 @@
 8. 화면 끄고 주머니에 넣은 채 3턴 이상 대화 유지, 알림의 "종료"로 끝남
 9. 봇 채팅으로 돌아가 Live 대화·사진이 기록돼 있는지
 10. 채널(멤버 2+)에서 Live: 답할 봇 선택 → 그 봇만 답함
+
+**T-197~T-199 실기기 검증 체크리스트** (11-16, Bridge URL·토큰 설정 필요):
+1. 펼침 레일 맨 아래 사용량 버튼(커버는 더보기 > 사용량) → Claude 카드에 Session/Weekly 막대와 재설정 시각, 로그인 풀린 계정은 빨간 사유. 새로 조회 버튼 동작
+2. 작업 탭 → 워크스페이스 + → 봇 1개 골라 "열기" → 채팅이 열리고 멘션 없이 보내도 그 봇이 답함. 같은 워크스페이스에 두 번째 작업 채팅을 열어 목록에 둘 다 보이는지
+3. 작업 채팅 오른쪽 위 git 버튼 → 브랜치·변경 수 표시. 커밋…(메시지 입력) → 완료 창 → 상태가 "깨끗함 ↑1". 푸시(확인 창) → ↑ 사라짐
+4. 기본 브랜치가 아닌 브랜치에서 PR 만들기 → 완료 창의 "GitHub 에서 열기". 이후 메뉴가 "PR 보기 #n" 으로 바뀌고 병합 활성
+5. `scripts/deploy.sh` 가 없는 리포는 배포가 비활성("scripts/deploy.sh 없음"), 있는 리포는 확인 창 → 스크립트 출력 표시
 
 **T-191~T-195 실기기 검증 체크리스트** (11-16 UI 개편 — 위 1·9번의 "헤드셋 버튼/Live 화면"은 아래로 대체):
 1. 더보기 > "메타 글라스 · Live"(T-196): 글라스 연결 상태·시야 사진·촬영 크기가 보이고, 앱을 껐다 켜도 선택이 유지됨
@@ -504,3 +514,4 @@
 | 11-13 | ccr-29d493c3-z8tex2 @ e0b8819 | BUILD SUCCEEDED + TEST SUCCEEDED | iOS Simulator(generic/platform=iOS Simulator) 빌드 및 `HermesChatTests`(iPhone 17, SSEParserTests 20 + ChatRecoveryTests 14 = 34건) 전체 통과. `origin/main` 머지·T-149 통합·구 T-158/159→T-167/168 재번호 반영 |
 | 11-15 | claude/android-fold-ui @ 08d74ce | ANDROID 실기기 검증 | 사용자 Galaxy Z Fold에 debug APK(18888 배포) 설치·실서버(:8900) 확인 — 연결 테스트(봇 14개), 봇 목록·DM·실행 단계·더보기·설정 정상. T-170~176 DONE. 마크다운 표 미렌더링 발견 → T-177 |
 | 11-15 | claude/android-fold-ui @ 2a20cbe | ANDROID 실기기 검증 | 사용자 폴드에서 대시보드 WebView 본문 표시 확인 — T-179 DONE. 진단(버그) 버튼은 확인 후 제거 |
+| 11-16 | claude/android-workspace-tab (T-197~T-199) | ANDROID BUILD SUCCESSFUL | Claude Code 맥미니 로컬 — `:app:testDebugUnitTest :app:assembleDebug :app:lintDebug` 통과, 단위 테스트 99개. Bridge 재배포 후 실서버에서 `/usage`(Claude 창 3개 등 5계정)·`/git/status`(브랜치·PR)·오류 응답(401/404/400) 확인. 실기기 미검증 |

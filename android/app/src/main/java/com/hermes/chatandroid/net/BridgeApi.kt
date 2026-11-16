@@ -2,11 +2,16 @@ package com.hermes.chatandroid.net
 
 import com.hermes.chatandroid.data.CronForm
 import com.hermes.chatandroid.data.CronJob
+import com.hermes.chatandroid.data.DevParsers
+import com.hermes.chatandroid.data.GitAction
+import com.hermes.chatandroid.data.GitResult
+import com.hermes.chatandroid.data.GitStatus
 import com.hermes.chatandroid.data.KanbanBoard
 import com.hermes.chatandroid.data.KanbanBoardSummary
 import com.hermes.chatandroid.data.KanbanCreateMode
 import com.hermes.chatandroid.data.KanbanTaskDetail
 import com.hermes.chatandroid.data.OpsParsers
+import com.hermes.chatandroid.data.UsageSource
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
@@ -27,6 +32,8 @@ open class BridgeApi(
     client: OkHttpClient = defaultHttpClient(),
 ) {
     private val http = client.newBuilder().readTimeout(60, TimeUnit.SECONDS).build()
+    /** 푸시·PR·병합은 원격 왕복, 배포 스크립트는 최대 15분(서버 DEPLOY_TIMEOUT). */
+    private val slowHttp = client.newBuilder().readTimeout(930, TimeUnit.SECONDS).build()
 
     open suspend fun fetchProfiles(): List<BridgeProfile> {
         val req = Request.Builder().url(joinUrl(baseUrl, "profiles")).bearer(token).build()
@@ -134,5 +141,23 @@ open class BridgeApi(
     open suspend fun deleteCronJob(profile: String, jobId: String) {
         http.fetchText(req("profiles/${seg(profile)}/cron/${seg(jobId)}").delete().build())
     }
-}
 
+    // ---- 사용량 · git (T-197/T-199) ----
+
+    /** 에이전트 계정 사용량(맥미니 `paseo usage`). [refresh] = 캐시 대신 새로 조회. */
+    open suspend fun fetchUsage(refresh: Boolean = false): List<UsageSource> =
+        DevParsers.parseUsage(http.fetchText(req(if (refresh) "usage?refresh=1" else "usage").build()))
+
+    /** [path] = 맥미니 작업 폴더 절대경로. git 저장소가 아니면 404. */
+    open suspend fun fetchGitStatus(path: String): GitStatus =
+        DevParsers.parseGitStatus(http.fetchText(req("git/status?path=" + URLEncoder.encode(path, "UTF-8")).build()))
+
+    /** 실패는 400 + 서버 문구([ApiException]). [message] 는 커밋 메시지. */
+    open suspend fun gitAction(path: String, action: GitAction, message: String? = null): GitResult {
+        val body = buildJsonObject {
+            put("path", path)
+            if (!message.isNullOrBlank()) put("message", message)
+        }.toString()
+        return DevParsers.parseGitResult(slowHttp.fetchText(req("git/${action.key}").post(jsonBody(body)).build()))
+    }
+}
