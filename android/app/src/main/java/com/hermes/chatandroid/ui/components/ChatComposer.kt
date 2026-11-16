@@ -35,7 +35,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -43,7 +47,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import com.hermes.chatandroid.data.ComposerCaret
 import com.hermes.chatandroid.ui.theme.hermesColors
 
 /**
@@ -113,9 +120,33 @@ fun ChatComposerDock(
                                 maxLines = 1,
                             )
                         }
+                        // String 오버로드는 칩이 글을 밖에서 바꿔도 선택을 0에 남긴다.
+                        // 바깥 변경이면 커서를 글 끝(에이전트 이름 뒤)으로 옮긴다.
+                        var textFieldValueState by remember {
+                            mutableStateOf(
+                                TextFieldValue(
+                                    text = value,
+                                    selection = TextRange(ComposerCaret.caretAfterExternalEdit(value)),
+                                ),
+                            )
+                        }
+                        val textFieldValue = if (textFieldValueState.text == value) {
+                            textFieldValueState
+                        } else {
+                            TextFieldValue(
+                                text = value,
+                                selection = TextRange(ComposerCaret.caretAfterExternalEdit(value)),
+                            )
+                        }
+                        SideEffect {
+                            if (textFieldValueState != textFieldValue) textFieldValueState = textFieldValue
+                        }
                         BasicTextField(
-                            value = value,
-                            onValueChange = onValueChange,
+                            value = textFieldValue,
+                            onValueChange = { updated ->
+                                textFieldValueState = updated
+                                if (updated.text != value) onValueChange(updated.text)
+                            },
                             maxLines = 6,
                             textStyle = MaterialTheme.typography.bodyLarge.copy(
                                 color = MaterialTheme.colorScheme.onSurface,

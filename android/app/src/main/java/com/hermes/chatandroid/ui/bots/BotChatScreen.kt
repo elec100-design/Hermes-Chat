@@ -40,6 +40,7 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -51,6 +52,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -83,8 +85,13 @@ import com.hermes.chatandroid.live.LiveTarget
 import com.hermes.chatandroid.data.Bot
 import com.hermes.chatandroid.data.BotChannel
 import com.hermes.chatandroid.data.BotMessage
+import com.hermes.chatandroid.data.ChatUx
+import com.hermes.chatandroid.data.ComposerCaret
 import com.hermes.chatandroid.data.BotPatch
 import com.hermes.chatandroid.data.ChannelPatch
+import com.hermes.chatandroid.data.Discussion
+import com.hermes.chatandroid.data.DiscussionRequest
+import com.hermes.chatandroid.net.ApiException
 import com.hermes.chatandroid.data.Workspace
 import com.hermes.chatandroid.net.AttachmentImageStore
 import com.hermes.chatandroid.data.BotStep
@@ -94,6 +101,10 @@ import com.hermes.chatandroid.ui.bots.chat.LiveBar
 import com.hermes.chatandroid.ui.bots.chat.LiveButton
 import com.hermes.chatandroid.ui.bots.chat.WorkspaceButton
 import com.hermes.chatandroid.ui.bots.chat.WorkspacePickerSheet
+import com.hermes.chatandroid.ui.bots.chat.DiscussionBar
+import com.hermes.chatandroid.ui.bots.chat.DiscussionButton
+import com.hermes.chatandroid.ui.bots.chat.DiscussionKindLabel
+import com.hermes.chatandroid.ui.bots.chat.DiscussionSheet
 import com.hermes.chatandroid.ui.bots.chat.PendingBotFile
 import com.hermes.chatandroid.ui.bots.chat.TypingDots
 import com.hermes.chatandroid.ui.bots.chat.readPendingFile
@@ -131,6 +142,11 @@ data class BotChatUiState(
     val info: String? = null,
     /** 작업 폴더 선택 시트용 등록 워크스페이스. null = 아직 안 불러옴. */
     val workspaces: List<Workspace>? = null,
+    /** 멘션 없이 보내려 해서 수신 봇을 고르는 중. */
+    val pickRecipient: Boolean = false,
+    /** 이 채널의 가장 최근 토론(없으면 null). 진행 중이면 입력 카드 위에 진행 줄이 뜬다. */
+    val discussion: Discussion? = null,
+    val startingDiscussion: Boolean = false,
 ) {
     /** 이 대화에 지정된 작업 폴더(DM = 봇 기본 폴더, 채널 = 채널 폴더). */
     val workdir: String? get() = (dmBot?.workdir ?: channel?.workdir)?.takeIf { it.isNotBlank() }
@@ -140,10 +156,7 @@ data class BotChatUiState(
  * 봇이 하나뿐인 채널(작업 채팅)은 멘션 없이도 그 봇이 답하게 `@slug` 를 붙인다 —
  * 서버는 채널에서 멘션이 없으면 아무도 답하지 않는다. 이미 멘션이 있거나 봇이 둘 이상이면 그대로.
  */
-internal fun soloMention(body: String, channel: BotChannel?): String {
-    val only = channel?.takeIf { !it.isDm }?.members?.singleOrNull() ?: return body
-    return if (Regex("(^|\\s)@\\S").containsMatchIn(body)) body else "@${only.slug} $body".trim()
-}
+internal fun soloMention(body: String, channel: BotChannel?): String = ChatUx.addressSolo(body, channel)
 
 class BotChatViewModel(private val container: AppContainer, private val channelId: Int) : ViewModel() {
     private val _state = MutableStateFlow(BotChatUiState())
@@ -161,6 +174,7 @@ class BotChatViewModel(private val container: AppContainer, private val channelI
                 // 최종본이 된 메시지의 스트리밍 버퍼는 제거
                 s.copy(messages = sorted, streaming = s.streaming.filterKeys { it in inFlight })
             }
+            refreshDiscussion(list)
         },
         onReset = { id -> _state.update { it.copy(streaming = it.streaming + (id to ""), streamErrors = it.streamErrors - id) } },
         onDelta = { id, t -> _state.update { it.copy(streaming = it.streaming + (id to (it.streaming[id].orEmpty() + t))) } },
@@ -294,19 +308,34 @@ class BotChatViewModel(private val container: AppContainer, private val channelI
         }
     }
 
+    fun dismissRecipientPick() = _state.update { it.copy(pickRecipient = false) }
+
+    /** 고른 봇에게 멘션을 붙여 보낸다. 기본값(마지막 답장 봇)도 이 경로로만 나간다. */
+    fun sendTo(slug: String, text: String, onSent: () -> Unit) {
+        _state.update { it.copy(pickRecipient = false) }
+        send(ChatUx.addressTo(text, slug), onSent)
+    }
+
     fun send(text: String, onSent: () -> Unit) {
         val api = container.botApi() ?: return
         val body = text.trim()
         val files = _state.value.pending
         // 서버는 본문이 비어도 첨부가 있으면 받는다(main.py api_post_message).
         if ((body.isEmpty() && files.isEmpty()) || _state.value.sending) return
-        _state.update { it.copy(sending = true, info = null, error = null) }
+        val channel = _state.value.channel
+        if (ChatUx.needsRecipientPick(channel, body)) {
+            _state.update { it.copy(pickRecipient = true, info = null) }
+            return
+        }
+        val addressed = soloMention(body, channel)
+        val solo = ChatUx.soloRecipientSlug(_state.value.dmBot, channel)
+        _state.update { it.copy(sending = true, info = null, error = null, pickRecipient = false) }
         viewModelScope.launch {
             try {
                 val uploaded = withContext(Dispatchers.IO) {
                     files.map { api.uploadAttachment(channelId, it.name, it.bytes, it.mime) }
                 }
-                val r = api.postMessage(channelId, soloMention(body, _state.value.channel), uploaded, workdir = channelWorkdirForSend())
+                val r = api.postMessage(channelId, addressed, uploaded, workdir = channelWorkdirForSend())
                 _state.update { it.copy(pending = emptyList()) }
                 onSent()
                 _state.value.dmBot?.let { container.touchBotActivity(it.id) }
@@ -315,15 +344,77 @@ class BotChatViewModel(private val container: AppContainer, private val channelI
                 if (r.jobId != null && r.replyMessageId != null) follower.follow(r.replyMessageId, r.jobId)
                 val info = when {
                     r.error != null -> r.error
-                    r.jobId == null -> {
-                        val slug = _state.value.channel?.members?.firstOrNull()?.slug
+                    r.jobId == null && channel != null && !channel.isDm -> {
+                        val slug = channel.members.firstOrNull()?.slug
                         "@${slug ?: "봇이름"} 으로 멘션해야 답합니다"
                     }
+                    solo != null && r.jobId != null -> "@$solo 이 받았습니다"
                     else -> null
                 }
                 _state.update { it.copy(sending = false, info = info) }
             } catch (e: Exception) {
                 _state.update { it.copy(sending = false, error = botErrorText(e)) }
+            }
+        }
+    }
+
+    /**
+     * 메시지에 토론 발화가 있으면 그 토론의 상태(발언 횟수·진행 여부)를 다시 읽는다.
+     * 잡이 끝날 때마다 목록을 새로 읽으므로 그때마다 불린다. 이미 끝난 토론은 다시 묻지 않는다.
+     */
+    private fun refreshDiscussion(messages: List<BotMessage>) {
+        val api = container.botApi() ?: return
+        val id = messages.lastOrNull { it.discussionId != null }?.discussionId
+        val cur = _state.value.discussion
+        if (id == null) {
+            if (cur != null) _state.update { it.copy(discussion = null) }
+            return
+        }
+        if (cur?.id == id && !cur.isRunning) return
+        viewModelScope.launch {
+            try {
+                val d = api.fetchDiscussion(id)
+                _state.update { it.copy(discussion = d) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // 구버전 서버(P32 미만)에는 이 경로가 없다 — 발언 자체는 보이므로 조용히 넘어간다.
+            }
+        }
+    }
+
+    /** 토론을 연다. [onResult] 는 성공이면 null, 서버가 거절하면 그 이유. */
+    fun startDiscussion(request: DiscussionRequest, onResult: (String?) -> Unit) {
+        val api = container.botApi() ?: return
+        if (_state.value.startingDiscussion) return
+        _state.update { it.copy(startingDiscussion = true, info = null, error = null) }
+        viewModelScope.launch {
+            try {
+                api.startDiscussion(channelId, request.copy(workdir = channelWorkdirForSend()))
+                follower.submit(api.fetchMessages(channelId))
+                _state.update { it.copy(startingDiscussion = false) }
+                onResult(null)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _state.update { it.copy(startingDiscussion = false) }
+                onResult(if (e is ApiException && e.code == 404) "봇 서버가 토론을 지원하지 않습니다. Hermes-bot 을 P32 이상으로 올려 주세요." else botErrorText(e))
+            }
+        }
+    }
+
+    fun stopDiscussion() {
+        val api = container.botApi() ?: return
+        val id = _state.value.discussion?.takeIf { it.isRunning }?.id ?: return
+        viewModelScope.launch {
+            try {
+                val d = api.stopDiscussion(id)
+                _state.update { it.copy(discussion = d) }
+                follower.submit(api.fetchMessages(channelId))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _state.update { it.copy(error = botErrorText(e)) }
             }
         }
     }
@@ -391,6 +482,8 @@ fun BotChatScreen(
     }
     var liveMenu by remember(channelId) { mutableStateOf(false) }
     var workspaceSheet by remember(channelId) { mutableStateOf(false) }
+    var discussionSheet by remember(channelId) { mutableStateOf(false) }
+    var discussionError by remember(channelId) { mutableStateOf<String?>(null) }
     val wide = isWideWindow()
     // 하단 근처일 때만 따라간다(위로 올려 읽는 중이면 방해하지 않음). 첫 로드는 항상 맨 아래.
     val nearBottom by remember(channelId) {
@@ -507,6 +600,13 @@ fun BotChatScreen(
                             workspaceSheet = true
                             vm.loadWorkspaces()
                         })
+                        // 봇이 둘 이상인 채널: 주제를 던져 토론을 연다(입력 중인 글이 주제로 들어간다).
+                        if (members.size > 1) {
+                            DiscussionButton(running = state.discussion?.isRunning == true, onClick = {
+                                discussionError = null
+                                discussionSheet = true
+                            })
+                        }
                     }
                 } else null,
                 trailingActions = if (dm != null || ch != null) {
@@ -538,8 +638,9 @@ fun BotChatScreen(
                         }
                     }
                 } else null,
-                topContent = if (liveHere || state.info != null || members.size > 1 || state.pending.isNotEmpty()) {
+                topContent = if (liveHere || state.info != null || members.size > 1 || state.pending.isNotEmpty() || ChatUx.soloRecipientSlug(dm, ch) != null) {
                     {
+                        state.discussion?.takeIf { it.isRunning }?.let { DiscussionBar(it, onStop = vm::stopDiscussion) }
                         if (liveHere) {
                             LiveBar(
                                 ui = liveUi,
@@ -548,6 +649,14 @@ fun BotChatScreen(
                                 onGlassesSettings = onOpenGlasses,
                                 onStop = live::stop,
                                 onDismissError = { live.clearError(); live.glasses.clearError() },
+                            )
+                        }
+                        ChatUx.soloRecipientSlug(dm, ch)?.let { slug ->
+                            Text(
+                                "받는 봇 @$slug",
+                                Modifier.padding(horizontal = 16.dp),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                         state.info?.let {
@@ -575,7 +684,7 @@ fun BotChatScreen(
                                         modifier = Modifier
                                             .clip(CircleShape)
                                             .clickable {
-                                                input = if (input.isEmpty() || input.endsWith(" ")) input + "@${m.slug} " else "$input @${m.slug} "
+                                                input = ComposerCaret.insertMention(input, m.slug).text
                                             },
                                         shape = CircleShape,
                                         color = c.copy(alpha = 0.12f),
@@ -644,7 +753,13 @@ fun BotChatScreen(
                 state.error?.let { ErrorBanner(it, onRetry = vm::load) }
                 when {
                     state.loading -> LoadingBox(label = "대화를 불러오는 중…")
-                    state.messages.isEmpty() -> ChatIntroEmptyState(dm = dm, channel = ch)
+                    state.messages.isEmpty() -> ChatIntroEmptyState(
+                        dm = dm,
+                        channel = ch,
+                        onPickMember = { slug ->
+                            input = ComposerCaret.insertMention(input, slug).text
+                        },
+                    )
                     else -> LazyColumn(
                         Modifier.weight(1f).fillMaxWidth(),
                         state = listState,
@@ -687,6 +802,22 @@ fun BotChatScreen(
         }
     }
 
+    if (discussionSheet) {
+        DiscussionSheet(
+            members = members,
+            initialTopic = input,
+            starting = state.startingDiscussion,
+            error = discussionError,
+            onStart = { req ->
+                vm.startDiscussion(req) { err ->
+                    discussionError = err
+                    if (err == null) { discussionSheet = false; input = "" }
+                }
+            },
+            onDismiss = { discussionSheet = false },
+        )
+    }
+
     if (workspaceSheet) {
         WorkspacePickerSheet(
             workspaces = state.workspaces,
@@ -696,13 +827,42 @@ fun BotChatScreen(
             onDismiss = { workspaceSheet = false },
         )
     }
+    if (state.pickRecipient) {
+        val members = state.channel?.members.orEmpty()
+        val last = ChatUx.lastReplierSlug(state.messages, members)
+        val defaultSlug = ChatUx.defaultRecipientSlug(state.messages, members)
+        AlertDialog(
+            onDismissRequest = vm::dismissRecipientPick,
+            title = { Text("받을 봇") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "멘션이 없으면 서버는 아무도 답하지 않습니다. 받을 봇을 고르세요.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    members.forEach { m ->
+                        TextButton(onClick = { vm.sendTo(m.slug, input) { input = "" } }) {
+                            Text(if (m.slug == last) "@${m.slug}  ·  마지막 답" else "@${m.slug}")
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                defaultSlug?.let { slug ->
+                    TextButton(onClick = { vm.sendTo(slug, input) { input = "" } }) { Text("@$slug 에게") }
+                }
+            },
+            dismissButton = { TextButton(onClick = vm::dismissRecipientPick) { Text("취소") } },
+        )
+    }
 }
 
 private fun isGranted(context: Context, permission: String) =
     ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
 
 @Composable
-private fun ChatIntroEmptyState(dm: Bot?, channel: BotChannel?) {
+private fun ChatIntroEmptyState(dm: Bot?, channel: BotChannel?, onPickMember: (String) -> Unit = {}) {
     Box(Modifier.fillMaxSize().padding(28.dp), contentAlignment = Alignment.Center) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -720,25 +880,54 @@ private fun ChatIntroEmptyState(dm: Bot?, channel: BotChannel?) {
                     )
                 }
                 Text(
-                    "아래 입력창에 메시지를 보내 대화를 시작하세요.",
+                    "받는 봇 @${dm.slug}",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary,
                 )
+            } else if (channel != null && channel.members.size > 1) {
+                ChannelAvatarGroup(channel.members)
+                Text(channel.title, style = MaterialTheme.typography.titleLarge)
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        "봇을 눌러 대화를 시작하세요.",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        textAlign = TextAlign.Center,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        channel.members.forEach { m ->
+                            val c = toneColor(m.tone) ?: MaterialTheme.colorScheme.primary
+                            Surface(
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .clickable { onPickMember(m.slug) },
+                                shape = CircleShape,
+                                color = c.copy(alpha = 0.12f),
+                                border = BorderStroke(1.dp, c.copy(alpha = 0.30f)),
+                            ) {
+                                Text(
+                                    "@${m.slug}",
+                                    Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = c,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                            }
+                        }
+                    }
+                }
             } else if (channel != null) {
                 ChannelAvatarGroup(channel.members)
                 Text(channel.title, style = MaterialTheme.typography.titleLarge)
-                channel.topic?.takeIf { it.isNotBlank() }?.let {
-                    Text(
-                        it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                    )
-                }
+                val only = channel.members.singleOrNull()?.slug
                 Text(
-                    "참여 중인 봇을 @멘션해 대화를 시작해 보세요.",
+                    if (only != null) "받는 봇 @$only" else "메시지를 보내 대화를 시작하세요.",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary,
+                    textAlign = TextAlign.Center,
                 )
             } else {
                 Text("대화를 시작하세요", style = MaterialTheme.typography.titleMedium)
@@ -799,6 +988,7 @@ private fun MessageRow(m: BotMessage, state: BotChatUiState, vm: BotChatViewMode
                 fontWeight = FontWeight.SemiBold,
                 color = accent ?: MaterialTheme.colorScheme.primary,
             )
+            DiscussionKindLabel(m.discKind)
             if (m.isInFlight && text.isNotEmpty()) {
                 Text(
                     "· 작성 중",

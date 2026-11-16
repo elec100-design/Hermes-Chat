@@ -163,7 +163,7 @@ fun CronScreen(container: AppContainer, modifier: Modifier = Modifier) {
                         LazyVerticalGrid(
                             columns = GridCells.Adaptive(minSize = 340.dp),
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
+                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 128.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
@@ -220,24 +220,15 @@ private fun CronCard(
 ) {
     val hc = MaterialTheme.hermesColors
     var menu by remember { mutableStateOf(false) }
+    var expanded by remember { mutableStateOf(false) }
     val dim = if (job.paused) 0.55f else 1f
-    HermesCard(onClick = onOpen, contentPadding = PaddingValues(start = 16.dp, end = 4.dp, top = 12.dp, bottom = 12.dp)) {
+    HermesCard(onClick = { expanded = !expanded }, contentPadding = PaddingValues(start = 16.dp, end = 4.dp, top = 12.dp, bottom = 12.dp)) {
         Row(verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Text(
                     job.title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = dim),
                 )
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Icon(Icons.Rounded.Schedule, null, Modifier.size(15.dp), tint = MaterialTheme.colorScheme.primary.copy(alpha = dim))
-                    Text(
-                        CronText.humanize(job.schedule) ?: job.schedule,
-                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary.copy(alpha = dim),
-                    )
-                    if (CronText.humanize(job.schedule) != null) {
-                        Text(job.schedule, style = MaterialTheme.typography.labelSmall, fontFamily = FontFamily.Monospace, color = hc.offline)
-                    }
-                }
             }
             if (busy) CircularProgressIndicator(Modifier.padding(top = 12.dp, end = 8.dp).size(18.dp), strokeWidth = 2.dp)
             Switch(checked = !job.paused, onCheckedChange = onToggle, enabled = !busy)
@@ -253,12 +244,6 @@ private fun CronCard(
                 }
             }
         }
-        if (job.prompt.isNotBlank() && job.name.isNotBlank()) {
-            Text(
-                job.prompt, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(end = 12.dp, top = 4.dp),
-            )
-        }
         Spacer(Modifier.size(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             when {
@@ -266,6 +251,7 @@ private fun CronCard(
                 job.nextRunAt != null -> StatusPill(
                     "다음 ${CronText.relative(job.nextRunAt) ?: ""}", MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.primary,
                 )
+                else -> StatusPill("다음 실행 없음", MaterialTheme.colorScheme.surfaceContainerHigh, MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (job.lastStatus != null) {
                 val ok = !job.failed
@@ -275,16 +261,27 @@ private fun CronCard(
                     if (ok) hc.online else MaterialTheme.colorScheme.error,
                 )
             }
-            if (showProfile) StatusPill(job.profile, MaterialTheme.colorScheme.surfaceContainerHigh, MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        if (job.failed && job.lastError != null) {
+        if (expanded) {
+            Spacer(Modifier.size(8.dp))
             Text(
-                job.lastError, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error,
-                maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp, end = 12.dp),
+                CronText.humanize(job.schedule)?.let { "$it  ·  ${job.schedule}" } ?: job.schedule,
+                style = MaterialTheme.typography.bodySmall,
+                fontFamily = FontFamily.Monospace,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            if (job.prompt.isNotBlank()) {
+                Text(
+                    job.prompt,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(end = 12.dp, top = 6.dp),
+                )
+            }
         }
     }
 }
+
 
 /** 자주 쓰는 일정. 시각이 들어가는 것은 현재 식의 시:분을 유지한다. */
 private data class Preset(val label: String, val build: (h: Int, m: Int) -> String)

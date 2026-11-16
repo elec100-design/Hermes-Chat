@@ -443,6 +443,56 @@
 6. 라이트/다크, 커버(좁은)·펼침(넓은) 화면에서 입력 카드·탭 바·말풍선 색 대비와 줄 길이 확인
 7. (T-196) 탭이 대화·칸반·크론·대시보드·더보기 5개인지, 대화 헤더 종 버튼 → 승인 화면 → 뒤로. 승인 대기가 생기면 종 버튼·대화 탭에 숫자 배지
 
+## Phase 28 — 채널·워크스페이스 토론 (2026-11-16, PLAN Phase 28)
+
+> 서버 쪽은 Hermes-bot 저장소 P32(T-320~T-327, `app/discussions.py`). 앱은 그 API 를 부른다.
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-200 | 토론 모델·파서·API — `BotMessage.discussionId/discKind`, `Discussion`·`DiscussionMember`·`DiscussionRequest`, `BotApi.startDiscussion/fetchDiscussion/stopDiscussion`, 데모 모드는 안내 문구로 거절 | `android/…/data/{Models,Parsers,DemoApis}.kt`, `…/net/BotApi.kt` | NEEDS-BUILD (11-16 클라우드 컨테이너 빌드·단위 테스트 101개 통과, 실기기 미검증) |
+| T-201 | 토론 UI — 입력 카드 토론 버튼(봇 2+ 채널), 시작 시트(주제·진행자·참가자·발언 횟수·도구 허용, 서버 거절 사유는 시트 안에 표시), 진행 줄(봇별 사용/한도·중지), 진행·최종 결론 꼬리표 | `…/ui/bots/chat/DiscussionSheet.kt`(신규), `…/ui/bots/BotChatScreen.kt` | NEEDS-BUILD (11-16 클라우드 컨테이너 빌드·단위 테스트 101개 통과, 실기기 미검증) |
+| T-202 | 단위 테스트 — 토론 필드·상태 파싱, 시작/중지 요청 본문·경로, 400 detail 전달 | `android/app/src/test/…/{BotParsersTest,BotApiTest}.kt` | NEEDS-BUILD (11-16 클라우드 컨테이너 빌드·단위 테스트 101개 통과, 실기기 미검증) |
+| T-203 | iOS 토론 UI — 봇 채팅에 같은 시트·진행 줄. 그 전까지 iOS·웹은 채널에서 `/토론 <주제>` 로 연다(서버가 처리) | `HermesChat/Views/BotChatView.swift` 등 | TODO |
+| T-204 | (발견된 버그, 토론과 무관) 크론 탭 프로필 필터에 `.deleted 0` 칩이 뜬다 — Bridge 프로필 나열(`PROFILES_DIR.iterdir()`)이 휴지통 디렉터리 `.deleted` 를 프로필로 돌려준다. `.` 으로 시작하는 디렉터리 제외 + 맥미니 Bridge 재배포 | `server/hermes_bridge.py` | TODO |
+| T-205 | 멘션 없이 보낸 메시지가 사라지는 문제 — 봇 2명 이상이면 전송을 막고 수신 봇을 고른다(기본값=마지막으로 답한 봇). 봇 1명은 자동 slug 유지하고 누가 받았는지만 표시. 빈 화면의 주 동작은 안내 문구와 봇 칩을 한 덩어리로. 서버는 멘션 없을 때 job_id=null 만 주고 오류 문구는 없음(확인만, 서버 무수정) | `android/…/data/ChatUx.kt`, `…/ui/bots/BotChatScreen.kt`, `test/…/ChatUxTest.kt` | NEEDS-BUILD |
+| T-206 | 칸반 보드 첫 화면 — BoardOrder 유지. 처음 열 때 실행 중 열로 스크롤, 실행 중이 비면 대기 열. 빈 열은 좁은 헤더로 접고 탭하면 펼침. 오른쪽에 열이 더 있으면 스크롤 힌트 | `android/…/ui/kanban/KanbanScreen.kt`, `KanbanLayout.kt` | NEEDS-BUILD |
+| T-207 | Git 버튼과 작업 경로 — 불러오는 중·브랜치 없음·오류를 나누고, 넓은 헤더는 경로를 가운데서 줄여 끝 폴더·브랜치·변경 수를 보이게 함 | `android/…/data/ChatUx.kt`, `…/ui/workspaces/GitActions.kt`, `test/…/ChatUxTest.kt` | NEEDS-BUILD |
+| T-208 | 크론 카드 — 접히면 이름·다음 실행·마지막 성공/실패만. cron 식과 프롬프트는 펼쳤을 때만. 추가 버튼이 마지막 카드를 가리지 않게 목록 아래 여백. 실패 필터·실행 기록은 만들지 않음 | `android/…/ui/cron/CronScreen.kt` | NEEDS-BUILD |
+| T-209 | 에이전트 칩을 누르면 커서가 맨 앞이 아니라 @이름 뒤에 있게. BasicTextField String 오버로드는 바깥에서 글을 바꾸면 선택을 0에 남긴다 | `android/…/data/ComposerCaret.kt`, `…/ui/components/ChatComposer.kt`, `…/ui/bots/BotChatScreen.kt` | NEEDS-BUILD |
+| T-215 | Live 버튼에 Live 글자. 글라스 오류는 아는 문구만 한국어로 바꾸고 원문은 자세히에 둔다. 오류가 있으면 업데이트 후 다시 연결을 숨긴다. 촬영 크기 안내는 짧게 | `android/…/data/ChatUx.kt`, `…/ui/bots/chat/LiveBar.kt`, `…/ui/settings/GlassesSettings.kt`, `test/…/ChatUxTest.kt` | NEEDS-BUILD |
+
+**T-215 실기기 검증 체크리스트** (미실행 — 59e1b37 단위 114·assembleDebug·lintDebug 통과):
+커버:
+1. 봇 채팅 입력 카드의 Live 버튼에 아이콘과 Live 글자가 보이는지
+펼침:
+2. 글라스 전원이 꺼져 연결이 실패하면 한국어 안내와 원문 자세히가 같이 보이는지. 업데이트가 필요한데 오류가 있으면 "업데이트 후 다시 연결"이 숨는지
+3. 더보기 > 메타 글라스 촬영 크기 안내가 "보통 권장. 작은 글씨가 안 읽히면 최고화질."인지
+
+**T-209 실기기 검증 체크리스트** (미실행 — 6b6197a 단위 113·assembleDebug·lintDebug 통과):
+커버:
+1. 봇 2명 채널에서 @grok 칩을 누르면 입력창에 `@grok ` 가 들어가고, 커서가 이름 앞이 아니라 뒤(공백 다음)에 있는지
+펼침:
+2. 같은 칩. 이미 글이 있으면 이름 뒤에 붙고 커서가 그 뒤에 있는지
+
+**Phase 28 실기기 검증 체크리스트** (맥미니 Hermes-bot 을 P32 로 재배포한 뒤 — Hermes-bot HANDOFF §3):
+1. 봇 2~3개 채널(작업 채팅 포함) 입력 카드에 토론 버튼이 보이고, DM·봇 1개 채널에는 안 보임
+2. 입력창에 쓰던 글이 시트의 주제로 들어감 → 진행자·참가자·횟수 선택 → 토론 시작 → 참가자들이 **동시에** 답하기 시작
+3. 입력 카드 위 토론 줄에 `진행 @opus 1/6 · @grok 1/3` 처럼 횟수가 오르고, 진행자 발언에 "진행", 마지막에 "최종 결론" 꼬리표
+4. 진행자가 지목한 봇만 다음에 답하는지, 참가자가 한도를 다 쓰면 진행자가 결론으로 넘어가는지
+5. 중지 → "토론을 중지했습니다" 안내, 대기 중이던 발언은 실패 표시, 이후 새 발언 없음
+6. 진행 중 다시 토론 버튼 → 비활성. 서버를 P32 미만으로 둔 채 시작 → 시트에 "P32 이상으로 올려 주세요"
+7. 앱을 껐다 켜도 토론이 이어져 있고 기록이 채널에 남아 있음
+
+## Phase 29 — MCP 서버 관리 (계획, PLAN Phase 29)
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-210 | **맥미니 사전 확인**(착수 조건): ①`hermes mcp --help` 서브커맨드 목록(특히 list·remove 유무) ②`hermes mcp catalog` 출력 형식 ③`hermes [-p <프로필>] mcp install <name>` 이 입력 없이 끝나는지·무엇을 묻는지 ④프로필별 `config.yaml` 의 `mcp_servers` 블록 실제 모양 ⑤멀티플렉스 게이트웨이에서 프로필별 MCP 가 따로 적용되는지. 결과를 PLAN §0.4 에 기록 | 맥미니 | TODO (맥 에이전트/사용자) |
+| T-211 | Bridge MCP API — 카탈로그·프로필별 목록(값 마스킹)·추가(카탈로그/URL)·켜기끄기·제거·연결 테스트. 쓰기는 `hermes mcp` CLI 경유, CLI 에 없는 것만 `mcp_servers` 블록 라인 편집(.bak) | `server/hermes_bridge.py` | TODO (T-210 뒤) |
+| T-212 | Android 더보기 > MCP 서버 — 프로필 선택, 등록됨(토글·테스트·제거), 추가(카탈로그 체크 목록 + URL) | `android/…/ui/more`, `…/net/BridgeApi.kt` | TODO (T-211 뒤) |
+| T-213 | 자격증명 — API 키 입력(프로필 `.env`), OAuth 기기 코드 로그인(`hermes mcp login --flow device`) 중계 | Bridge + Android | TODO (T-212 뒤) |
+| T-214 | iOS·Hermes-bot 웹에 같은 화면 | — | TODO |
+
 ## Phase A — 앱스토어 상품화 Phase 0: 컴플라이언스 + 다국어 기반
 
 > 상업화 전체 계획은 `docs/COMMERCIALIZATION.md` 참조. Phase B~D 태스크는 이 파일 하단에 추가됨.
@@ -516,3 +566,6 @@
 | 11-15 | claude/android-fold-ui @ 2a20cbe | ANDROID 실기기 검증 | 사용자 폴드에서 대시보드 WebView 본문 표시 확인 — T-179 DONE. 진단(버그) 버튼은 확인 후 제거 |
 | 11-16 | claude/android-workspace-tab (T-197~T-199) | ANDROID BUILD SUCCESSFUL | Claude Code 맥미니 로컬 — `:app:testDebugUnitTest :app:assembleDebug :app:lintDebug` 통과, 단위 테스트 99개. Bridge 재배포 후 실서버에서 `/usage`(Claude 창 3개 등 5계정)·`/git/status`(브랜치·PR)·오류 응답(401/404/400) 확인. 실기기 미검증 |
 | 11-16 | claude/android-workspace-tab @ 5ee8531 | ANDROID 실기기 검증 | 사용자 Galaxy Z Fold 에 debug APK(18888 배포) 설치 — 사용량 팝업·작업 탭(작업 채팅)·git 작업 팝업 동작 확인. T-197~T-199 DONE |
+| 11-16 | claude/hermes-chat-improvements-wc6g8f (T-200~T-202) | ANDROID BUILD SUCCESSFUL | Claude Code 클라우드 컨테이너 — `:app:testDebugUnitTest :app:assembleDebug` 통과(JDK 21, SDK platform 36), 단위 테스트 101개(토론 파서·API 2건 추가). 화면은 눈으로 확인하지 못했다(에뮬레이터 없음) — 맥미니 빌드 APK 로 Phase 28 체크리스트 수행 필요. 서버는 Hermes-bot P32(pytest 276 통과 + 실제 uvicorn·러너 루프로 토론 한 판 HTTP 구동 확인) |
+| 11-16 | claude/hermes-chat-improvements-wc6g8f @ a0acc65 | ANDROID BUILD SUCCESSFUL | T-205 `./gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug` 통과, 단위 테스트 107개. 실기기 미검증 |
+| 11-16 | claude/hermes-chat-improvements-wc6g8f @ 59e1b37 | ANDROID BUILD SUCCESSFUL | T-215 `./gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug` 통과, 단위 테스트 114개. 실기기 미검증 |

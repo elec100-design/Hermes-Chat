@@ -1,6 +1,6 @@
 # HermesChat iOS — 전체 개발 계획 (Master Plan)
 
-> 최종 수정: 2026-11-12 (Claude Code — Phase 22~25 코드 작성: 채팅 코어·Live 전체화면·Hermes Bot 탭·Android MVP, 전부 NEEDS-BUILD)
+> 최종 수정: 2026-11-16 (Claude Code — Phase 28 채널 토론 구현(서버 P32 + Android), Phase 29 MCP 서버 관리 계획)
 > 진행 상태는 `docs/TASKS.md`, 에이전트 교대 규칙은 `docs/HANDOFF.md` 참조.
 > **어떤 에이전트든 이 3개 문서만 읽으면 즉시 작업을 이어갈 수 있어야 한다.**
 > 다음 작업: PR #14 main 병합 → T-C01 Sign in with Apple 런타임 검증 → T-C03 StoreKit 샌드박스 테스트 (App Store Connect 제품 등록 필요).
@@ -60,6 +60,14 @@ T-149 이전 앱은 델타를 전부 버리고 폴링 폴백(T-116/T-121)으로�
 - 프로필 삭제 ❌ — Bridge `DELETE /profiles/<n>`(`hermes profile delete <n> -y`, default 거부) (Phase 19)
 - 모델 카탈로그/현재 모델 ❌ (`<profile>/cache/model_catalog.json`, `config.yaml`의 `model.default`)
   — Bridge `GET/PUT /profiles/<n>/model` (Phase 19~20). `/v1/models`는 설정된 1개만 줌(카탈로그 아님).
+
+### 0.4 MCP (2026-11-16 — hermes-agent GitHub main 의 `website/docs/user-guide/features/mcp.md` 로 확인. **맥미니 v0.23.1 에서는 미검증** → TASKS T-210)
+- MCP 서버는 `config.yaml` 의 `mcp_servers:` 에 이름별 블록으로 등록한다. stdio 는 `command`/`args`/`env`, 원격은 `url`/`headers`/`auth: oauth`. 공통 `enabled`, `tools.include|exclude`.
+- CLI: `hermes mcp`(대화형 선택기) · `hermes mcp catalog`(카탈로그 평문 목록) · `hermes mcp install <name>` · `hermes mcp configure <name>` · `hermes mcp login <server> [--flow device]` · `hermes mcp test <name>` · `hermes mcp add <name> --preset codex`. **`list`/`remove` 서브커맨드는 문서에서 확인하지 못했다.**
+- 카탈로그는 Nous 가 검수한 항목만(`optional-mcps/`), 기본 비활성. 카탈로그 자격증명은 프로필 `.env` 에 쓴다.
+- 게이트웨이(`hermes gateway run`)가 `config.yaml` 을 감시해 약 1분 안에 반영(항목 제거·`enabled: false` → 내려감, 새 항목 → 연결). 진행 중 세션의 도구 목록은 새 세션·`/reload-mcp` 전까지 고정.
+- 도구는 `mcp_<서버>_<도구>` 로 등록되고, 도구가 하나라도 등록된 서버는 런타임 툴셋 `mcp-<서버>` 를 만든다 → 설치만 하면 봇이 쓰고, 앱의 실행 단계에 그대로 보인다.
+- 프로필별 설정인지는 문서에 명시가 없다(프로필 `.env`·`value_from: profile` 언급으로 추정) — 멀티플렉스 게이트웨이에서의 동작 포함 실기 확인 대상.
 
 ---
 
@@ -412,6 +420,24 @@ iOS 실사용 오류 3건(사진 늦음·묻기 전 사진 설명·글 판독 �
 **11-16 사용량·워크스페이스 탭·git 팝업(TASKS T-197~T-199)**: 검증된 사실 — 맥미니의 `paseo usage --json` 이 에이전트 계정별 한도(Claude·Codex·Grok·Copilot·Cursor)를 준다. Antigravity 는 paseo 프로바이더이지만 사용량 항목이 없다. Bridge 가 이를 `GET /usage` 로 중계한다.
 작업 채팅은 새 백엔드가 아니라 **작업 폴더가 지정된 Hermes-bot 채널**이다(워크스페이스 = Hermes-bot 등록 작업 위치) — Paseo 데몬에는 붙지 않는다. 채널은 멘션이 없으면 아무도 답하지 않으므로, 봇이 하나뿐인 채널은 앱이 `@slug` 를 붙인다.
 풀·푸시·PR·병합·배포는 Hermes-bot 에 없어 Bridge `/git/*` 가 맡는다(Hermes-bot 의 푸시는 승인 항목을 만드는 별도 경로 — 워크스페이스 상세 시트의 "푸시 요청"은 그대로 그 경로). Bridge 는 앱이 보낸 명령 문자열을 실행하지 않는다: 정해진 git/gh 동작과 리포 안의 `scripts/deploy.sh`·`deploy.sh` 뿐.
+
+### Phase 28 — 채널·워크스페이스 토론 (2026-11-16, TASKS T-200~T-203)
+**목표**: 채널이나 작업 채팅에서 주제를 던지면 여러 봇이 의견을 조율해 결론을 낸다. Phase 14 Deep think 의 후속이며, T-186 에서 Android 이식을 접었던 것을 **서버 기능**으로 되살렸다.
+**결정(사용자 11-16)**: 발언 한도는 봇마다 3~4회, 토론을 이끄는 봇(진행자)은 그 2배. 오케스트레이션은 앱이 아니라 **Hermes-bot 서버**(P32, `app/discussions.py`)가 한다 — 앱을 꺼도 이어지고 기록이 채널에 남으며 웹·iOS·Android 가 같은 것을 본다.
+**흐름**: 참가자 전원이 서로의 답을 보지 않고 동시에 첫 의견 → 진행자가 합의점·쟁점을 정리하며 `@슬러그` 로 지목 → 지목된 봇만 발언 → … → 진행자가 `## 최종 결론`. Deep think 의 고정 라운드와 달리 진행자가 누구에게 무엇을 물을지 정한다. 응답 실패한 참가자는 제외하고 계속, 진행자가 실패하면 중단.
+**서버 API**(Hermes-bot `docs/PLAN.md` §5): `POST /api/channels/{id}/discussions`, `GET /api/discussions/{id}`, `POST /api/discussions/{id}/stop`. 메시지 행에 `discussion_id`·`disc_kind`(`topic|statement|moderation|conclusion`). 채널에서 `/토론 <주제>` 로도 열린다(iOS·웹은 당분간 이 방법).
+**Android**: 봇이 둘 이상인 채널의 입력 카드에 **토론 버튼** → 시트(주제·진행자·참가자·발언 횟수 2/3/4·도구 허용) → 진행 중에는 입력 카드 위 **토론 줄**(봇별 사용/한도, 중지). 진행자 발언에 "진행", 결론에 "최종 결론" 꼬리표. 발언 추적은 기존 `BotJobFollower`(잡 종료 → 목록 재조회 → 새 잡 구독) 그대로.
+**한계**: 말하는 중인 발언은 중지해도 끝까지 기록된다(게이트웨이 스트림 취소 API 없음). 도구 허용 여부는 지시일 뿐 강제가 아니다. 모델이 지목·결론 규약을 지키는지는 실기 확인 대상(Hermes-bot T-326).
+
+### Phase 29 — MCP 서버 관리 (계획, 2026-11-16, TASKS T-210~T-214)
+**목표(사용자 11-16)**: 앱에서 프로필별로 **어떤 MCP 가 등록돼 있는지 보고, 필요한 것을 추가하고 불필요한 것을 제거**하는 선택창. 지금은 맥미니 터미널에서만 바꿀 수 있다.
+**근거**: §0.4. 게이트웨이가 config.yaml 을 감시하므로 재시작 없이 반영되고, 등록된 서버의 도구는 봇이 그대로 쓴다.
+**설계**: 게이트웨이가 못 하는 일이므로 Bridge 가 맡는다(원칙 2). 쓰기는 크론·칸반과 같이 **`hermes mcp` CLI 경유**, CLI 에 없는 동작(목록·제거)만 config.yaml 의 `mcp_servers` 블록을 라인 단위로 읽고 고친다(`.bak` 백업, 비정형이면 400 — T-097 과 같은 방식).
+- Bridge: `GET /mcp/catalog` · `GET /profiles/<n>/mcp`(이름·종류·enabled, env/headers 값은 마스킹) · `POST /profiles/<n>/mcp`(카탈로그 이름 또는 URL) · `PATCH /profiles/<n>/mcp/<server>`(enabled) · `DELETE /profiles/<n>/mcp/<server>` · `POST /profiles/<n>/mcp/<server>/test`.
+- Android: 더보기 > **MCP 서버** — 프로필 선택, "등록됨"(켜기/끄기·연결 테스트·제거), "추가"(카탈로그 체크 목록 + URL 직접 입력).
+- **범위 제한(권장안, 사용자 확정 대기)**: 앱에서는 카탈로그 설치와 URL 형 원격 서버만. 임의 명령(stdio) 서버 추가는 터미널에서만 — Bridge 가 앱이 보낸 명령을 실행하면 맥미니에 원격 코드 실행 통로가 생긴다(Bridge 는 지금도 앱이 보낸 명령 문자열을 실행하지 않는다).
+- 후속: API 키 입력(프로필 `.env`), OAuth 기기 코드 로그인 중계, iOS·Hermes-bot 웹.
+**선행 조건**: T-210 맥미니 확인. 이 결과 없이 Bridge 를 짜면 §0.4 의 "문서 main 기준" 사실 위에 추측을 쌓게 된다.
 
 ## 4. 위험 요소 / 주의
 1. **새 Swift 파일은 반드시 `project.pbxproj`에 등록** (objectVersion 77, 명시적 파일 참조 — 자동 동기화 폴더 아님). 절차는 HANDOFF.md §4. *이번 커밋은 기존 파일만 수정해서 pbxproj 변경 없음.*
