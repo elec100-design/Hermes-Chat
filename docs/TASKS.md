@@ -455,6 +455,7 @@
 | T-203 | iOS 토론 UI — 봇 채팅에 같은 시트·진행 줄. 그 전까지 iOS·웹은 채널에서 `/토론 <주제>` 로 연다(서버가 처리) | `HermesChat/Views/BotChatView.swift` 등 | TODO |
 | T-204 | (발견된 버그, 토론과 무관) 크론 탭 프로필 필터에 `.deleted 0` 칩이 뜬다 — Bridge 프로필 나열(`PROFILES_DIR.iterdir()`)이 휴지통 디렉터리 `.deleted` 를 프로필로 돌려준다. `.` 으로 시작하는 디렉터리 제외 + 맥미니 Bridge 재배포 | `server/hermes_bridge.py` | TODO |
 | T-205 | 멘션 없이 보낸 메시지가 사라지는 문제 — 봇 2명 이상이면 전송을 막고 수신 봇을 고른다(기본값=마지막으로 답한 봇). 봇 1명은 자동 slug 유지하고 누가 받았는지만 표시. 빈 화면의 주 동작은 안내 문구와 봇 칩을 한 덩어리로. 서버는 멘션 없을 때 job_id=null 만 주고 오류 문구는 없음(확인만, 서버 무수정) | `android/…/data/ChatUx.kt`, `…/ui/bots/BotChatScreen.kt`, `test/…/ChatUxTest.kt` | NEEDS-BUILD |
+| T-206 | 칸반 보드 첫 화면 — BoardOrder 유지. 처음 열 때 실행 중 열로 스크롤, 실행 중이 비면 대기 열. 빈 열은 좁은 헤더로 접고 탭하면 펼침. 오른쪽에 열이 더 있으면 스크롤 힌트 | `android/…/ui/kanban/KanbanScreen.kt`, `KanbanLayout.kt` | NEEDS-BUILD |
 
 **Phase 28 실기기 검증 체크리스트** (맥미니 Hermes-bot 을 P32 로 재배포한 뒤 — Hermes-bot HANDOFF §3):
 1. 봇 2~3개 채널(작업 채팅 포함) 입력 카드에 토론 버튼이 보이고, DM·봇 1개 채널에는 안 보임
@@ -549,3 +550,4 @@
 | 11-16 | claude/android-workspace-tab (T-197~T-199) | ANDROID BUILD SUCCESSFUL | Claude Code 맥미니 로컬 — `:app:testDebugUnitTest :app:assembleDebug :app:lintDebug` 통과, 단위 테스트 99개. Bridge 재배포 후 실서버에서 `/usage`(Claude 창 3개 등 5계정)·`/git/status`(브랜치·PR)·오류 응답(401/404/400) 확인. 실기기 미검증 |
 | 11-16 | claude/android-workspace-tab @ 5ee8531 | ANDROID 실기기 검증 | 사용자 Galaxy Z Fold 에 debug APK(18888 배포) 설치 — 사용량 팝업·작업 탭(작업 채팅)·git 작업 팝업 동작 확인. T-197~T-199 DONE |
 | 11-16 | claude/hermes-chat-improvements-wc6g8f (T-200~T-202) | ANDROID BUILD SUCCESSFUL | Claude Code 클라우드 컨테이너 — `:app:testDebugUnitTest :app:assembleDebug` 통과(JDK 21, SDK platform 36), 단위 테스트 101개(토론 파서·API 2건 추가). 화면은 눈으로 확인하지 못했다(에뮬레이터 없음) — 맥미니 빌드 APK 로 Phase 28 체크리스트 수행 필요. 서버는 Hermes-bot P32(pytest 276 통과 + 실제 uvicorn·러너 루프로 토론 한 판 HTTP 구동 확인) |
+| 11-16 | claude/hermes-chat-improvements-wc6g8f @ a0acc65 | ANDROID BUILD SUCCESSFUL | T-205 `./gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug` 통과, 단위 테스트 107개. 실기기 미검증 |

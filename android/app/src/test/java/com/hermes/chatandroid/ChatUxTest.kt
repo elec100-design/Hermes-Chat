@@ -11,6 +11,13 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+class KanbanLayoutTest {
+    @Test fun firstColumnIsRunningOrReady() {
+        assertEquals(com.hermes.chatandroid.data.KanbanStatus.RUNNING, com.hermes.chatandroid.ui.kanban.initialBoardColumn(true))
+        assertEquals(com.hermes.chatandroid.data.KanbanStatus.READY, com.hermes.chatandroid.ui.kanban.initialBoardColumn(false))
+    }
+}
+
 class ChatUxTest {
     private fun member(id: Int, slug: String) = BotMember(id = id, slug = slug, name = slug)
     private fun channel(vararg members: BotMember) = BotChannel(

@@ -1,6 +1,7 @@
 package com.hermes.chatandroid.ui.kanban
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -72,6 +73,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -289,32 +291,88 @@ private fun SectionHeader(status: KanbanStatus, count: Int) {
 
 @Composable
 private fun BoardColumns(tasks: List<KanbanTask>, onOpen: (KanbanTask) -> Unit) {
-    Row(
-        Modifier.fillMaxSize().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        BoardOrder.forEach { s ->
-            val list = tasks.filter { it.status == s }
-            Surface(
-                Modifier.width(290.dp).fillMaxHeight().padding(bottom = 12.dp),
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerLow,
-            ) {
-                Column {
-                    Row(Modifier.padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(10.dp).clip(CircleShape).background(s.color))
-                        Spacer(Modifier.width(8.dp))
-                        Text(s.label, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-                        Text("${list.size}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    LazyColumn(
-                        contentPadding = PaddingValues(start = 10.dp, end = 10.dp, bottom = 96.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
+    val scroll = rememberScrollState()
+    val density = LocalDensity.current
+    var expanded by remember { mutableStateOf(setOf<KanbanStatus>()) }
+    val focus = initialBoardColumn(tasks.any { it.status == KanbanStatus.RUNNING })
+    LaunchedEffect(focus) {
+        val index = BoardOrder.indexOf(focus).coerceAtLeast(0)
+        var px = with(density) { 12.dp.roundToPx() }
+        BoardOrder.take(index).forEach { s ->
+            val narrow = tasks.none { it.status == s } && s !in expanded
+            val w = if (narrow) 52.dp else 290.dp
+            px += with(density) { (w + 12.dp).roundToPx() }
+        }
+        scroll.scrollTo(px)
+    }
+    Box(Modifier.fillMaxSize()) {
+        Row(
+            Modifier.fillMaxSize().horizontalScroll(scroll).padding(horizontal = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            BoardOrder.forEach { s ->
+                val list = tasks.filter { it.status == s }
+                val collapsed = list.isEmpty() && s !in expanded
+                if (collapsed) {
+                    Surface(
+                        Modifier
+                            .width(52.dp)
+                            .fillMaxHeight()
+                            .padding(bottom = 12.dp)
+                            .clickable { expanded = expanded + s },
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerLow,
                     ) {
-                        items(list, key = { it.id }) { TaskCard(it, onClick = { onOpen(it) }) }
+                        Column(
+                            Modifier.padding(vertical = 12.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Box(Modifier.size(10.dp).clip(CircleShape).background(s.color))
+                            Text("${list.size}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                s.label,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                } else {
+                    Surface(
+                        Modifier.width(290.dp).fillMaxHeight().padding(bottom = 12.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerLow,
+                    ) {
+                        Column {
+                            Row(
+                                Modifier
+                                    .clickable(enabled = list.isEmpty()) { expanded = expanded - s }
+                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Box(Modifier.size(10.dp).clip(CircleShape).background(s.color))
+                                Spacer(Modifier.width(8.dp))
+                                Text(s.label, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                                Text("${list.size}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            LazyColumn(
+                                contentPadding = PaddingValues(start = 10.dp, end = 10.dp, bottom = 96.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                items(list, key = { it.id }) { TaskCard(it, onClick = { onOpen(it) }) }
+                            }
+                        }
                     }
                 }
             }
+        }
+        if (scroll.canScrollForward) {
+            Text(
+                "›",
+                Modifier.align(Alignment.CenterEnd).padding(end = 4.dp),
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
         }
     }
 }
