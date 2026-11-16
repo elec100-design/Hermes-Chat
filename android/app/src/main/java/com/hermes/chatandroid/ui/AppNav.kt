@@ -35,11 +35,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.outlined.Chat
 import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.ViewKanban
 import androidx.compose.material.icons.outlined.GridView
-import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.ViewKanban
 import androidx.compose.material3.Badge
@@ -86,6 +86,7 @@ import com.hermes.chatandroid.ui.kanban.KanbanScreen
 import com.hermes.chatandroid.ui.more.DashboardScreen
 import com.hermes.chatandroid.ui.more.MoreScreen
 import com.hermes.chatandroid.ui.onboarding.OnboardingScreen
+import com.hermes.chatandroid.ui.settings.GlassesSettingsScreen
 import com.hermes.chatandroid.ui.settings.SettingsScreen
 import com.hermes.chatandroid.ui.theme.hermesColors
 import com.hermes.chatandroid.ui.workspaces.WorkspacesScreen
@@ -102,6 +103,7 @@ object Routes {
     const val SETTINGS = "settings"
     const val WORKSPACES = "workspaces"
     const val DASHBOARD = "dashboard"
+    const val GLASSES = "glasses"
     /** 게이트웨이 세션 채팅. [port] 가 -1 이면 설정의 선택 프로필, 아니면 그 봇 게이트웨이 포트. */
     const val CHAT = "chat/{sessionId}?port={port}"
     const val BOT_CHAT = "botChat/{channelId}"
@@ -123,20 +125,21 @@ private data class Tab(
 )
 
 private val ChatsTab = Tab(Routes.BOTS, R.string.tab_chats, Icons.AutoMirrored.Filled.Chat, Icons.AutoMirrored.Outlined.Chat)
-private val ApprovalsTab = Tab(Routes.APPROVALS, R.string.tab_approvals, Icons.Filled.Notifications, Icons.Outlined.Notifications)
 private val KanbanTab = Tab(Routes.KANBAN, R.string.tab_kanban, Icons.Filled.ViewKanban, Icons.Outlined.ViewKanban)
 private val CronTab = Tab(Routes.CRON, R.string.tab_cron, Icons.Filled.Schedule, Icons.Outlined.Schedule)
 private val MoreTab = Tab(Routes.MORE, R.string.tab_more, Icons.Filled.GridView, Icons.Outlined.GridView)
-private val Tabs = listOf(ChatsTab, ApprovalsTab, KanbanTab, CronTab, MoreTab)
+private val DashboardTab = Tab(Routes.DASHBOARD, R.string.tab_dashboard, Icons.Filled.Speed, Icons.Outlined.Speed)
+// 승인은 탭이 아니라 대화 탭 헤더의 버튼(대기 건수 배지)으로 연다.
+private val Tabs = listOf(ChatsTab, KanbanTab, CronTab, DashboardTab, MoreTab)
 private val TopRoutes = Tabs.map { it.route }.toSet()
 
-/** 탭 바가 보이는 화면(설정은 더보기의 하위라 더보기 탭이 선택된 채 표시). */
+/** 탭 바가 보이는 화면(승인은 대화의, 설정·글라스는 더보기의 하위라 그 탭이 선택된 채 표시). */
 private fun tabOf(route: String?): Tab? = when (route) {
-    Routes.BOTS -> ChatsTab
-    Routes.APPROVALS -> ApprovalsTab
+    Routes.BOTS, Routes.APPROVALS -> ChatsTab
     Routes.KANBAN -> KanbanTab
     Routes.CRON -> CronTab
-    Routes.MORE, Routes.SETTINGS -> MoreTab
+    Routes.DASHBOARD -> DashboardTab
+    Routes.MORE, Routes.SETTINGS, Routes.GLASSES -> MoreTab
     else -> null
 }
 
@@ -223,8 +226,10 @@ fun AppNav(
     LaunchedEffect(openRequest) {
         when (openRequest) {
             is OpenRequest.Channel -> { selectedBotChannelId = openRequest.channelId; navigateTab(ChatsTab) }
-            OpenRequest.Approvals -> navigateTab(ApprovalsTab)
-            is OpenRequest.Tab -> Tabs.firstOrNull { it.route == openRequest.route }?.let(navigateTab)
+            OpenRequest.Approvals -> navController.navigate(Routes.APPROVALS) { launchSingleTop = true }
+            is OpenRequest.Tab ->
+                if (openRequest.route == Routes.APPROVALS) navController.navigate(Routes.APPROVALS) { launchSingleTop = true }
+                else Tabs.firstOrNull { it.route == openRequest.route }?.let(navigateTab)
             // Live 진행 알림 → Live 가 켜져 있는 그 채팅으로
             OpenRequest.Live -> container.live.ui.value.target?.let { selectedBotChannelId = it.channelId; navigateTab(ChatsTab) }
             null -> return@LaunchedEffect
@@ -331,12 +336,14 @@ fun AppNav(
                         onOpenBotProfile = { navController.navigate(Routes.botProfile(it)) },
                         onOpenChannelSettings = { navController.navigate(Routes.channelSettings(it)) },
                         modifier = mod,
-                        onOpenSettings = { navController.navigate(Routes.SETTINGS) },
+                        onOpenGlasses = { navController.navigate(Routes.GLASSES) },
                         onOpenWorkspaces = { navController.navigate(Routes.WORKSPACES) },
+                        pendingApprovals = pendingCount,
+                        onOpenApprovals = { navController.navigate(Routes.APPROVALS) { launchSingleTop = true } },
                     )
                 }
                 composable(Routes.APPROVALS) {
-                    ApprovalsScreen(container, modifier = mod)
+                    ApprovalsScreen(container, modifier = mod, onBack = { navController.popBackStack() })
                 }
                 composable(Routes.KANBAN) {
                     KanbanScreen(container, modifier = mod)
@@ -349,7 +356,7 @@ fun AppNav(
                         container = container,
                         onOpenSettings = { navController.navigate(Routes.SETTINGS) },
                         onOpenWorkspaces = { navController.navigate(Routes.WORKSPACES) },
-                        onOpenDashboard = { navController.navigate(Routes.DASHBOARD) },
+                        onOpenGlasses = { navController.navigate(Routes.GLASSES) },
                         modifier = mod,
                     )
                 }
@@ -363,7 +370,10 @@ fun AppNav(
                     )
                 }
                 composable(Routes.DASHBOARD) {
-                    DashboardScreen(container, onBack = { navController.popBackStack() }, modifier = mod)
+                    DashboardScreen(container, modifier = mod)
+                }
+                composable(Routes.GLASSES) {
+                    GlassesSettingsScreen(container, onBack = { navController.popBackStack() }, modifier = mod)
                 }
                 composable(Routes.WORKSPACES) {
                     WorkspacesScreen(container, onBack = { navController.popBackStack() }, modifier = mod)
@@ -394,7 +404,7 @@ fun AppNav(
                         modifier = mod,
                         onOpenBotProfile = { navController.navigate(Routes.botProfile(it)) },
                         onOpenChannelSettings = { navController.navigate(Routes.channelSettings(it)) },
-                        onOpenSettings = { navController.navigate(Routes.SETTINGS) },
+                        onOpenGlasses = { navController.navigate(Routes.GLASSES) },
                         onOpenWorkspaces = { navController.navigate(Routes.WORKSPACES) },
                     )
                 }
@@ -438,7 +448,7 @@ fun AppNav(
 @Composable
 private fun TabIcon(tab: Tab, selected: Boolean, pendingCount: Int) {
     val icon = if (selected) tab.selectedIcon else tab.unselectedIcon
-    if (tab == ApprovalsTab && pendingCount > 0) {
+    if (tab == ChatsTab && pendingCount > 0) {
         BadgedBox(
             badge = {
                 Badge(

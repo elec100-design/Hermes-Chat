@@ -9,6 +9,7 @@
     <string name="tab_approvals">승인</string>
     <string name="tab_kanban">칸반</string>
     <string name="tab_cron">크론</string>
+    <string name="tab_dashboard">대시보드</string>
     <string name="tab_more">더보기</string>
     <string name="shortcut_approvals_long">승인 요청 확인</string>
     <string name="loading">불러오는 중…</string>

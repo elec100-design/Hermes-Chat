@@ -335,8 +335,8 @@ fun BotChatScreen(
     onOpenBotProfile: (botId: Int) -> Unit = {},
     /** 채널 상단 제목 탭 → 채널 설정. */
     onOpenChannelSettings: (channelId: Int) -> Unit = {},
-    /** Live 바의 카메라 버튼(글라스 미연결) → 설정의 글라스 항목. */
-    onOpenSettings: () -> Unit = {},
+    /** Live 바의 카메라 버튼(글라스 미연결) → 더보기 > 메타 글라스 · Live. */
+    onOpenGlasses: () -> Unit = {},
     /** 작업 폴더 시트의 "워크스페이스 관리". */
     onOpenWorkspaces: () -> Unit = {},
 ) {
@@ -533,7 +533,7 @@ fun BotChatScreen(
                                 ui = liveUi,
                                 glasses = glassesState,
                                 onPhoto = live::takePhotoNow,
-                                onGlassesSettings = onOpenSettings,
+                                onGlassesSettings = onOpenGlasses,
                                 onStop = live::stop,
                                 onDismissError = { live.clearError(); live.glasses.clearError() },
                             )

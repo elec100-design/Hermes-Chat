@@ -67,7 +67,7 @@ class LiveController(
     context: Context,
     private val botApi: () -> BotApi?,
     val glasses: GlassesCamera,
-    /** 시야 사진 방식·촬영 크기는 설정 화면에서 정한다. */
+    /** 시야 사진 방식·촬영 크기는 더보기 > 메타 글라스 · Live 에서 정한다. */
     private val settings: () -> Settings,
     /** 올린 사진(서버 경로, JPEG) — 채팅 화면이 다시 내려받지 않고 바로 보여 주도록 캐시에 넣는다. */
     private val onPhotoUploaded: (path: String, jpeg: ByteArray) -> Unit = { _, _ -> },

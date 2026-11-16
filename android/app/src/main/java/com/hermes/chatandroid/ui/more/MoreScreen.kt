@@ -18,7 +18,7 @@ import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Dns
 import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material.icons.rounded.Speed
+import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -43,14 +43,14 @@ import com.hermes.chatandroid.ui.components.StatusPill
 import com.hermes.chatandroid.ui.components.readableWidth
 import com.hermes.chatandroid.ui.theme.hermesColors
 
-/** 더보기 탭: 연결 요약, 대시보드, 설정, 워크스페이스. */
+/** 더보기 탭: 연결 요약, 설정, 워크스페이스, 메타 글라스. (대시보드는 탭으로 나갔다.) */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MoreScreen(
     container: AppContainer,
     onOpenSettings: () -> Unit,
     onOpenWorkspaces: () -> Unit,
-    onOpenDashboard: () -> Unit,
+    onOpenGlasses: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val settings by container.settingsRepository.settings.collectAsStateWithLifecycle()
@@ -140,13 +140,6 @@ fun MoreScreen(
             )
 
             MoreActionCard(
-                icon = Icons.Rounded.Speed,
-                tint = Color(0xFF4C8C5F),
-                title = "대시보드",
-                subtitle = settings.dashboardUrl?.takeIf { !settings.demoMode } ?: "데모 모드에서는 사용할 수 없습니다",
-                onClick = onOpenDashboard.takeIf { settings.dashboardUrl != null && !settings.demoMode },
-            )
-            MoreActionCard(
                 icon = Icons.Rounded.Settings,
                 tint = MaterialTheme.colorScheme.primary,
                 title = "설정",
@@ -159,6 +152,13 @@ fun MoreScreen(
                 title = "워크스페이스",
                 subtitle = "봇이 작업할 폴더와 GitHub 리포 관리",
                 onClick = onOpenWorkspaces,
+            )
+            MoreActionCard(
+                icon = Icons.Rounded.Visibility,
+                tint = Color(0xFF4C8C5F),
+                title = "메타 글라스 · Live",
+                subtitle = if (settings.demoMode) "데모 모드에서는 사용할 수 없습니다" else "글라스 연결, 시야 사진 방식, 촬영 크기",
+                onClick = onOpenGlasses.takeIf { !settings.demoMode },
             )
 
         }

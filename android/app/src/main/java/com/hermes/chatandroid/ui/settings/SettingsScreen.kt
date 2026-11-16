@@ -392,12 +392,6 @@ fun SettingsScreen(
                 }
             }
 
-            if (!settings.demoMode) {
-                SectionCard("메타 글라스 · Live", "채팅 입력창의 Live 버튼으로 핸즈프리 대화를 시작합니다.") {
-                    GlassesSettings(container)
-                }
-            }
-
             SectionCard("Bridge (고급)") {
                 HermesTextField(
                     value = settings.bridgeUrl,

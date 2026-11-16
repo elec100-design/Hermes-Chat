@@ -9,14 +9,23 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -33,13 +42,50 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hermes.chatandroid.AppContainer
 import com.hermes.chatandroid.glasses.PhotoSize
 import com.hermes.chatandroid.live.VisionMode
+import com.hermes.chatandroid.ui.components.HermesCard
+import com.hermes.chatandroid.ui.components.readableWidth
 import com.meta.wearable.dat.core.Wearables
 import com.meta.wearable.dat.core.types.Permission
 import com.meta.wearable.dat.core.types.PermissionStatus
 import com.meta.wearable.dat.core.types.RegistrationState
 
+/** 더보기 > 메타 글라스 · Live 화면. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun GlassesSettingsScreen(container: AppContainer, onBack: () -> Unit, modifier: Modifier = Modifier) {
+    Scaffold(
+        modifier = modifier,
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
+                title = { Text("메타 글라스 · Live", style = MaterialTheme.typography.headlineSmall) },
+                navigationIcon = {
+                    IconButton(onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "뒤로") }
+                },
+            )
+        },
+    ) { padding ->
+        Column(
+            Modifier
+                .padding(padding)
+                .fillMaxHeight().readableWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Text(
+                "채팅 입력창의 Live 버튼으로 핸즈프리 대화를 시작합니다.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            HermesCard { GlassesSettings(container) }
+        }
+    }
+}
+
 /**
- * 설정 > 메타 글라스 · Live (T-187/T-188). 글라스 연결(권한 → Meta AI 등록 → 카메라 권한 → 세션)과
+ * 글라스 연결 + Live 사진 옵션 (T-187/T-188). 글라스 연결(권한 → Meta AI 등록 → 카메라 권한 → 세션)과
  * Live 사진 옵션. Live 자체는 봇 채팅 입력창의 Live 버튼으로 켠다.
  */
 @Composable
