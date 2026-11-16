@@ -118,6 +118,10 @@ data class BotMessage(
     val rootId: Int? = null,
     /** 아이콘 키(화이트리스트 참조용). 대개 비어 있다. */
     val iconKey: String? = null,
+    /** 토론 발화면 그 토론 id (Hermes-bot P32). */
+    val discussionId: Int? = null,
+    /** "topic" | "statement" | "moderation" | "conclusion" */
+    val discKind: String? = null,
 ) {
     /** `attachments` JSON 문자열을 풀어 낸 목록(없거나 깨졌으면 빈 목록). */
     val attachmentItems: List<BotAttachment> get() = Parsers.parseAttachments(attachments)
@@ -125,6 +129,41 @@ data class BotMessage(
     val isSystem: Boolean get() = role == "system"
     val isInFlight: Boolean get() = status == "queued" || status == "running"
 }
+
+/** 토론 한 판의 상태 — `GET /api/discussions/{id}`. */
+data class Discussion(
+    val id: Int,
+    val topic: String = "",
+    /** "running" | "done" | "stopped" | "failed" */
+    val status: String = "running",
+    val members: List<DiscussionMember> = emptyList(),
+) {
+    val isRunning: Boolean get() = status == "running"
+    val moderator: DiscussionMember? get() = members.firstOrNull { it.isModerator }
+}
+
+data class DiscussionMember(
+    val botId: Int,
+    val slug: String,
+    /** "moderator" | "participant" */
+    val role: String = "participant",
+    val turnsUsed: Int = 0,
+    val turnsMax: Int = 0,
+    /** false = 응답 실패로 토론에서 제외됨. */
+    val active: Boolean = true,
+) {
+    val isModerator: Boolean get() = role == "moderator"
+}
+
+/** 토론 시작 옵션. [moderatorId] null = 서버가 첫 멤버로, [botIds] 비면 채널 멤버 전원. */
+data class DiscussionRequest(
+    val topic: String,
+    val moderatorId: Int? = null,
+    val botIds: List<Int> = emptyList(),
+    val turns: Int? = null,
+    val allowTools: Boolean = false,
+    val workdir: String? = null,
+)
 
 data class BotApproval(
     val id: Int,

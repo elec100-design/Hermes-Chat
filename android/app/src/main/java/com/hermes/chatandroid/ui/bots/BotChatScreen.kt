@@ -85,6 +85,9 @@ import com.hermes.chatandroid.data.BotChannel
 import com.hermes.chatandroid.data.BotMessage
 import com.hermes.chatandroid.data.BotPatch
 import com.hermes.chatandroid.data.ChannelPatch
+import com.hermes.chatandroid.data.Discussion
+import com.hermes.chatandroid.data.DiscussionRequest
+import com.hermes.chatandroid.net.ApiException
 import com.hermes.chatandroid.data.Workspace
 import com.hermes.chatandroid.net.AttachmentImageStore
 import com.hermes.chatandroid.data.BotStep
@@ -94,6 +97,10 @@ import com.hermes.chatandroid.ui.bots.chat.LiveBar
 import com.hermes.chatandroid.ui.bots.chat.LiveButton
 import com.hermes.chatandroid.ui.bots.chat.WorkspaceButton
 import com.hermes.chatandroid.ui.bots.chat.WorkspacePickerSheet
+import com.hermes.chatandroid.ui.bots.chat.DiscussionBar
+import com.hermes.chatandroid.ui.bots.chat.DiscussionButton
+import com.hermes.chatandroid.ui.bots.chat.DiscussionKindLabel
+import com.hermes.chatandroid.ui.bots.chat.DiscussionSheet
 import com.hermes.chatandroid.ui.bots.chat.PendingBotFile
 import com.hermes.chatandroid.ui.bots.chat.TypingDots
 import com.hermes.chatandroid.ui.bots.chat.readPendingFile
@@ -131,6 +138,9 @@ data class BotChatUiState(
     val info: String? = null,
     /** 작업 폴더 선택 시트용 등록 워크스페이스. null = 아직 안 불러옴. */
     val workspaces: List<Workspace>? = null,
+    /** 이 채널의 가장 최근 토론(없으면 null). 진행 중이면 입력 카드 위에 진행 줄이 뜬다. */
+    val discussion: Discussion? = null,
+    val startingDiscussion: Boolean = false,
 ) {
     /** 이 대화에 지정된 작업 폴더(DM = 봇 기본 폴더, 채널 = 채널 폴더). */
     val workdir: String? get() = (dmBot?.workdir ?: channel?.workdir)?.takeIf { it.isNotBlank() }
@@ -161,6 +171,7 @@ class BotChatViewModel(private val container: AppContainer, private val channelI
                 // 최종본이 된 메시지의 스트리밍 버퍼는 제거
                 s.copy(messages = sorted, streaming = s.streaming.filterKeys { it in inFlight })
             }
+            refreshDiscussion(list)
         },
         onReset = { id -> _state.update { it.copy(streaming = it.streaming + (id to ""), streamErrors = it.streamErrors - id) } },
         onDelta = { id, t -> _state.update { it.copy(streaming = it.streaming + (id to (it.streaming[id].orEmpty() + t))) } },
@@ -328,6 +339,67 @@ class BotChatViewModel(private val container: AppContainer, private val channelI
         }
     }
 
+    /**
+     * 메시지에 토론 발화가 있으면 그 토론의 상태(발언 횟수·진행 여부)를 다시 읽는다.
+     * 잡이 끝날 때마다 목록을 새로 읽으므로 그때마다 불린다. 이미 끝난 토론은 다시 묻지 않는다.
+     */
+    private fun refreshDiscussion(messages: List<BotMessage>) {
+        val api = container.botApi() ?: return
+        val id = messages.lastOrNull { it.discussionId != null }?.discussionId
+        val cur = _state.value.discussion
+        if (id == null) {
+            if (cur != null) _state.update { it.copy(discussion = null) }
+            return
+        }
+        if (cur?.id == id && !cur.isRunning) return
+        viewModelScope.launch {
+            try {
+                val d = api.fetchDiscussion(id)
+                _state.update { it.copy(discussion = d) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // 구버전 서버(P32 미만)에는 이 경로가 없다 — 발언 자체는 보이므로 조용히 넘어간다.
+            }
+        }
+    }
+
+    /** 토론을 연다. [onResult] 는 성공이면 null, 서버가 거절하면 그 이유. */
+    fun startDiscussion(request: DiscussionRequest, onResult: (String?) -> Unit) {
+        val api = container.botApi() ?: return
+        if (_state.value.startingDiscussion) return
+        _state.update { it.copy(startingDiscussion = true, info = null, error = null) }
+        viewModelScope.launch {
+            try {
+                api.startDiscussion(channelId, request.copy(workdir = channelWorkdirForSend()))
+                follower.submit(api.fetchMessages(channelId))
+                _state.update { it.copy(startingDiscussion = false) }
+                onResult(null)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _state.update { it.copy(startingDiscussion = false) }
+                onResult(if (e is ApiException && e.code == 404) "봇 서버가 토론을 지원하지 않습니다. Hermes-bot 을 P32 이상으로 올려 주세요." else botErrorText(e))
+            }
+        }
+    }
+
+    fun stopDiscussion() {
+        val api = container.botApi() ?: return
+        val id = _state.value.discussion?.takeIf { it.isRunning }?.id ?: return
+        viewModelScope.launch {
+            try {
+                val d = api.stopDiscussion(id)
+                _state.update { it.copy(discussion = d) }
+                follower.submit(api.fetchMessages(channelId))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _state.update { it.copy(error = botErrorText(e)) }
+            }
+        }
+    }
+
     override fun onCleared() {
         follower.cancelAll()
     }
@@ -391,6 +463,8 @@ fun BotChatScreen(
     }
     var liveMenu by remember(channelId) { mutableStateOf(false) }
     var workspaceSheet by remember(channelId) { mutableStateOf(false) }
+    var discussionSheet by remember(channelId) { mutableStateOf(false) }
+    var discussionError by remember(channelId) { mutableStateOf<String?>(null) }
     val wide = isWideWindow()
     // 하단 근처일 때만 따라간다(위로 올려 읽는 중이면 방해하지 않음). 첫 로드는 항상 맨 아래.
     val nearBottom by remember(channelId) {
@@ -507,6 +581,13 @@ fun BotChatScreen(
                             workspaceSheet = true
                             vm.loadWorkspaces()
                         })
+                        // 봇이 둘 이상인 채널: 주제를 던져 토론을 연다(입력 중인 글이 주제로 들어간다).
+                        if (members.size > 1) {
+                            DiscussionButton(running = state.discussion?.isRunning == true, onClick = {
+                                discussionError = null
+                                discussionSheet = true
+                            })
+                        }
                     }
                 } else null,
                 trailingActions = if (dm != null || ch != null) {
@@ -540,6 +621,7 @@ fun BotChatScreen(
                 } else null,
                 topContent = if (liveHere || state.info != null || members.size > 1 || state.pending.isNotEmpty()) {
                     {
+                        state.discussion?.takeIf { it.isRunning }?.let { DiscussionBar(it, onStop = vm::stopDiscussion) }
                         if (liveHere) {
                             LiveBar(
                                 ui = liveUi,
@@ -687,6 +769,22 @@ fun BotChatScreen(
         }
     }
 
+    if (discussionSheet) {
+        DiscussionSheet(
+            members = members,
+            initialTopic = input,
+            starting = state.startingDiscussion,
+            error = discussionError,
+            onStart = { req ->
+                vm.startDiscussion(req) { err ->
+                    discussionError = err
+                    if (err == null) { discussionSheet = false; input = "" }
+                }
+            },
+            onDismiss = { discussionSheet = false },
+        )
+    }
+
     if (workspaceSheet) {
         WorkspacePickerSheet(
             workspaces = state.workspaces,
@@ -799,6 +897,7 @@ private fun MessageRow(m: BotMessage, state: BotChatUiState, vm: BotChatViewMode
                 fontWeight = FontWeight.SemiBold,
                 color = accent ?: MaterialTheme.colorScheme.primary,
             )
+            DiscussionKindLabel(m.discKind)
             if (m.isInFlight && text.isNotEmpty()) {
                 Text(
                     "· 작성 중",

@@ -4,6 +4,7 @@ import com.hermes.chatandroid.data.BotAttachment
 import com.hermes.chatandroid.data.BotPatch
 import com.hermes.chatandroid.data.BotStreamEvent
 import com.hermes.chatandroid.data.ChannelPatch
+import com.hermes.chatandroid.data.DiscussionRequest
 import com.hermes.chatandroid.data.ProfileDiscovery
 import com.hermes.chatandroid.net.ApiException
 import com.hermes.chatandroid.net.BotApi
@@ -48,6 +49,26 @@ class BotApiTest {
             assertEquals(e.message, e.detail)
         }
         val r = server.takeRequest(); assertEquals("DELETE", r.method); assertEquals("/api/channels/5", r.path)
+    }
+
+    @Test fun discussionEndpoints() = runBlocking {
+        server.enqueue(json("""{"discussion_id":4,"message_id":10,"jobs":[{"message_id":11,"job_id":20,"bot":"grok"}]}""", 202))
+        server.enqueue(json("""{"id":4,"status":"stopped","members":[]}"""))
+        server.enqueue(json("""{"detail":"이 채널에서 이미 토론이 진행 중입니다."}""", 400))
+        val id = api().startDiscussion(2, DiscussionRequest("캐시를 어디에 둘까", moderatorId = 7, botIds = listOf(7, 8), turns = 4))
+        assertEquals(4, id)
+        val start = server.takeRequest()
+        assertEquals("POST", start.method); assertEquals("/api/channels/2/discussions", start.path)
+        val body = start.body.readUtf8()
+        assertTrue(body, body.contains("\"moderator_id\":7") && body.contains("\"bot_ids\":[7,8]") && body.contains("\"turns\":4"))
+        assertTrue(body, body.contains("\"allow_tools\":false") && !body.contains("workdir"))
+
+        assertFalse(api().stopDiscussion(4).isRunning)
+        assertEquals("/api/discussions/4/stop", server.takeRequest().path)
+        // 못 여는 이유는 서버 문장 그대로 시트에 보인다.
+        try { api().startDiscussion(2, DiscussionRequest("x")); fail() } catch (e: ApiException) {
+            assertEquals("이 채널에서 이미 토론이 진행 중입니다.", e.message)
+        }
     }
 
     @Test fun channelAndMemberEndpoints() = runBlocking {

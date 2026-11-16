@@ -13,6 +13,8 @@ import com.hermes.chatandroid.data.BotStreamEvent
 import com.hermes.chatandroid.data.BrowseResult
 import com.hermes.chatandroid.data.ChannelPatch
 import com.hermes.chatandroid.data.DiscoverResult
+import com.hermes.chatandroid.data.Discussion
+import com.hermes.chatandroid.data.DiscussionRequest
 import com.hermes.chatandroid.data.Parsers
 import com.hermes.chatandroid.data.PushRequestResult
 import com.hermes.chatandroid.data.Workspace
@@ -84,6 +86,34 @@ open class BotApi(
         val text = http.fetchText(req("api/channels/$channelId/messages").post(jsonBody(json.toString())).build())
         return Parsers.parseBotPostResult(text)
     }
+
+    // ---- 토론 (Hermes-bot P32) ----
+
+    /**
+     * 채널에 주제를 던져 토론을 연다 → 토론 id. 참가 봇들이 동시에 의견을 내고 진행자가 조율해 결론을 쓴다.
+     * 발언은 채널 메시지로 오므로 이후 [fetchMessages] 로 따라간다. 못 여는 이유(봇 1명·이미 진행 중 등)는 400 detail.
+     */
+    open suspend fun startDiscussion(channelId: Int, request: DiscussionRequest): Int {
+        val json = buildJsonObject {
+            put("topic", request.topic)
+            request.moderatorId?.let { put("moderator_id", it) }
+            if (request.botIds.isNotEmpty()) put("bot_ids", buildJsonArray { request.botIds.forEach { add(it) } })
+            request.turns?.let { put("turns", it) }
+            put("allow_tools", request.allowTools)
+            if (!request.workdir.isNullOrBlank()) put("workdir", request.workdir)
+        }
+        val text = http.fetchText(req("api/channels/$channelId/discussions").post(jsonBody(json.toString())).build())
+        return Parsers.parseDiscussionId(text) ?: throw ApiException(0, "토론 응답을 해석할 수 없습니다")
+    }
+
+    open suspend fun fetchDiscussion(id: Int): Discussion =
+        Parsers.parseDiscussion(http.fetchText(req("api/discussions/$id").build()))
+            ?: throw ApiException(0, "토론 상태를 해석할 수 없습니다")
+
+    /** 대기 중 발언은 취소되고, 말하는 중인 발언은 끝까지 기록된다. */
+    open suspend fun stopDiscussion(id: Int): Discussion =
+        Parsers.parseDiscussion(http.fetchText(req("api/discussions/$id/stop").post(jsonBody("{}")).build()))
+            ?: throw ApiException(0, "토론 상태를 해석할 수 없습니다")
 
     open suspend fun createChannel(
         title: String,

@@ -443,6 +443,37 @@
 6. 라이트/다크, 커버(좁은)·펼침(넓은) 화면에서 입력 카드·탭 바·말풍선 색 대비와 줄 길이 확인
 7. (T-196) 탭이 대화·칸반·크론·대시보드·더보기 5개인지, 대화 헤더 종 버튼 → 승인 화면 → 뒤로. 승인 대기가 생기면 종 버튼·대화 탭에 숫자 배지
 
+## Phase 28 — 채널·워크스페이스 토론 (2026-11-16, PLAN Phase 28)
+
+> 서버 쪽은 Hermes-bot 저장소 P32(T-320~T-327, `app/discussions.py`). 앱은 그 API 를 부른다.
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-200 | 토론 모델·파서·API — `BotMessage.discussionId/discKind`, `Discussion`·`DiscussionMember`·`DiscussionRequest`, `BotApi.startDiscussion/fetchDiscussion/stopDiscussion`, 데모 모드는 안내 문구로 거절 | `android/…/data/{Models,Parsers,DemoApis}.kt`, `…/net/BotApi.kt` | NEEDS-BUILD (11-16 클라우드 컨테이너 빌드·단위 테스트 101개 통과, 실기기 미검증) |
+| T-201 | 토론 UI — 입력 카드 토론 버튼(봇 2+ 채널), 시작 시트(주제·진행자·참가자·발언 횟수·도구 허용, 서버 거절 사유는 시트 안에 표시), 진행 줄(봇별 사용/한도·중지), 진행·최종 결론 꼬리표 | `…/ui/bots/chat/DiscussionSheet.kt`(신규), `…/ui/bots/BotChatScreen.kt` | NEEDS-BUILD (11-16 클라우드 컨테이너 빌드·단위 테스트 101개 통과, 실기기 미검증) |
+| T-202 | 단위 테스트 — 토론 필드·상태 파싱, 시작/중지 요청 본문·경로, 400 detail 전달 | `android/app/src/test/…/{BotParsersTest,BotApiTest}.kt` | NEEDS-BUILD (11-16 클라우드 컨테이너 빌드·단위 테스트 101개 통과, 실기기 미검증) |
+| T-203 | iOS 토론 UI — 봇 채팅에 같은 시트·진행 줄. 그 전까지 iOS·웹은 채널에서 `/토론 <주제>` 로 연다(서버가 처리) | `HermesChat/Views/BotChatView.swift` 등 | TODO |
+| T-204 | (발견된 버그, 토론과 무관) 크론 탭 프로필 필터에 `.deleted 0` 칩이 뜬다 — Bridge 프로필 나열(`PROFILES_DIR.iterdir()`)이 휴지통 디렉터리 `.deleted` 를 프로필로 돌려준다. `.` 으로 시작하는 디렉터리 제외 + 맥미니 Bridge 재배포 | `server/hermes_bridge.py` | TODO |
+
+**Phase 28 실기기 검증 체크리스트** (맥미니 Hermes-bot 을 P32 로 재배포한 뒤 — Hermes-bot HANDOFF §3):
+1. 봇 2~3개 채널(작업 채팅 포함) 입력 카드에 토론 버튼이 보이고, DM·봇 1개 채널에는 안 보임
+2. 입력창에 쓰던 글이 시트의 주제로 들어감 → 진행자·참가자·횟수 선택 → 토론 시작 → 참가자들이 **동시에** 답하기 시작
+3. 입력 카드 위 토론 줄에 `진행 @opus 1/6 · @grok 1/3` 처럼 횟수가 오르고, 진행자 발언에 "진행", 마지막에 "최종 결론" 꼬리표
+4. 진행자가 지목한 봇만 다음에 답하는지, 참가자가 한도를 다 쓰면 진행자가 결론으로 넘어가는지
+5. 중지 → "토론을 중지했습니다" 안내, 대기 중이던 발언은 실패 표시, 이후 새 발언 없음
+6. 진행 중 다시 토론 버튼 → 비활성. 서버를 P32 미만으로 둔 채 시작 → 시트에 "P32 이상으로 올려 주세요"
+7. 앱을 껐다 켜도 토론이 이어져 있고 기록이 채널에 남아 있음
+
+## Phase 29 — MCP 서버 관리 (계획, PLAN Phase 29)
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-210 | **맥미니 사전 확인**(착수 조건): ①`hermes mcp --help` 서브커맨드 목록(특히 list·remove 유무) ②`hermes mcp catalog` 출력 형식 ③`hermes [-p <프로필>] mcp install <name>` 이 입력 없이 끝나는지·무엇을 묻는지 ④프로필별 `config.yaml` 의 `mcp_servers` 블록 실제 모양 ⑤멀티플렉스 게이트웨이에서 프로필별 MCP 가 따로 적용되는지. 결과를 PLAN §0.4 에 기록 | 맥미니 | TODO (맥 에이전트/사용자) |
+| T-211 | Bridge MCP API — 카탈로그·프로필별 목록(값 마스킹)·추가(카탈로그/URL)·켜기끄기·제거·연결 테스트. 쓰기는 `hermes mcp` CLI 경유, CLI 에 없는 것만 `mcp_servers` 블록 라인 편집(.bak) | `server/hermes_bridge.py` | TODO (T-210 뒤) |
+| T-212 | Android 더보기 > MCP 서버 — 프로필 선택, 등록됨(토글·테스트·제거), 추가(카탈로그 체크 목록 + URL) | `android/…/ui/more`, `…/net/BridgeApi.kt` | TODO (T-211 뒤) |
+| T-213 | 자격증명 — API 키 입력(프로필 `.env`), OAuth 기기 코드 로그인(`hermes mcp login --flow device`) 중계 | Bridge + Android | TODO (T-212 뒤) |
+| T-214 | iOS·Hermes-bot 웹에 같은 화면 | — | TODO |
+
 ## Phase A — 앱스토어 상품화 Phase 0: 컴플라이언스 + 다국어 기반
 
 > 상업화 전체 계획은 `docs/COMMERCIALIZATION.md` 참조. Phase B~D 태스크는 이 파일 하단에 추가됨.
@@ -516,3 +547,4 @@
 | 11-15 | claude/android-fold-ui @ 2a20cbe | ANDROID 실기기 검증 | 사용자 폴드에서 대시보드 WebView 본문 표시 확인 — T-179 DONE. 진단(버그) 버튼은 확인 후 제거 |
 | 11-16 | claude/android-workspace-tab (T-197~T-199) | ANDROID BUILD SUCCESSFUL | Claude Code 맥미니 로컬 — `:app:testDebugUnitTest :app:assembleDebug :app:lintDebug` 통과, 단위 테스트 99개. Bridge 재배포 후 실서버에서 `/usage`(Claude 창 3개 등 5계정)·`/git/status`(브랜치·PR)·오류 응답(401/404/400) 확인. 실기기 미검증 |
 | 11-16 | claude/android-workspace-tab @ 5ee8531 | ANDROID 실기기 검증 | 사용자 Galaxy Z Fold 에 debug APK(18888 배포) 설치 — 사용량 팝업·작업 탭(작업 채팅)·git 작업 팝업 동작 확인. T-197~T-199 DONE |
+| 11-16 | claude/hermes-chat-improvements-wc6g8f (T-200~T-202) | ANDROID BUILD SUCCESSFUL | Claude Code 클라우드 컨테이너 — `:app:testDebugUnitTest :app:assembleDebug` 통과(JDK 21, SDK platform 36), 단위 테스트 101개(토론 파서·API 2건 추가). 화면은 눈으로 확인하지 못했다(에뮬레이터 없음) — 맥미니 빌드 APK 로 Phase 28 체크리스트 수행 필요. 서버는 Hermes-bot P32(pytest 276 통과 + 실제 uvicorn·러너 루프로 토론 한 판 HTTP 구동 확인) |

@@ -169,6 +169,10 @@ class DemoBotApi(private val wordDelayMs: Long = 40L) : BotApi("", "") {
         return BotPostResult(messageId = userId, replyMessageId = replyId, jobId = jobId, bot = bot.slug)
     }
 
+    /** 데모에는 진행자가 조율할 실제 봇이 없다. */
+    override suspend fun startDiscussion(channelId: Int, request: DiscussionRequest): Int =
+        throw ApiException(400, "데모 모드에서는 토론을 열 수 없습니다")
+
     override suspend fun createChannel(title: String, topic: String?, botIds: List<Int>, workdir: String?, botChat: Boolean?): BotChannel {
         val ch = BotChannel(
             nextId++, null, title, topic, botChat ?: true, "active", null,

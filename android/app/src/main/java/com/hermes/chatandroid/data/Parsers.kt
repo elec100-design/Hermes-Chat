@@ -203,8 +203,35 @@ object Parsers {
             parentId = o.int("parent_id"),
             rootId = o.int("root_id"),
             iconKey = o.text("icon_key")?.takeIf { it.isNotEmpty() },
+            discussionId = o.int("discussion_id"),
+            discKind = o.text("disc_kind"),
         )
     }
+
+    /** 토론 상태. id 가 없으면(오류 본문 등) null. */
+    fun parseDiscussion(body: String): Discussion? {
+        val o = parseJsonOrNull(body).asObject() ?: return null
+        val id = o.int("id") ?: return null
+        return Discussion(
+            id = id,
+            topic = o.text("topic") ?: "",
+            status = o.text("status") ?: "running",
+            members = o.array("members").orEmpty().mapNotNull { el ->
+                val m = el.asObject() ?: return@mapNotNull null
+                DiscussionMember(
+                    botId = m.int("bot_id") ?: return@mapNotNull null,
+                    slug = m.text("slug") ?: return@mapNotNull null,
+                    role = m.text("role") ?: "participant",
+                    turnsUsed = m.int("turns_used") ?: 0,
+                    turnsMax = m.int("turns_max") ?: 0,
+                    active = m.bool("active") ?: true,
+                )
+            },
+        )
+    }
+
+    /** 토론 시작 응답의 `discussion_id`. */
+    fun parseDiscussionId(body: String): Int? = parseJsonOrNull(body).asObject()?.int("discussion_id")
 
     fun parseBotApprovals(body: String): List<BotApproval> = dataArray(body).mapNotNull { el ->
         val o = el.asObject() ?: return@mapNotNull null

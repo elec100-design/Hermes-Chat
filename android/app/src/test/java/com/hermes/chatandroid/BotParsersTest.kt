@@ -44,6 +44,29 @@ class BotParsersTest {
         assertTrue(Parsers.parseJsonChannel("""{"id":1,"title":"x","kind":"dm"}""")!!.isDm)
     }
 
+    @Test fun discussionFieldsOnMessageAndState() {
+        // Hermes-bot P32: 토론 발화에는 discussion_id·disc_kind 가 붙고, 보통 발화는 둘 다 null.
+        val msgs = Parsers.parseBotMessages(
+            """{"data":[{"id":1,"role":"user","body":"주제","discussion_id":4,"disc_kind":"topic"},
+            {"id":2,"role":"bot","status":"done","discussion_id":4,"disc_kind":"conclusion"},
+            {"id":3,"role":"bot","discussion_id":null,"disc_kind":null}]}""",
+        )
+        assertEquals(listOf(4, 4, null), msgs.map { it.discussionId })
+        assertEquals(listOf("topic", "conclusion", null), msgs.map { it.discKind })
+
+        val d = Parsers.parseDiscussion(
+            """{"id":4,"channel_id":2,"root_id":1,"topic":"주제","status":"running","turns_max":3,"moderator_turns_max":6,
+            "allow_tools":false,"members":[
+              {"bot_id":7,"slug":"opus","name":"opus","role":"moderator","turns_used":1,"turns_max":6,"active":true},
+              {"bot_id":8,"slug":"grok","name":"grok","role":"participant","turns_used":2,"turns_max":3,"active":false}]}""",
+        )!!
+        assertTrue(d.isRunning); assertEquals("opus", d.moderator?.slug); assertEquals(6, d.moderator?.turnsMax)
+        assertFalse(d.members[1].active); assertEquals(2, d.members[1].turnsUsed); assertFalse(d.members[1].isModerator)
+        assertFalse(Parsers.parseDiscussion("""{"id":4,"status":"stopped"}""")!!.isRunning)
+        assertNull(Parsers.parseDiscussion("""{"detail":"토론을 찾을 수 없습니다"}"""))
+        assertEquals(4, Parsers.parseDiscussionId("""{"discussion_id":4,"message_id":1,"jobs":[]}"""))
+    }
+
     @Test fun attachmentsJsonStringOnMessage() {
         val json = """{"data":[{"id":5,"channel_id":2,"parent_id":null,"root_id":null,"seq":1,"role":"user","author":"나",
             "body":"(첨부만)","status":"done","job_id":null,"author_bot_id":null,
