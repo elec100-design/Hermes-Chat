@@ -74,4 +74,20 @@ class ChatUxTest {
         assertEquals("opus", ChatUx.soloRecipientSlug(null, channel(member(1, "opus"))))
         assertNull(ChatUx.soloRecipientSlug(null, channel(member(1, "opus"), member(2, "grok"))))
     }
+
+    @Test fun gitLabelSplitsLoadingMissingAndError() {
+        assertEquals("불러오는 중", ChatUx.gitButtonLabel(loading = true, failed = false, branch = ""))
+        assertEquals("오류", ChatUx.gitButtonLabel(loading = false, failed = true, branch = null))
+        assertEquals("브랜치 없음", ChatUx.gitButtonLabel(loading = false, failed = false, branch = "  "))
+        assertEquals("main", ChatUx.gitButtonLabel(loading = false, failed = false, branch = "main"))
+    }
+
+    @Test fun pathKeepsTheLastFolder() {
+        val path = "/Users/macmini/orca/HermesChat"
+        val shown = ChatUx.middleEllipsisPath(path, 24)
+        assertTrue(shown.endsWith("HermesChat"))
+        assertTrue(shown.contains("…"))
+        assertTrue(shown.length <= 24)
+        assertEquals(path, ChatUx.middleEllipsisPath(path, 80))
+    }
 }

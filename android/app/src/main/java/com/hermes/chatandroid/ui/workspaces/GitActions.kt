@@ -34,6 +34,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -56,6 +57,7 @@ import com.hermes.chatandroid.AppContainer
 import com.hermes.chatandroid.data.GitAction
 import com.hermes.chatandroid.data.GitResult
 import com.hermes.chatandroid.data.GitStatus
+import com.hermes.chatandroid.data.ChatUx
 import com.hermes.chatandroid.net.ApiException
 import com.hermes.chatandroid.ui.components.HermesTextField
 import com.hermes.chatandroid.ui.theme.hermesColors
@@ -135,6 +137,7 @@ fun GitMenuButton(container: AppContainer, workdir: String, showLabel: Boolean, 
     val uriHandler = LocalUriHandler.current
     val status = state.status
     val busy = state.running != null
+    LaunchedEffect(workdir) { vm.refresh() }
 
     Box(modifier) {
         Surface(
@@ -151,13 +154,23 @@ fun GitMenuButton(container: AppContainer, workdir: String, showLabel: Boolean, 
                 if (busy) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
                 else Icon(Icons.Rounded.Commit, contentDescription = "git 작업", modifier = Modifier.size(18.dp))
                 if (showLabel) {
-                    Text(
-                        state.running?.let { "${it.label} 중…" } ?: status?.branch?.ifBlank { null } ?: "Git",
-                        style = MaterialTheme.typography.labelLarge,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.widthIn(max = 150.dp),
-                    )
+                    Column(Modifier.widthIn(max = 220.dp)) {
+                        Text(
+                            ChatUx.middleEllipsisPath(workdir, 32),
+                            style = MaterialTheme.typography.labelSmall,
+                            maxLines = 1,
+                        )
+                        Text(
+                            state.running?.let { "${it.label} 중…" }
+                                ?: ChatUx.gitButtonLabel(
+                                    loading = state.loading || (status == null && state.unavailable == null),
+                                    failed = state.unavailable != null && status == null,
+                                    branch = status?.branch,
+                                ) + (status?.let { if (it.dirty) " · 변경 ${it.files.size}" else " · 깨끗함" } ?: ""),
+                            style = MaterialTheme.typography.labelLarge,
+                            maxLines = 1,
+                        )
+                    }
                 }
                 Icon(Icons.Rounded.ExpandMore, contentDescription = null, modifier = Modifier.size(16.dp))
             }
@@ -175,7 +188,7 @@ fun GitMenuButton(container: AppContainer, workdir: String, showLabel: Boolean, 
                     color = if (status == null && !state.loading) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
-                    workdir,
+                    ChatUx.middleEllipsisPath(workdir, 42),
                     style = MaterialTheme.typography.labelSmall,
                     fontFamily = FontFamily.Monospace,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

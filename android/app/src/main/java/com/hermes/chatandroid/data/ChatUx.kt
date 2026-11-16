@@ -61,4 +61,29 @@ object ChatUx {
         channel != null && !channel.isDm && channel.members.size == 1 -> channel.members[0].slug
         else -> null
     }
+
+    /**
+     * Git 버튼 문구. 브랜치가 비어 "Git" 하나로 뭉뚱그리지 않는다.
+     * [loading] 이면 불러오는 중, [failed] 이면 오류, 브랜치가 없으면 브랜치 없음.
+     */
+    fun gitButtonLabel(loading: Boolean, failed: Boolean, branch: String?): String = when {
+        loading -> "불러오는 중"
+        failed -> "오류"
+        branch.isNullOrBlank() -> "브랜치 없음"
+        else -> branch
+    }
+
+    /**
+     * 경로를 가운데서 줄여 끝 폴더가 보이게 한다. 앞만 남기고 뒤를 자르지 않는다.
+     */
+    fun middleEllipsisPath(path: String, maxChars: Int = 36): String {
+        val clean = path.trim()
+        if (maxChars < 2 || clean.length <= maxChars) return clean
+        val leaf = clean.trimEnd('/').substringAfterLast('/').ifEmpty { clean }
+        val tail = if (clean.length > leaf.length && clean.endsWith(leaf)) "/$leaf" else leaf
+        val tailKeep = if (tail.length >= maxChars) tail.takeLast(maxChars - 1) else tail
+        val headRoom = maxChars - 1 - tailKeep.length
+        val head = if (headRoom > 0) clean.take(headRoom) else ""
+        return head + "…" + tailKeep
+    }
 }

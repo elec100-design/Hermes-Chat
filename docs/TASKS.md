@@ -456,6 +456,7 @@
 | T-204 | (발견된 버그, 토론과 무관) 크론 탭 프로필 필터에 `.deleted 0` 칩이 뜬다 — Bridge 프로필 나열(`PROFILES_DIR.iterdir()`)이 휴지통 디렉터리 `.deleted` 를 프로필로 돌려준다. `.` 으로 시작하는 디렉터리 제외 + 맥미니 Bridge 재배포 | `server/hermes_bridge.py` | TODO |
 | T-205 | 멘션 없이 보낸 메시지가 사라지는 문제 — 봇 2명 이상이면 전송을 막고 수신 봇을 고른다(기본값=마지막으로 답한 봇). 봇 1명은 자동 slug 유지하고 누가 받았는지만 표시. 빈 화면의 주 동작은 안내 문구와 봇 칩을 한 덩어리로. 서버는 멘션 없을 때 job_id=null 만 주고 오류 문구는 없음(확인만, 서버 무수정) | `android/…/data/ChatUx.kt`, `…/ui/bots/BotChatScreen.kt`, `test/…/ChatUxTest.kt` | NEEDS-BUILD |
 | T-206 | 칸반 보드 첫 화면 — BoardOrder 유지. 처음 열 때 실행 중 열로 스크롤, 실행 중이 비면 대기 열. 빈 열은 좁은 헤더로 접고 탭하면 펼침. 오른쪽에 열이 더 있으면 스크롤 힌트 | `android/…/ui/kanban/KanbanScreen.kt`, `KanbanLayout.kt` | NEEDS-BUILD |
+| T-207 | Git 버튼과 작업 경로 — 불러오는 중·브랜치 없음·오류를 나누고, 넓은 헤더는 경로를 가운데서 줄여 끝 폴더·브랜치·변경 수를 보이게 함 | `android/…/data/ChatUx.kt`, `…/ui/workspaces/GitActions.kt`, `test/…/ChatUxTest.kt` | NEEDS-BUILD |
 
 **Phase 28 실기기 검증 체크리스트** (맥미니 Hermes-bot 을 P32 로 재배포한 뒤 — Hermes-bot HANDOFF §3):
 1. 봇 2~3개 채널(작업 채팅 포함) 입력 카드에 토론 버튼이 보이고, DM·봇 1개 채널에는 안 보임
