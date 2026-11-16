@@ -405,6 +405,12 @@
 | T-188 | 글라스 카메라 — **Meta DAT SDK 1.0.1 직접 촬영**(갤러리 감시 폐기, 11-15 사용자 승인). 의존성 `com.meta.wearable:mwdat-core/mwdat-camera` 추가 → **minSdk 26→29, Kotlin 2.0.21→2.2.21**(SDK 요구). 개발자 모드라 APPLICATION_ID/CLIENT_TOKEN=0(배포 시 local.properties), Meta 분석·크래시 수집 끔, 콜백 스킴 `hermeschat`. Live 화면 글라스 카드: 블루투스 권한 → Meta AI 에서 연결(등록) → 카메라 권한 → 카메라 켜기. 스트림은 촬영용으로만 열어 둠(HIGH·2fps, 프레임 미사용). 사진 = in-stream `capturePhoto()` → 긴 변 2048px·JPEG 90. 시야 첨부 모드: 말할 때마다(기본, 말 끝나는 순간 촬영 시작해 인식과 겹침)/요청할 때만(“이거·읽어·보여…”)/끔, 수동 “사진” 버튼은 다음 질문에 첨부. 오류 3건 대응: ①지연 → 동기화 대기 제거·촬영과 인식 병렬 ②묻기 전 설명 → 사진 단독 전송 경로 없음 ③글 판독 → 원본 해상도 사진·과압축 금지, 화면에 원본 크기 표시(실측용) | `…/glasses/GlassesCamera.kt`(신규), `gradle/libs.versions.toml`, `app/build.gradle.kts`, `AndroidManifest.xml` | NEEDS-BUILD (11-15 로컬 빌드 통과, 실기기 미검증) |
 | T-189 | 진입 단축 — 앱 아이콘 길게 누르기: 정적 바로가기(승인·칸반·크론) + 봇 DM 을 열 때마다 동적 바로가기(봇 아바타 아이콘, 런처가 최근순 정리·홈 화면 고정 가능) / 빠른 설정 타일 "Hermes": 마지막으로 연 봇 대화를 바로 열기(부제에 봇 이름). 글라스 탭(MediaSession)은 연결할 동작이 Live 모드라 T-187 로 이관 | `…/shortcut/*`(신규), `res/xml/shortcuts.xml`, `res/drawable/ic_shortcut_*.xml`, `AndroidManifest.xml`, `…/notify/OpenRequest.kt`, `…/ui/AppNav.kt`, `…/AppContainer.kt`, `…/ui/bots/BotChatScreen.kt` | NEEDS-BUILD (11-15 로컬 빌드·단위테스트 통과, 실기기 미검증) |
 | T-190 | 다국어(en/zh) 문자열 추출 | `res/values*` | TODO |
+| T-191 | 글라스 사진 판독 불량 수정 — 원인(11-16 봇 실행 단계·hermes-agent `tools/vision_tools.py` 확인): `vision_analyze` 가 **긴 변 1568px 또는 base64 256KB 초과**면 해상도를 반으로 줄임(1920×1080·318KB → 960×540). 폰에서 미리 긴 변 1568px·190KB 이하 JPEG(화질 92→62 단계)로 맞춰 올림 → 봇이 축소 없이 봄. 글라스가 세션을 끊은 뒤("Session ended by device") 사진 요청 시 자동 재연결 1회(8초), Live 시작 시 글라스 자동 연결 | `…/glasses/GlassesCamera.kt`, `…/live/LiveController.kt` | NEEDS-BUILD (11-16 로컬 빌드·단위테스트 93개 통과, 실기기 미검증) |
+| T-192 | 채팅 첨부 사진 표시 — 이미지 첨부를 파일명 칩 대신 **원본 비율 그대로**(잘림 없음) 보여 주고, 누르면 전체 화면 원본 뷰어(두 손가락 확대·이동, 두 번 탭, 원본 크기·용량 표시). Hermes-bot 서버에 첨부 다운로드 경로가 없어 **Bridge `GET /files/raw`**(HERMES_HOME 기준 상대경로)로 받음 — Bridge URL·토큰 설정 필요. 메모리 LRU 32MB, Live 가 올린 사진은 바로 캐시. Bridge 로 받을 수 없는 자리(로컬 폴백 업로드)는 기존 칩 | `…/net/AttachmentImageStore.kt`(신규), `…/ui/components/AttachmentImage.kt`(신규), `…/net/BridgeApi.kt`, `…/net/Http.kt`, `…/ui/bots/chat/BotChatParts.kt`, 테스트 `AttachmentImageStoreTest` | NEEDS-BUILD (11-16 로컬 빌드·단위테스트 93개 통과, 실기기 미검증) |
+| T-193 | Live 를 채팅 안으로 통합 — 별도 Live 화면·상단 헤드셋 버튼 폐기. 입력 카드 오른쪽 **Live 버튼**: 꺼짐=시작, 켜짐=탭 동작(듣는 중 "바로 보내기"/답하는 중 "끼어들기"/대기 "다시 듣기"). 켜지면 입력 카드 위 **Live 바**(상태·받아쓰기·사진 전송률·카메라 버튼·종료). Live 발화·답이 채팅 목록에 실시간으로 쌓임(`LiveController.posted` → 목록 재조회·잡 스트림 추적). 채널(봇 2+)은 Live 버튼에서 답할 봇 선택. **글라스 연결·시야 사진 방식·촬영 크기는 설정 > "메타 글라스 · Live"** 로 이동(값은 영속화, T-196 에서 더보기 > 메타 글라스 · Live 로 다시 이동). Live 진행 알림 탭 → 그 채팅 | `…/ui/bots/chat/LiveBar.kt`(신규), `…/ui/settings/GlassesSettings.kt`(신규), `…/ui/live/LiveScreen.kt`(삭제), `…/ui/bots/BotChatScreen.kt`, `…/ui/AppNav.kt`, `…/ui/bots/BotsScreen.kt`, `…/data/Settings.kt`, `…/AndroidSettingsStore.kt`, `…/AppContainer.kt` | NEEDS-BUILD (11-16 로컬 빌드·단위테스트 93개 통과, 실기기 미검증) |
+| T-194 | 채팅에서 작업 폴더 선택 — 입력 카드의 첨부(+) 옆 **폴더 버튼** → 등록 워크스페이스 목록 시트(지정 안 함 포함, "워크스페이스 관리" 바로가기). DM = 그 봇의 기본 폴더(`PATCH /api/bots/<id>` workdir), 채널 = 채널 폴더(`PATCH /api/channels/<id>`) + 서버가 봇 폴더를 채널 폴더보다 앞세우므로 등록된 위치면 메시지 단위 `workdir` 로도 전달. 넓은 화면은 폴더 이름까지 표시 | `…/ui/bots/chat/WorkspacePicker.kt`(신규), `…/ui/bots/BotChatScreen.kt` | NEEDS-BUILD (11-16 로컬 빌드·단위테스트 93개 통과, 실기기 미검증) |
+| T-195 | 디자인 개편(Claude 앱 풍) — 팔레트: 크림 바탕(#FAF9F5)·클레이 강조(#BA5634, 다크 #D97757)·따뜻한 회색 표면, 다크는 #262624 계열. 제목 세리프. 채팅: 사용자 = 회색 말풍선, **봇 = 말풍선 없이 본문**(이름 줄 + 넓은 본문, 최대 760dp 가운데 정렬). 입력 = 카드형(위 글 입력, 아래 도구 줄: + · 폴더 … Live · 보내기↑). 봇 tone 색·바로가기·런처 아이콘 색을 팔레트에 맞춤 | `…/ui/theme/Theme.kt`, `…/ui/components/ChatComposer.kt`, `…/ui/components/MessageBubble.kt`, `…/ui/bots/BotUi.kt`, `res/drawable/ic_launcher_*.xml`, `res/drawable/ic_shortcut_*.xml` 외 | NEEDS-BUILD (11-16 로컬 빌드·단위테스트 93개 통과, 실기기 미검증) |
+| T-196 | 탭 재구성(11-16 사용자 요청) — 탭 5개 = 대화·칸반·크론·**대시보드**·더보기(커버 하단 바·펼침 레일 공통). 대시보드는 더보기에서 탭으로 승격(데모 모드는 빈 안내). **승인 탭 폐지** → 대화 탭 헤더(새로고침 왼쪽)의 종 버튼, 대기 건수 배지(대화 탭 아이콘에도 배지). 승인 화면은 뒤로 버튼이 있는 하위 화면, 알림·바로가기도 그 화면으로. **글라스 설정**은 설정에서 빼 더보기 > 도구 및 관리 > "메타 글라스 · Live" 화면으로(Live 바의 카메라 버튼도 여기로) | `…/ui/AppNav.kt`, `…/ui/bots/BotsScreen.kt`, `…/ui/more/MoreScreen.kt`, `…/ui/more/DashboardScreen.kt`, `…/ui/settings/GlassesSettings.kt`, `…/ui/settings/SettingsScreen.kt`, `res/values/strings.xml` | NEEDS-BUILD (11-16 로컬 빌드·단위테스트 93개·lint 통과, 실기기 미검증) |
 
 **T-187/T-188 실기기 검증 체크리스트** (폴드 + 메타 글라스, Meta AI 앱 개발자 모드 ON):
 1. 봇 DM 상단 헤드셋 버튼 → Live 화면. 글라스 카드: 블루투스 권한 → "Meta AI에서 연결" → 앱 복귀 후 "카메라 권한 요청" → "카메라 켜기" → "카메라 연결됨"
@@ -417,6 +423,15 @@
 8. 화면 끄고 주머니에 넣은 채 3턴 이상 대화 유지, 알림의 "종료"로 끝남
 9. 봇 채팅으로 돌아가 Live 대화·사진이 기록돼 있는지
 10. 채널(멤버 2+)에서 Live: 답할 봇 선택 → 그 봇만 답함
+
+**T-191~T-195 실기기 검증 체크리스트** (11-16 UI 개편 — 위 1·9번의 "헤드셋 버튼/Live 화면"은 아래로 대체):
+1. 더보기 > "메타 글라스 · Live"(T-196): 글라스 연결 상태·시야 사진·촬영 크기가 보이고, 앱을 껐다 켜도 선택이 유지됨
+2. 봇 DM 입력 카드의 Live 버튼 → 권한 허용 → Live 바("Live · 듣는 중") 표시, 글라스 자동 연결. 버튼 라벨이 듣는 중/답하는 중/대기에 따라 바뀌고 탭 동작이 맞는지
+3. "사진 찍어서 읽어 줘" → Live 바에 전송률 → 채팅에 내 말풍선 + **사진(잘림 없음)** → 봇 답이 채팅에 실시간으로 쌓임. 봇 답의 실행 단계에 "Image downscaled" 문구가 **없어야** 함(T-191)
+4. 채팅을 나갔다 다시 들어와도 사진이 보이고, 누르면 원본 뷰어(확대·크기 표시). 일반 첨부(+)로 보낸 사진도 동일
+5. 폴더 버튼 → 워크스페이스 선택 → 버튼 색/이름 반영, 봇 프로필의 "기본 작업 폴더"와 같은 값. "지정 안 함"으로 해제
+6. 라이트/다크, 커버(좁은)·펼침(넓은) 화면에서 입력 카드·탭 바·말풍선 색 대비와 줄 길이 확인
+7. (T-196) 탭이 대화·칸반·크론·대시보드·더보기 5개인지, 대화 헤더 종 버튼 → 승인 화면 → 뒤로. 승인 대기가 생기면 종 버튼·대화 탭에 숫자 배지
 
 ## Phase A — 앱스토어 상품화 Phase 0: 컴플라이언스 + 다국어 기반
 

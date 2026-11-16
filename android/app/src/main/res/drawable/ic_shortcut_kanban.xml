@@ -2,7 +2,7 @@
 <!-- 런처 바로가기 아이콘 (T-189) -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="48dp" android:height="48dp" android:viewportWidth="48" android:viewportHeight="48">
-    <path android:fillColor="#FF5B4BDB" android:pathData="M24,24m-24,0a24,24 0,1 1,48 0a24,24 0,1 1,-48 0"/>
+    <path android:fillColor="#FFBA5634" android:pathData="M24,24m-24,0a24,24 0,1 1,48 0a24,24 0,1 1,-48 0"/>
     <group android:translateX="12" android:translateY="12">
         <path android:fillColor="#FFFFFFFF" android:pathData="M3,4h5v16H3z M9.5,4h5v11h-5z M16,4h5v7h-5z"/>
     </group>

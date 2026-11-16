@@ -88,5 +88,34 @@ suspend fun OkHttpClient.fetchText(request: Request): String =
         })
     }
 
+/** [fetchText] 의 바이너리판(이미지 등). 2xx 가 아니면 [ApiException]. */
+suspend fun OkHttpClient.fetchBytes(request: Request): ByteArray =
+    suspendCancellableCoroutine { cont ->
+        val call = newCall(request)
+        cont.invokeOnCancellation { call.cancel() }
+        call.enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                if (cont.isActive) cont.resumeWithException(e)
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                try {
+                    response.use { r ->
+                        if (r.isSuccessful) {
+                            val bytes = r.body?.bytes() ?: ByteArray(0)
+                            if (cont.isActive) cont.resume(bytes)
+                        } else if (cont.isActive) {
+                            val text = r.body?.string().orEmpty()
+                            cont.resumeWithException(ApiException(r.code, errorMessageFor(r.code, text), errorDetailOf(text)))
+                        }
+                        Unit
+                    }
+                } catch (e: IOException) {
+                    if (cont.isActive) cont.resumeWithException(e)
+                }
+            }
+        })
+    }
+
 fun Request.Builder.bearer(token: String): Request.Builder =
     if (token.isBlank()) this else header("Authorization", "Bearer $token")

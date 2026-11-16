@@ -140,7 +140,7 @@ fun splitMarkdownBlocks(raw: String): List<MdBlock> {
 fun inlineMarkdown(
     text: String,
     codeBackground: Color = Color(0x22888888),
-    linkColor: Color = Color(0xFF5647E5),
+    linkColor: Color = Color(0xFFBA5634),
 ): AnnotatedString =
     buildAnnotatedString {
         var i = 0

@@ -35,6 +35,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Badge
+import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Forum
 import androidx.compose.material.icons.rounded.Lock
@@ -82,7 +87,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.hermes.chatandroid.AppContainer
-import com.hermes.chatandroid.live.LiveTarget
 import com.hermes.chatandroid.data.Bot
 import com.hermes.chatandroid.data.BotChannel
 import com.hermes.chatandroid.ui.components.EmptyState
@@ -163,7 +167,11 @@ fun BotsScreen(
     onOpenBotProfile: (botId: Int) -> Unit,
     onOpenChannelSettings: (channelId: Int) -> Unit,
     modifier: Modifier = Modifier,
-    onOpenLive: (LiveTarget, List<String>) -> Unit = { _, _ -> },
+    onOpenGlasses: () -> Unit = {},
+    onOpenWorkspaces: () -> Unit = {},
+    /** 대기 중인 승인 건수 — 헤더의 승인 버튼 배지. */
+    pendingApprovals: Int = 0,
+    onOpenApprovals: () -> Unit = {},
 ) {
     val vm: BotsViewModel = viewModel(factory = viewModelFactory { initializer { BotsViewModel(container) } })
     val state by vm.state.collectAsStateWithLifecycle()
@@ -227,6 +235,8 @@ fun BotsScreen(
                 onQueryChange = { query = it },
                 selectedChannelId = selectedChannelId,
                 onRefresh = { vm.refresh() },
+                pendingApprovals = pendingApprovals,
+                onOpenApprovals = onOpenApprovals,
                 onSelectBot = { b ->
                     container.touchBotActivity(b.id)
                     b.dmChannelId?.let(onSelectChannel)
@@ -266,7 +276,8 @@ fun BotsScreen(
                         onBack = null,
                         onOpenBotProfile = onOpenBotProfile,
                         onOpenChannelSettings = onOpenChannelSettings,
-                        onOpenLive = onOpenLive,
+                        onOpenGlasses = onOpenGlasses,
+                        onOpenWorkspaces = onOpenWorkspaces,
                     )
                 }
             }
@@ -295,7 +306,8 @@ fun BotsScreen(
                         onBack = { onSelectChannel(null) },
                         onOpenBotProfile = onOpenBotProfile,
                         onOpenChannelSettings = onOpenChannelSettings,
-                        onOpenLive = onOpenLive,
+                        onOpenGlasses = onOpenGlasses,
+                        onOpenWorkspaces = onOpenWorkspaces,
                     )
                 }
             }
@@ -329,6 +341,8 @@ private fun BotSidebarPanel(
     onQueryChange: (String) -> Unit,
     selectedChannelId: Int?,
     onRefresh: () -> Unit,
+    pendingApprovals: Int,
+    onOpenApprovals: () -> Unit,
     onSelectBot: (Bot) -> Unit,
     onOpenBotProfile: (Int) -> Unit,
     onSelectChannel: (BotChannel) -> Unit,
@@ -372,6 +386,24 @@ private fun BotSidebarPanel(
                 }
                 Spacer(Modifier.weight(1f))
                 if (configured) {
+                    IconButton(onClick = onOpenApprovals) {
+                        BadgedBox(
+                            badge = {
+                                if (pendingApprovals > 0) {
+                                    Badge(
+                                        containerColor = MaterialTheme.colorScheme.error,
+                                        contentColor = MaterialTheme.colorScheme.onError,
+                                    ) { Text("$pendingApprovals") }
+                                }
+                            },
+                        ) {
+                            Icon(
+                                if (pendingApprovals > 0) Icons.Rounded.Notifications else Icons.Outlined.Notifications,
+                                contentDescription = if (pendingApprovals > 0) "승인 요청 ${pendingApprovals}건" else "승인 요청",
+                                tint = if (pendingApprovals > 0) MaterialTheme.colorScheme.primary else LocalContentColor.current,
+                            )
+                        }
+                    }
                     IconButton(onClick = onRefresh, enabled = !state.refreshing) {
                         Icon(Icons.Rounded.Refresh, contentDescription = "새로고침")
                     }
@@ -731,7 +763,8 @@ private fun ChatDetailPane(
     onBack: (() -> Unit)?,
     onOpenBotProfile: (Int) -> Unit,
     onOpenChannelSettings: (Int) -> Unit,
-    onOpenLive: (LiveTarget, List<String>) -> Unit,
+    onOpenGlasses: () -> Unit,
+    onOpenWorkspaces: () -> Unit,
 ) {
     val hc = MaterialTheme.hermesColors
     when {
@@ -773,7 +806,8 @@ private fun ChatDetailPane(
                     modifier = Modifier.fillMaxSize(),
                     onOpenBotProfile = onOpenBotProfile,
                     onOpenChannelSettings = onOpenChannelSettings,
-                    onOpenLive = onOpenLive,
+                    onOpenGlasses = onOpenGlasses,
+                    onOpenWorkspaces = onOpenWorkspaces,
                 )
             }
         }

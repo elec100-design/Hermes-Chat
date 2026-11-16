@@ -35,6 +35,8 @@ class AndroidSettingsStore(context: Context) : SettingsStore {
         onboardingComplete = plain.getBoolean("onboardingComplete", false),
         demoMode = plain.getBoolean("demoMode", false),
         notificationsEnabled = plain.getBoolean("notificationsEnabled", true),
+        glassesVision = plain.getString("glassesVision", "ON_REQUEST") ?: "ON_REQUEST",
+        glassesPhotoSize = plain.getString("glassesPhotoSize", "BALANCED") ?: "BALANCED",
     )
 
     override fun save(settings: Settings) {
@@ -47,6 +49,8 @@ class AndroidSettingsStore(context: Context) : SettingsStore {
             .putBoolean("onboardingComplete", settings.onboardingComplete)
             .putBoolean("demoMode", settings.demoMode)
             .putBoolean("notificationsEnabled", settings.notificationsEnabled)
+            .putString("glassesVision", settings.glassesVision)
+            .putString("glassesPhotoSize", settings.glassesPhotoSize)
             .apply()
         secure.edit()
             .putString("apiKey", settings.apiKey)

@@ -84,11 +84,12 @@ private const val DVH_FIX_JS = "(function(){if(window.__hcDvh)return;window.__hc
 @Composable
 fun DashboardScreen(
     container: AppContainer,
-    onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    /** null 이면 탭 화면(뒤로 버튼 없음). */
+    onBack: (() -> Unit)? = null,
 ) {
     val appSettings by container.settingsRepository.settings.collectAsStateWithLifecycle()
-    val url = appSettings.dashboardUrl
+    val url = appSettings.dashboardUrl.takeIf { !appSettings.demoMode }
     // 폴드 커버(좁은 창)는 모바일, 펼친 내부 화면(600dp+)은 데스크톱 레이아웃이 기본.
     // 툴바 토글은 현재 창 크기에서만 유지되는 임시 전환(접고 펴면 다시 자동).
     val wide = isWideWindow()
@@ -183,7 +184,9 @@ fun DashboardScreen(
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
                 title = { Text("대시보드", style = MaterialTheme.typography.titleLarge) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "닫기") }
+                    if (onBack != null) {
+                        IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "닫기") }
+                    }
                 },
                 actions = {
                     if (url != null) {
