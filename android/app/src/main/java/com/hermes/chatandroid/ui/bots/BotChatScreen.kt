@@ -86,6 +86,7 @@ import com.hermes.chatandroid.data.Bot
 import com.hermes.chatandroid.data.BotChannel
 import com.hermes.chatandroid.data.BotMessage
 import com.hermes.chatandroid.data.ChatUx
+import com.hermes.chatandroid.data.ComposerCaret
 import com.hermes.chatandroid.data.BotPatch
 import com.hermes.chatandroid.data.ChannelPatch
 import com.hermes.chatandroid.data.Discussion
@@ -683,7 +684,7 @@ fun BotChatScreen(
                                         modifier = Modifier
                                             .clip(CircleShape)
                                             .clickable {
-                                                input = if (input.isEmpty() || input.endsWith(" ")) input + "@${m.slug} " else "$input @${m.slug} "
+                                                input = ComposerCaret.insertMention(input, m.slug).text
                                             },
                                         shape = CircleShape,
                                         color = c.copy(alpha = 0.12f),
@@ -756,7 +757,7 @@ fun BotChatScreen(
                         dm = dm,
                         channel = ch,
                         onPickMember = { slug ->
-                            input = if (input.isEmpty() || input.endsWith(" ")) input + "@$slug " else "$input @$slug "
+                            input = ComposerCaret.insertMention(input, slug).text
                         },
                     )
                     else -> LazyColumn(

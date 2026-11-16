@@ -458,6 +458,13 @@
 | T-206 | 칸반 보드 첫 화면 — BoardOrder 유지. 처음 열 때 실행 중 열로 스크롤, 실행 중이 비면 대기 열. 빈 열은 좁은 헤더로 접고 탭하면 펼침. 오른쪽에 열이 더 있으면 스크롤 힌트 | `android/…/ui/kanban/KanbanScreen.kt`, `KanbanLayout.kt` | NEEDS-BUILD |
 | T-207 | Git 버튼과 작업 경로 — 불러오는 중·브랜치 없음·오류를 나누고, 넓은 헤더는 경로를 가운데서 줄여 끝 폴더·브랜치·변경 수를 보이게 함 | `android/…/data/ChatUx.kt`, `…/ui/workspaces/GitActions.kt`, `test/…/ChatUxTest.kt` | NEEDS-BUILD |
 | T-208 | 크론 카드 — 접히면 이름·다음 실행·마지막 성공/실패만. cron 식과 프롬프트는 펼쳤을 때만. 추가 버튼이 마지막 카드를 가리지 않게 목록 아래 여백. 실패 필터·실행 기록은 만들지 않음 | `android/…/ui/cron/CronScreen.kt` | NEEDS-BUILD |
+| T-209 | 에이전트 칩을 누르면 커서가 맨 앞이 아니라 @이름 뒤에 있게. BasicTextField String 오버로드는 바깥에서 글을 바꾸면 선택을 0에 남긴다 | `android/…/data/ComposerCaret.kt`, `…/ui/components/ChatComposer.kt`, `…/ui/bots/BotChatScreen.kt` | NEEDS-BUILD |
+
+**T-209 실기기 검증 체크리스트** (미실행 — 7bed866 단위 113·assembleDebug·lintDebug 통과):
+커버:
+1. 봇 2명 채널에서 @grok 칩을 누르면 입력창에 `@grok ` 가 들어가고, 커서가 이름 앞이 아니라 뒤(공백 다음)에 있는지
+펼침:
+2. 같은 칩. 이미 글이 있으면 이름 뒤에 붙고 커서가 그 뒤에 있는지
 
 **Phase 28 실기기 검증 체크리스트** (맥미니 Hermes-bot 을 P32 로 재배포한 뒤 — Hermes-bot HANDOFF §3):
 1. 봇 2~3개 채널(작업 채팅 포함) 입력 카드에 토론 버튼이 보이고, DM·봇 1개 채널에는 안 보임
