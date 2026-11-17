@@ -68,6 +68,12 @@ T-149 이전 앱은 델타를 전부 버리고 폴링 폴백(T-116/T-121)으로�
 - 게이트웨이(`hermes gateway run`)가 `config.yaml` 을 감시해 약 1분 안에 반영(항목 제거·`enabled: false` → 내려감, 새 항목 → 연결). 진행 중 세션의 도구 목록은 새 세션·`/reload-mcp` 전까지 고정.
 - 도구는 `mcp_<서버>_<도구>` 로 등록되고, 도구가 하나라도 등록된 서버는 런타임 툴셋 `mcp-<서버>` 를 만든다 → 설치만 하면 봇이 쓰고, 앱의 실행 단계에 그대로 보인다.
 - 프로필별 설정인지는 문서에 명시가 없다(프로필 `.env`·`value_from: profile` 언급으로 추정) — 멀티플렉스 게이트웨이에서의 동작 포함 실기 확인 대상.
+- **맥미니 v0.23.1 실측 (2026-11-17, T-210)**
+  - ① `hermes mcp --help` 서브커맨드: add, remove(rm), list(ls), test, configure(config), login, reauth, picker, catalog, install. **list·remove 있음.**
+  - ② `hermes mcp catalog`: 평문 표 `Name / Status / Description`. Status 는 `available` · `installed (disabled)` 등.
+  - ③ `hermes mcp install <identifier>`(카탈로그 이름 또는 `official/<name>`): 쓰기라 실행하지 않음 — 입력 요구 여부 **확인 필요**.
+  - ④ `mcp_servers` 블록 실제 키: stdio=`command`/`args`/`enabled`(+`env`, `timeout`), 원격=`url`/`enabled`(+`headers`). default 프로필에만 있고 wiki·grok·opus·gemini·invest·safety `config.yaml` 에는 블록 없음.
+  - ⑤ 프로필별: `hermes -p wiki mcp list` → "No MCP servers configured"(default 와 별개). 게이트웨이 `gateway/run.py` `_discover_gateway_mcp_tools` 가 멀티플렉스에서 프로필마다 자기 `config.yaml` 의 `mcp_servers` 로 따로 discovery 한다(#95518). 실제 세션에서 프로필별 도구가 다르게 보이는지는 **확인 필요**.
 
 ---
 
