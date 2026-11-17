@@ -8,7 +8,7 @@
 3. `docs/HANDOFF.md` — 에이전트 교대 프로토콜, 빌드 명령, pbxproj 파일 추가 절차
 
 핵심 규칙:
-- 브랜치: `claude/busy-meitner-lhc5os` 에서 개발·커밋·푸시
+- 브랜치: `main` 기준선 + 세션별 피처 브랜치 `claude/<topic>` 에서 개발·커밋·푸시 (구 `claude/busy-meitner-lhc5os` 폐기)
 - 커밋 메시지: `T-0NN: <설명> [DONE|NEEDS-BUILD]`
 - 새 Swift 파일은 `project.pbxproj` 등록 필수 (HANDOFF.md §4)
 - 빌드 검증: `xcodebuild -project HermesChat.xcodeproj -scheme HermesChat -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build`

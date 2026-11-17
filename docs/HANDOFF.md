@@ -259,8 +259,9 @@ curl http://localhost:8080/usage -H "Authorization: Bearer <토큰>"
 
 | 항목 | 값 |
 |---|---|
-| 게이트웨이 (default) | `http://100.83.59.60:8642` |
-| 프로필 게이트웨이 | `:8643` 부터 (`scripts/setup_profiles_api.sh`가 배정) |
+| 게이트웨이 (멀티플렉스, 전 프로필) | `http://100.83.59.60:8642` — default 는 접두사 없이, 그 외 `/p/<profile>/` (그 프로필 `API_SERVER_KEY`) |
+| 프로필별 포트 | 없음 (10-22 멀티플렉스 전환. `:8643~` 와 `scripts/setup_profiles_api.sh` 는 옛 구성) |
+| Hermes-bot | `http://100.83.59.60:8900` |
 | Hermes Bridge | `http://100.83.59.60:8765` (T-010에서 배포) |
 | 대시보드 | `http://100.83.59.60:8000` |
 | API Key / 토큰 | 앱 설정 화면에서 입력 (저장소에 쓰지 않는다) |

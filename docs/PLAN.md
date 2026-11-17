@@ -1,9 +1,9 @@
 # HermesChat iOS — 전체 개발 계획 (Master Plan)
 
-> 최종 수정: 2026-11-16 (Claude Code — Phase 28 채널 토론 구현(서버 P32 + Android), Phase 29 MCP 서버 관리 계획)
+> 최종 수정: 2026-11-17 (default — 멀티플렉스 게이트웨이 반영: §0.1a 신설, §1 구성도·§2·§4 정정, Phase 30(T-216) 추가)
 > 진행 상태는 `docs/TASKS.md`, 에이전트 교대 규칙은 `docs/HANDOFF.md` 참조.
 > **어떤 에이전트든 이 3개 문서만 읽으면 즉시 작업을 이어갈 수 있어야 한다.**
-> 다음 작업: PR #14 main 병합 → T-C01 Sign in with Apple 런타임 검증 → T-C03 StoreKit 샌드박스 테스트 (App Store Connect 제품 등록 필요).
+> 다음 작업: T-216 앱 게이트웨이 직결 멀티플렉스 대응(지금은 default 외 프로필 직결 불가) · Phase 28 실기기 검증 · T-210 마무리 → T-211 Bridge MCP API.
 
 ---
 
@@ -11,7 +11,7 @@
 
 이 절은 NousResearch hermes-agent의 공식 문서와 `gateway/platforms/api_server.py` 소스에서 확인한 내용이다. 이후 모든 설계가 여기에 근거한다.
 
-### 0.1 프로필 = 독립 게이트웨이 프로세스
+### 0.1 프로필 = 독립 게이트웨이 프로세스 (⚠️ 옛 구성 — 2026-10-22부터 §0.1a 멀티플렉스로 대체)
 - 각 프로필은 `~/.hermes/profiles/<name>/`에 `config.yaml`, `.env`, `SOUL.md`, 세션 DB를 따로 가진 **완전히 독립된 게이트웨이 프로세스**다. default 프로필은 `~/.hermes` 자체.
 - **프로필마다 자기만의 API 서버가 있고, 포트가 다르다.** 설정은 각 프로필 `.env`에서:
   - `API_SERVER_ENABLED=true` (기본 false)
@@ -22,7 +22,16 @@
 - `config.yaml`로는 API 서버 설정 불가 (문서 명시: env만 지원).
 - 게이트웨이 재시작: `hermes gateway restart` (default) / `hermes --profile <name> gateway restart`.
 
-### 0.2 게이트웨이 API 서버 엔드포인트 (포트 8642+, 프로필별)
+### 0.1a 멀티플렉스 게이트웨이 (현재 구성 — 2026-10-22 Hermes-bot 실기 확인, 2026-11-17 맥미니 v0.23.1 재확인)
+- `~/.hermes/config.yaml` `gateway.multiplex_profiles: true`. 게이트웨이 **하나(:8642)**가 모든 프로필을 서비스한다. 프로필별 게이트웨이 실행은 종료 코드 75로 끝난다 → **8643~ 포트는 더 이상 열리지 않는다.**
+- default는 접두사 없이, 나머지는 `:8642/p/<profile>/…` (예: `/p/wiki/health` → 200, `/p/wiki/v1/models` → `wiki`). 접두사 없는 `/v1/models`는 `default`만 준다. 모르는 접두사는 `{"error": "Unknown or unconfigured profile"}`(fail closed). `/health`는 인증 불필요.
+- 인증: `/p/<profile>/`는 **그 프로필 `.env`의 `API_SERVER_KEY`만** 받는다. default 키로는 `gateway_auth_failed`(401) — owner 키를 상속하지 않는다. 소스 `gateway/platforms/api_server.py` `_expected_api_key`·`_check_auth`.
+- 바인딩: default `.env` `API_SERVER_HOST=100.83.59.60`(Tailscale IP) — `127.0.0.1:8642`로는 닿지 않는다. 같은 프로세스가 `:8644`에 webhook 플랫폼도 띄운다(게이트웨이 API 아님).
+- Bridge `GET /profiles`의 `port`·`api_enabled`는 프로필 `.env`의 옛 값이라 **멀티플렉스에서는 의미가 없다**(11-17 실측: wiki 8646·invest 8647·safety 8648로 나오지만 그 포트는 닫혀 있음, grok·opus·gemini는 api_enabled=false·port 8642).
+- Hermes-bot은 P28(`8143a66`)부터 `HB_GATEWAY_MULTIPLEX=auto`로 `/p/<profile>/`를 붙여 전 프로필에 닿는다. **HermesChat 앱(iOS·Android)의 게이트웨이 직결은 아직 "프로필 = 포트" → default만 동작** (Phase 30 / T-216).
+- 프로필별 재시작(`hermes --profile <name> gateway restart`, Bridge `POST /profiles/<n>/restart`)이 멀티플렉스에서 어떻게 동작하는지는 **확인 필요**. 공유 게이트웨이 재시작은 `hermes gateway restart`.
+
+### 0.2 게이트웨이 API 서버 엔드포인트 (멀티플렉스: default는 `:8642/…`, 그 외 `:8642/p/<profile>/…`)
 | 메서드/경로 | 용도 |
 |---|---|
 | `GET /health` | 헬스체크 (인증 불필요) |
@@ -47,7 +56,7 @@
 
 T-149 이전 앱은 델타를 전부 버리고 폴링 폴백(T-116/T-121)으로만 답을 받았다.
 
-멀티플렉스 게이트웨이(`gateway.multiplex_profiles: true` — :8642 하나가 `/p/<profile>/` 로 전 프로필 서비스, Hermes-bot PLAN §0.1a)는 앱이 아직 대응하지 않는다 — default 외 프로필 직결이 안 될 수 있음(미대응, 후속 과제). 봇 탭(Hermes-bot 경유)은 전 프로필에 닿는다.
+멀티플렉스 게이트웨이(§0.1a)는 앱이 아직 대응하지 않는다 — default 외 프로필 직결은 **동작하지 않는다**(11-17 확인: 8643~ 닫힘). 대응은 Phase 30(T-216). 봇 탭(Hermes-bot 경유)은 전 프로필에 닿는다.
 
 ### 0.3 게이트웨이 API에 **없는** 것 (→ Hermes Bridge가 담당)
 - 프로필 목록 조회 ❌ (각 게이트웨이는 자기 자신만 앎)
@@ -86,11 +95,11 @@ T-149 이전 앱은 델타를 전부 버리고 폴링 폴백(T-116/T-121)으로�
         Tailscale (100.83.59.60)       │
 ┌──────────────▼───────────────────────▼───────────────┐
 │ 맥미니                                                │
-│  :8642  default 프로필 게이트웨이 API                 │
-│  :8643  프로필A 게이트웨이 API   ← 세션/채팅/스킬     │
-│  :8644  프로필B 게이트웨이 API                        │
+│  :8642  멀티플렉스 게이트웨이 API  ← 세션/채팅/스킬   │
+│         default = /…   그 외 = /p/<profile>/… (§0.1a) │
 │  :8765  Hermes Bridge (server/hermes_bridge.py)       │
 │         ← 프로필목록·재시작·SOUL.md·업로드·칸반       │
+│  :8900  Hermes-bot 서버 ← 봇·채널·승인·토론          │
 │  :8000  대시보드 (기존, 추후 WKWebView 임베드용)      │
 │  ~/.hermes/kanban.db (+boards/<slug>/kanban.db)       │
 │         ← 내장 칸반 — 디스패처·대시보드·앱 공유       │
@@ -98,7 +107,7 @@ T-149 이전 앱은 델타를 전부 버리고 폴링 폴백(T-116/T-121)으로�
 ```
 
 원칙:
-1. **세션/대화는 항상 프로필별 게이트웨이 API로 직접** (가장 안정적, 공식 API).
+1. **세션/대화는 항상 프로필별 게이트웨이 API로 직접** (가장 안정적, 공식 API). 멀티플렉스에서 "프로필별"은 포트가 아니라 경로 접두사 `/p/<profile>/` + 그 프로필 키다(§0.1a).
 2. 게이트웨이가 못 하는 것만 Bridge로. Bridge는 stdlib 단일 파일이라 유지보수 부담 최소.
 3. 칸반은 hermes-agent **내장 칸반(kanban.db)이 단일 진실원본** (2026-06-11 전환, TASKS Phase 9) —
    게이트웨이 디스패처가 ready 태스크를 자동 실행하고, 대시보드 `:8000/kanban`·앱(Bridge 경유)·
@@ -133,6 +142,8 @@ bash scripts/setup_profiles_api.sh <API_KEY>
 ```
 ✅ 2026-06-10 완료 — default+6프로필(8642~8648) 헬스체크 통과.
 스크립트가 하는 일: default=8642 유지, 나머지 프로필에 8643부터 포트 배정, `API_SERVER_HOST=0.0.0.0`, `API_SERVER_MODEL_NAME=<프로필명>` 설정, 게이트웨이 전체 재시작, 포트 응답 확인. 이후 아이폰 앱 설정에서 **"프로필 자동 검색"** 버튼 한 번.
+
+> ⚠️ **2026-10-22 이후 무효.** 게이트웨이가 멀티플렉스(§0.1a)로 바뀌어 프로필별 포트가 없다. 이 스크립트는 다시 실행하지 않는다. "프로필 전환 = 다른 포트로 전환"은 이제 "프로필 전환 = 다른 `/p/<profile>/` 접두사 + 그 프로필 키"여야 하며, 앱 쪽 대응은 Phase 30(T-216).
 
 ---
 
@@ -354,7 +365,7 @@ Hermes-bot 서버(:8900)를 백엔드로 하는 봇 탭 신설: `BotClient`(REST
 단일 `:app` 모듈(`com.hermes.chatandroid`). 스캐폴드·데이터/네트워크 계층·JVM 단위 테스트, 온보딩·프로필 보드·세션·설정, 스트리밍 채팅(think 은닉·첨부·중단), 봇 탭. 빌드 절차는 HANDOFF §3 "Android 빌드". NEEDS-BUILD.
 
 ### Phase 26 — Android 봇 중심 재구성 (2026-11-13, TASKS T-170~174)
-사용자 결정(11-13): 세션보다 봇을 주로 쓰므로 Android 앱을 **봇 중심**으로 재구성한다. Hermes-bot 서버(:8900)가 1차 백엔드, 홈 = 봇 목록(봇 1개 = DM 대화 1개, 최근 활동순) + 채널. 하단 탭은 대화 / 승인 / 더보기. 게이트웨이 직결 세션(프로필 보드·세션 목록)은 홈에서 빼고 **봇 프로필 화면의 "지난 세션"**으로 흡수(봇 = 프로필이므로 그 봇의 게이트웨이 포트로 직결). 칸반·크론·대시보드 등은 2차 부가 기능. iOS 는 Android 구조 확정 후 같은 구조로 따라간다. 1차 범위: 봇 홈·DM·채널·승인, 봇 채팅 첨부·실행 단계(steps), 봇 프로필 편집·헬스·발견, 채널 관리, 워크스페이스. 서버 API 는 Hermes-bot `app/main.py`(P31 이후 라우트 포함)를 따른다. 멀티플렉스 게이트웨이(/p/<profile>/) 미대응 유지.
+사용자 결정(11-13): 세션보다 봇을 주로 쓰므로 Android 앱을 **봇 중심**으로 재구성한다. Hermes-bot 서버(:8900)가 1차 백엔드, 홈 = 봇 목록(봇 1개 = DM 대화 1개, 최근 활동순) + 채널. 하단 탭은 대화 / 승인 / 더보기. 게이트웨이 직결 세션(프로필 보드·세션 목록)은 홈에서 빼고 **봇 프로필 화면의 "지난 세션"**으로 흡수(봇 = 프로필이므로 그 봇의 게이트웨이로 직결 — 현재는 포트 기준이라 멀티플렉스에서 default 외 불가, T-216). 칸반·크론·대시보드 등은 2차 부가 기능. iOS 는 Android 구조 확정 후 같은 구조로 따라간다. 1차 범위: 봇 홈·DM·채널·승인, 봇 채팅 첨부·실행 단계(steps), 봇 프로필 편집·헬스·발견, 채널 관리, 워크스페이스. 서버 API 는 Hermes-bot `app/main.py`(P31 이후 라우트 포함)를 따른다. 멀티플렉스 게이트웨이(/p/<profile>/) 미대응 유지 → Phase 30 에서 대응.
 
 ### Phase A — App Store 컴플라이언스 (2026-06-20, T-A01~A08)
 App Store 제출을 위한 필수 요건 정비. T-A01~A06 DONE, T-A07/A08 NEEDS-BUILD (PR #12 대기).
@@ -445,11 +456,21 @@ iOS 실사용 오류 3건(사진 늦음·묻기 전 사진 설명·글 판독 �
 - 후속: API 키 입력(프로필 `.env`), OAuth 기기 코드 로그인 중계, iOS·Hermes-bot 웹.
 **선행 조건**: T-210 맥미니 확인. 이 결과 없이 Bridge 를 짜면 §0.4 의 "문서 main 기준" 사실 위에 추측을 쌓게 된다.
 
+### Phase 30 — 게이트웨이 직결 멀티플렉스 대응 (계획, 2026-11-17, TASKS T-216~T-218)
+**배경**: 맥미니 게이트웨이가 2026-10-22부터 멀티플렉스(§0.1a)다. 앱의 게이트웨이 직결 코드는 여전히 "프로필 = 포트"라서 default 외 프로필의 세션 목록·채팅·Deep think·봇 프로필 "지난 세션"이 닿지 않는다. 봇 탭·채널·토론은 Hermes-bot 경유라 영향 없음.
+**현재 코드 위치(11-17 grep)**: iOS `HermesProfile(name, port)`·`AppSettings.baseURL(for:)`·`discoverProfiles(ports: 8642...8651)`(`Services/AppDefaults.swift`), `CreateProfileView.suggestedPort`. Android `ProfileEntry(name, port)`·`ChatViewModel(port)`·`AppNav` `chat/{sessionId}?port=`·`BotProfileScreen` `bot.gatewayPort`.
+**설계(Hermes-bot P28 과 같은 방식)**:
+- 프로필 base URL = `host:8642` + (default 가 아니면) `/p/<name>`. 키는 프로필별 키(`profileApiKey.<name>`, 이미 iOS Keychain 에 있음).
+- 발견: Bridge `/profiles` 이름 목록 → 각 `/p/<name>/health` 프로브. 응답하면 멀티플렉스로 등록, 안 되면 옛 포트 방식 폴백(구 구성 호환). 포트 스캔은 폴백으로만.
+- Bridge `/profiles` 의 `port`·`api_enabled` 는 멀티플렉스에서 쓰지 않는다(§0.1a). 필요하면 Bridge 가 `multiplex: true` 를 함께 돌려준다(T-218, 선택).
+- 프로필 생성(T-139)의 "포트 자동 할당·게이트웨이 기동"은 멀티플렉스에서는 "프로필 `.env` 에 `API_SERVER_KEY` 생성"으로 바뀌어야 한다 — 생성 직후 `/p/<name>/health` 확인. **실기 확인 필요.**
+**완료 기준**: 앱에서 wiki·grok 프로필 세션 목록이 뜨고 채팅 스트리밍이 된다(실기기), default 동작 회귀 없음, 단위 테스트에 URL 조립(멀티플렉스/옛 포트) 케이스.
+
 ## 4. 위험 요소 / 주의
 1. **새 Swift 파일은 반드시 `project.pbxproj`에 등록** (objectVersion 77, 명시적 파일 참조 — 자동 동기화 폴더 아님). 절차는 HANDOFF.md §4. *이번 커밋은 기존 파일만 수정해서 pbxproj 변경 없음.*
-2. `API_SERVER_HOST=0.0.0.0`은 Tailscale 사설망 전제. 공유기 포트포워딩으로 공인망 노출 금지.
-3. 프로필 자동 검색은 default 프로필이 `API_SERVER_MODEL_NAME` 미설정이면 이름이 "hermes-agent" 등으로 잡힐 수 있음 → setup 스크립트가 모든 프로필에 MODEL_NAME을 프로필명으로 설정해 해결.
-4. 여러 게이트웨이 상시 기동 = 프로필 수만큼 상주 프로세스. 맥미니 메모리 확인. `hermes-gateways status`로 관리.
+2. `API_SERVER_HOST`는 Tailscale 사설망 전제(현재 `100.83.59.60` 바인딩). 공유기 포트포워딩으로 공인망 노출 금지.
+3. (옛 구성) 프로필 자동 검색은 default 프로필이 `API_SERVER_MODEL_NAME` 미설정이면 이름이 "hermes-agent" 등으로 잡힐 수 있음 → setup 스크립트가 모든 프로필에 MODEL_NAME을 프로필명으로 설정해 해결. 멀티플렉스에서는 `/p/<name>/v1/models` 가 프로필 이름을 준다.
+4. 멀티플렉스 전환으로 게이트웨이 상주 프로세스는 1개다(예전: 프로필 수만큼). 대신 이 프로세스가 죽으면 전 프로필이 함께 내려간다.
 5. 칸반 쓰기는 반드시 `hermes kanban` CLI(또는 에이전트 kanban_* 도구) 경유 — kanban.db를 SQL로 직접 수정하면 이벤트 기록·의존성 재계산·디스패치 불변식이 깨진다. Bridge도 읽기만 sqlite 직접, 쓰기는 CLI subprocess.
 6. 스트리밍 중 마크다운 재파싱(T-090): 토큰마다 메시지 전체를 재파싱한다 — 일반 응답에선 무시
    가능하나 초장문에서 프레임 드랍 가능. 문제가 보이면 "스트리밍 중 평문, 완료 시 마크다운" 폴백을
