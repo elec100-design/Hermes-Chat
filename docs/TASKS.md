@@ -466,6 +466,8 @@
 | T-208 | 크론 카드 — 접히면 이름·다음 실행·마지막 성공/실패만. cron 식과 프롬프트는 펼쳤을 때만. 추가 버튼이 마지막 카드를 가리지 않게 목록 아래 여백. 실패 필터·실행 기록은 만들지 않음 | `android/…/ui/cron/CronScreen.kt` | NEEDS-BUILD |
 | T-209 | 에이전트 칩을 누르면 커서가 맨 앞이 아니라 @이름 뒤에 있게. BasicTextField String 오버로드는 바깥에서 글을 바꾸면 선택을 0에 남긴다 | `android/…/data/ComposerCaret.kt`, `…/ui/components/ChatComposer.kt`, `…/ui/bots/BotChatScreen.kt` | NEEDS-BUILD |
 | T-215 | Live 버튼에 Live 글자. 글라스 오류는 아는 문구만 한국어로 바꾸고 원문은 자세히에 둔다. 오류가 있으면 업데이트 후 다시 연결을 숨긴다. 촬영 크기 안내는 짧게 | `android/…/data/ChatUx.kt`, `…/ui/bots/chat/LiveBar.kt`, `…/ui/settings/GlassesSettings.kt`, `test/…/ChatUxTest.kt` | NEEDS-BUILD |
+| T-219 | (Hermes-bot P33 연동) Android 봇 채팅 상단 "새 대화 (맥락 초기화)"(`POST /api/channels/{id}/reset-context`) + 토론 결론 카드 `"이 결론으로 이어서 요청"` 버튼 + `BotApiTest` 단위 테스트 | `android/…/net/BotApi.kt`, `…/data/DemoApis.kt`, `…/ui/bots/BotChatScreen.kt`, `test/…/BotApiTest.kt` | NEEDS-BUILD (11-17 로컬 빌드·단위 115·lintDebug 통과, 서버 P33 맥락 유지 실기 통과, `reset-context` UI 는 새 APK 설치 후 확인) |
+| T-220 | (Hermes-bot P33 연동) iOS 봇 채팅 툴바 "새 대화 시작"(`POST /api/channels/{id}/reset-context`) + 다국어 4키(ko/en/zh-Hans) | `HermesChat/Services/BotClient.swift`, `ViewModels/BotChatViewModel.swift`, `Views/BotChatView.swift`, `Resources/*.lproj/Localizable.strings` | NEEDS-BUILD (11-17 iOS Simulator BUILD SUCCEEDED, 실기기 미검증) |
 
 **T-215 실기기 검증 체크리스트** (미실행 — 59e1b37 단위 114·assembleDebug·lintDebug 통과):
 커버:
@@ -586,3 +588,4 @@
 | 11-16 | claude/hermes-chat-improvements-wc6g8f @ a0acc65 | ANDROID BUILD SUCCESSFUL | T-205 `./gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug` 통과, 단위 테스트 107개. 실기기 미검증 |
 | 11-16 | claude/hermes-chat-improvements-wc6g8f @ 59e1b37 | ANDROID BUILD SUCCESSFUL | T-215 `./gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug` 통과, 단위 테스트 114개. 실기기 미검증 |
 | 11-17 | claude/t204-bridge-dotdirs (main 909ef69 + T-204) | ANDROID BUILD SUCCESSFUL | default 맥미니 — `JAVA_HOME=openjdk@17 ./gradlew :app:testDebugUnitTest :app:assembleDebug --rerun-tasks` 통과, 단위 테스트 114개(실패 0). APK sha256 e084d565…5f0f, 18888 배포본과 해시 일치. 실기기 미검증(adb 미연결) |
+| 11-17 | claude/docs-multiplex-sync (T-219, T-220) | ANDROID + iOS BUILD SUCCEEDED | Android `:app:testDebugUnitTest :app:assembleDebug :app:lintDebug` 통과(단위 테스트 115개, 실패 0) + iOS Simulator(`generic/platform=iOS Simulator`) 빌드 통과. 실기기 미검증. 서버(Hermes-bot P33 `claude/p33-context-continuity`) pytest 283 passed |

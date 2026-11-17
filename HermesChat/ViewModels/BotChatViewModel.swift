@@ -16,6 +16,7 @@ final class BotChatViewModel: ObservableObject {
     @Published var input: String = ""
     @Published var isLoading = false
     @Published var isSending = false
+    @Published var isResettingContext = false
     /// 로드/전송 실패 — 화면에 인라인으로 표시(알럿 없음)
     @Published var errorMessage: String?
     /// 오류는 아니지만 알려야 할 때(멘션 없음 등)
@@ -82,6 +83,22 @@ final class BotChatViewModel: ObservableObject {
         }
         isSending = false
         await load()
+    }
+
+    /// 새 대화 경계 설정 — 화면 기록은 보존하고 이후 발화부터 새 맥락/세션으로 시작
+    func resetContext() async {
+        guard !isResettingContext, !isSending else { return }
+        isResettingContext = true
+        notice = nil
+        errorMessage = nil
+        defer { isResettingContext = false }
+        do {
+            try await client.resetChannelContext(channelId: channelId)
+            notice = NSLocalizedString("bot.chat.reset_context.done", comment: "")
+            await load()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     // MARK: - Job stream

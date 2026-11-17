@@ -374,6 +374,10 @@
 "bot.chat.empty.dm" = "发送消息开始对话";
 "bot.chat.empty.channel" = "点击下方 @名称 即可呼叫机器人";
 "bot.chat.no_mention" = "没有 @ 提及,所以无人回复。请用 @名称 呼叫机器人。";
+"bot.chat.reset_context.title" = "开启新对话";
+"bot.chat.reset_context.message" = "历史消息仍保留在页面中，之后的发送将从新的上下文和会话开始。";
+"bot.chat.reset_context.confirm" = "开启新对话";
+"bot.chat.reset_context.done" = "已开启新的对话上下文。";
 "bot.approvals.title" = "审批";
 "bot.approvals.empty" = "没有待审批事项";
 "bot.approvals.action" = "将执行的操作";

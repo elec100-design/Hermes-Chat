@@ -10,6 +10,7 @@ struct BotChatView: View {
     let members: [BotMember]
 
     @StateObject private var viewModel: BotChatViewModel
+    @State private var showResetConfirm = false
 
     init(
         appSettings: AppSettings,
@@ -37,6 +38,29 @@ struct BotChatView: View {
         }
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showResetConfirm = true
+                } label: {
+                    Image(systemName: "arrow.counterclockwise")
+                }
+                .disabled(viewModel.isResettingContext || viewModel.isSending)
+                .accessibilityLabel(LocalizedStringKey("bot.chat.reset_context.title"))
+            }
+        }
+        .confirmationDialog(
+            LocalizedStringKey("bot.chat.reset_context.title"),
+            isPresented: $showResetConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("bot.chat.reset_context.confirm", role: .destructive) {
+                Task { await viewModel.resetContext() }
+            }
+            Button("common.cancel", role: .cancel) {}
+        } message: {
+            Text("bot.chat.reset_context.message")
+        }
         .task { await viewModel.load() }
         // 화면을 떠나면 수신만 끊는다 — 돌아오면 .task 의 load() 가 진행 중 잡을 다시 구독한다
         .onDisappear { viewModel.stopFollowing() }

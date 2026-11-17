@@ -257,6 +257,11 @@ class DemoBotApi(private val wordDelayMs: Long = 40L) : BotApi("", "") {
         messages.remove(channelId)
     }
 
+    override suspend fun resetChannelContext(channelId: Int) {
+        val list = messages.getOrPut(channelId) { mutableListOf() }
+        list.add(BotMessage(nextId++, channelId, list.size + 1, "system", "system", "새 대화를 시작했습니다 (이전 맥락과 분리됨)", "done"))
+    }
+
     // ---- 작업 위치 ----
 
     override suspend fun fetchWorkspaces(): List<Workspace> = workspaces.toList()

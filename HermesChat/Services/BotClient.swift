@@ -80,6 +80,11 @@ final class BotClient {
         return try decode(BotPostResult.self, from: data)
     }
 
+    /// 새 대화 경계 설정 — 화면 기록은 유지하고 이후 발화부터 새 맥락/세션으로 시작한다.
+    func resetChannelContext(channelId: Int) async throws {
+        _ = try await request("POST", "api/channels/\(channelId)/reset-context", body: Data("{}".utf8))
+    }
+
     // MARK: - Job stream (SSE)
 
     /// 잡 출력 스트림. 서버는 구독할 때마다 **처음부터** 재생하므로 호출 측은 구독 시작 시 버퍼를 비워야 한다.

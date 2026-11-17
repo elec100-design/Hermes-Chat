@@ -152,4 +152,12 @@ class BotApiTest {
         assertTrue(r.profiles.isEmpty()); assertTrue(r.unauthorized)
         assertEquals("API 키가 올바르지 않습니다", r.errorMessage)
     }
+
+    @Test fun resetChannelContextEndpoint() = runBlocking {
+        server.enqueue(json("""{"ok":true,"context_reset_seq":12,"context_epoch":1}"""))
+        api().resetChannelContext(4)
+        val r = server.takeRequest()
+        assertEquals("POST", r.method)
+        assertEquals("/api/channels/4/reset-context", r.path)
+    }
 }

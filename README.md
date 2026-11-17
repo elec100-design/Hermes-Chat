@@ -106,7 +106,7 @@
 - 프로필별 API Key도 Keychain 분리 보관 (`profileApiKey.<name>` 키)
 
 ### Hermes Bot · Live 전체화면 · 글라스 연동 (iOS Phase 16~17, 23~24-B)
-- **봇 탭 (Phase 24-B)** — Hermes-bot 서버(`:8900`) 연동. 봇/채널 목록, DM·채널 채팅(`@멘션` 칩), 승인 목록(승인/거절 + 메모). 멀티플렉스 경유로 전 프로필 동작 (Simulator 빌드 통과, 실기기 검증 대기)
+- **봇 탭 (Phase 24-B)** — Hermes-bot 서버(`:8900`) 연동. 봇/채널 목록, DM·채널 채팅(`@멘션` 칩·새 대화 맥락 초기화 `T-220`), 승인 목록(승인/거절 + 메모). 멀티플렉스 경유로 전 프로필 동작 (Simulator 빌드 통과, 실기기 검증 대기)
 - **Live 전체화면 (Phase 23)** — `LiveVoiceView`(상태 원·실시간/응답 자막·바로 보내기/끼어들기/응답 중단)
 - **메타 글라스 사진 & Siri/위젯/더블탭 (Phase 16~17, NEEDS-BUILD)** — 카메라 롤 동기화 감지 후 음성 질문·전송, Siri/위젯/URL 스킴(`hermes://voice`)·AVRCP 탭 제어
 
@@ -114,7 +114,7 @@
 - **봇 중심 구조** — 대화 · 작업(워크스페이스) · 칸반 · 크론 · 대시보드 · 더보기 6탭, Galaxy Z Fold 커버/펼침 적응형 레이아웃 (T-170~T-199 실기기 검증 완료)
 - **대화 & Live** — DM/채널 채팅, GFM 마크다운 표, 첨부 이미지 원본/뷰어, Meta Wearables DAT SDK 직접 촬영 기반 핸즈프리 Live(T-187~195, NEEDS-BUILD)
 - **워크스페이스 & git 팝업** — 작업 폴더별 다중 작업 채팅, `GET /git/status` · `POST /git/<commit|pull|push|pr|merge|deploy>`
-- **사용량 보드 & 채널 토론** — `paseo usage` 기반 에이전트 계정별 사용량 팝업(`GET /usage`), 채널 다중 봇 토론 시트/진행 줄(Phase 28, NEEDS-BUILD)
+- **사용량 보드 & 채널 토론** — `paseo usage` 기반 에이전트 계정별 사용량 팝업(`GET /usage`), 채널 다중 봇 토론 시트/진행 줄(Phase 28, NEEDS-BUILD), 토론 결론 이어서 요청 및 새 대화 맥락 초기화(`T-219`, Hermes-bot P33)
 - **알림** — WorkManager 15분 주기 + 포그라운드 30초 폴링으로 봇 답장·승인 요청 알림
 
 > **현재 진행 요약 (2026-11-17)**:

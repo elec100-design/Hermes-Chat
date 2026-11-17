@@ -39,6 +39,7 @@ import androidx.compose.material.icons.rounded.AttachFile
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Menu
+import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
@@ -147,6 +148,7 @@ data class BotChatUiState(
     /** 이 채널의 가장 최근 토론(없으면 null). 진행 중이면 입력 카드 위에 진행 줄이 뜬다. */
     val discussion: Discussion? = null,
     val startingDiscussion: Boolean = false,
+    val resettingContext: Boolean = false,
 ) {
     /** 이 대화에 지정된 작업 폴더(DM = 봇 기본 폴더, 채널 = 채널 폴더). */
     val workdir: String? get() = (dmBot?.workdir ?: channel?.workdir)?.takeIf { it.isNotBlank() }
@@ -419,6 +421,29 @@ class BotChatViewModel(private val container: AppContainer, private val channelI
         }
     }
 
+    /** 새 대화 경계 설정 — 화면 기록은 유지하고 이후부터 새 맥락/세션으로 시작한다. */
+    fun resetContext() {
+        val api = container.botApi() ?: return
+        if (_state.value.resettingContext || _state.value.sending) return
+        _state.update { it.copy(resettingContext = true, error = null, info = null) }
+        viewModelScope.launch {
+            try {
+                api.resetChannelContext(channelId)
+                follower.submit(api.fetchMessages(channelId))
+                _state.update { it.copy(resettingContext = false, info = "새 대화를 시작했습니다") }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                val msg = if (e is ApiException && e.code == 404) {
+                    "봇 서버가 맥락 초기화를 지원하지 않습니다. 서버를 최신으로 올려 주세요."
+                } else {
+                    botErrorText(e)
+                }
+                _state.update { it.copy(resettingContext = false, error = msg) }
+            }
+        }
+    }
+
     override fun onCleared() {
         follower.cancelAll()
     }
@@ -484,6 +509,7 @@ fun BotChatScreen(
     var workspaceSheet by remember(channelId) { mutableStateOf(false) }
     var discussionSheet by remember(channelId) { mutableStateOf(false) }
     var discussionError by remember(channelId) { mutableStateOf<String?>(null) }
+    var resetContextDialog by remember(channelId) { mutableStateOf(false) }
     val wide = isWideWindow()
     // 하단 근처일 때만 따라간다(위로 올려 읽는 중이면 방해하지 않음). 첫 로드는 항상 맨 아래.
     val nearBottom by remember(channelId) {
@@ -574,6 +600,14 @@ fun BotChatScreen(
                     actions = {
                         // 작업 폴더가 있는 대화: 커밋·푸시·PR·병합·배포
                         state.workdir?.let { wd -> GitMenuButton(container, wd, showLabel = wide) }
+                        if (dm != null || ch != null) {
+                            IconButton(
+                                onClick = { resetContextDialog = true },
+                                enabled = !state.resettingContext && !state.sending,
+                            ) {
+                                Icon(Icons.Rounded.RestartAlt, contentDescription = "새 대화 (맥락 초기화)")
+                            }
+                        }
                         if (headerAction != null) {
                             IconButton(onClick = headerAction) {
                                 Icon(Icons.Rounded.Tune, contentDescription = "정보 및 설정")
@@ -769,7 +803,18 @@ fun BotChatScreen(
                         items(state.messages, key = { it.id }) { m ->
                             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
                                 Box(Modifier.widthIn(max = ComposerMaxWidth).fillMaxWidth()) {
-                                    MessageRow(m, state, vm, container.attachmentImages)
+                                    MessageRow(
+                                        m = m,
+                                        state = state,
+                                        vm = vm,
+                                        images = container.attachmentImages,
+                                        onContinueConclusion = if (ch != null && !ch.isDm && m.discKind == "conclusion" && m.status == "done") {
+                                            {
+                                                val prefix = "위 토론 결론대로 이어서 진행해 주세요. "
+                                                input = if (input.isBlank()) prefix else "$prefix\n$input"
+                                            }
+                                        } else null,
+                                    )
                                 }
                             }
                         }
@@ -856,6 +901,22 @@ fun BotChatScreen(
             dismissButton = { TextButton(onClick = vm::dismissRecipientPick) { Text("취소") } },
         )
     }
+    if (resetContextDialog) {
+        AlertDialog(
+            onDismissRequest = { resetContextDialog = false },
+            title = { Text("새 대화 시작") },
+            text = {
+                Text("이전 대화 기록은 화면에 그대로 남지만, 다음 메시지부터는 이전 맥락을 분리해 새 세션으로 시작합니다.")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    resetContextDialog = false
+                    vm.resetContext()
+                }) { Text("새 대화 시작") }
+            },
+            dismissButton = { TextButton(onClick = { resetContextDialog = false }) { Text("취소") } },
+        )
+    }
 }
 
 private fun isGranted(context: Context, permission: String) =
@@ -937,7 +998,13 @@ private fun ChatIntroEmptyState(dm: Bot?, channel: BotChannel?, onPickMember: (S
 }
 
 @Composable
-private fun MessageRow(m: BotMessage, state: BotChatUiState, vm: BotChatViewModel, images: AttachmentImageStore) {
+private fun MessageRow(
+    m: BotMessage,
+    state: BotChatUiState,
+    vm: BotChatViewModel,
+    images: AttachmentImageStore,
+    onContinueConclusion: (() -> Unit)? = null,
+) {
     if (m.isSystem) {
         Box(Modifier.fillMaxWidth().padding(vertical = 2.dp), contentAlignment = Alignment.Center) {
             Surface(
@@ -1006,6 +1073,23 @@ private fun MessageRow(m: BotMessage, state: BotChatUiState, vm: BotChatViewMode
                 )
             }
             BotAttachmentChips(attachments, images = images)
+            if (onContinueConclusion != null) {
+                Surface(
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .clickable(onClick = onContinueConclusion),
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)),
+                ) {
+                    Text(
+                        "이 결론으로 이어서 요청",
+                        Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                }
+            }
             if (m.jobId != null || state.steps.containsKey(m.id)) {
                 BotStepsSection(
                     messageId = m.id,

@@ -204,6 +204,11 @@ open class BotApi(
         http.fetchText(req("api/channels/$channelId").delete().build())
     }
 
+    /** 새 대화 경계 설정 — 화면 기록은 남기고 이후 발화부터 새 맥락/세션으로 시작한다. */
+    open suspend fun resetChannelContext(channelId: Int) {
+        http.fetchText(req("api/channels/$channelId/reset-context").post(jsonBody("{}")).build())
+    }
+
     // ---- 작업 위치 ----
 
     open suspend fun fetchWorkspaces(): List<Workspace> =
