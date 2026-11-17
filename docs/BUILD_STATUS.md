@@ -2,56 +2,30 @@
 
 > 맥에서 빌드/실기기 검증이 필요한 항목 추적. 상세는 `docs/TASKS.md`가 단일 진실원본.
 
-> ⚠️ **2026-11-17 메모**: 이 파일은 2026-06-16 이후 갱신되지 않았다. 최신 대기 항목(Phase 22~30)과 빌드 기록은 `docs/TASKS.md`(각 Phase 표·"빌드 검증 기록")를 본다. 아래는 당시 기록이다.
-> 게이트웨이는 2026-10-22부터 멀티플렉스(:8642, default 외 `/p/<profile>/`) — 앱 직결 대응은 TASKS T-216.
+## 현재 대기 (2026-11-17)
 
-## 현재 대기 (2026-06-16)
+### 1. Android (`android/`) — 로컬 빌드·단위 테스트 114건 통과, 실기기 검증 대기
+- **T-200~T-202 (Phase 28, 채널·워크스페이스 토론)**: 토론 버튼·시작 시트·진행 줄·꼬리표. 맥미니 Hermes-bot P32 배포 후 `TASKS.md` Phase 28 체크리스트 검증 필요.
+- **T-205~T-209, T-215**: 멘션 수신 봇 선택(T-205), 칸반 첫 화면·빈 열 접기(T-206), Git 경로/상태 구분(T-207), 크론 카드 접기(T-208), `@이름` 칩 커서 위치(T-209), Live 버튼 글자·글라스 한국어 오류(T-215).
+- **T-187~T-189, T-191~T-196**: Meta Wearables DAT SDK 직접 촬영 Live, 채팅 첨부 이미지 뷰어, Live 채팅 통합, 작업 폴더 선택, Claude 앱 풍 디자인 개편, 5→6탭 재구성 및 승인 헤더 버튼화.
+- 최신 로컬 빌드: `11-17 | claude/t204-bridge-dotdirs (main 909ef69 + T-204) | ANDROID BUILD SUCCESSFUL` (단위 테스트 114건 통과, `app-debug.apk` sha256 `e084d565…5f0f`).
 
-브랜치 `claude/busy-ritchie-cx2ohx` (PR #5) — 세션 핀·이름변경 (T-147, Phase 20):
+### 2. Hermes Bridge (`server/hermes_bridge.py`)
+- **T-204**: `PROFILES_DIR.iterdir()`에서 `.`으로 시작하는 디렉터리(`.deleted`) 제외. Bridge 재배포 및 `/profiles` 응답 확인 완료 — 크론 칩 실기기 확인 대기.
 
-- **T-147** 세션 목록 trailing 스와이프에 **이름변경**(pencil·파랑)·**고정/고정해제**(pin/pin.slash·주황)
-  버튼 추가(삭제 왼편) + **풀 스와이프 자동 삭제 비활성화**(`allowsFullSwipe: false`). Pin은 서버
-  미지원이라 `pinnedSessionIDs`(UserDefaults)에 로컬 보관 — 고정 세션 맨 위 정렬·행 `pin.fill` 표시.
-  이름변경은 기존 `updateSessionTitle` API + `updateSession` 로컬 갱신을 alert로 연결.
-  **기존 파일만 수정 → pbxproj 무수정, 브리지 무관.**
+### 3. iOS (`HermesChat/`) — Xcode 빌드 / 실기기 검증 대기
+- **Phase 22~24-B (T-149~T-157, T-167~T-168)**: `11-13` iOS Simulator 빌드 및 `HermesChatTests` 34건 통과(`e0b8819`) — 실기기 체크리스트 확인 대기.
+- **Phase 15~21**: 핸즈프리 음성(T-117~124), 메타 글라스 사진(T-125~130), Siri·위젯·글라스 탭(T-131~137, 위젯 타깃은 Xcode GUI 수동 생성 필요), 크론 중앙 관리(T-138, T-146), 프로필 생성/삭제/카탈로그(T-139~145), 세션 핀/이름변경(T-147), 대시보드 핀치 줌(T-148) — `NEEDS-BUILD`.
+- **Phase A / C / Hotfix**: T-A07~A08, T-C01~C05(런타임 검증 대기), T-REV01(Demo Mode), T-158~T-159(Bridge 토큰/업로드 타임아웃) — `NEEDS-BUILD`.
 
-검증 순서:
-1. **Xcode 빌드** — 기존 파일만 변경(`SessionListView.swift`·`AppDefaults.swift`)이라 그대로 빌드.
-2. **실기기** — ①세션 행을 끝까지 밀어도 **자동 삭제 안 됨**(삭제 버튼 눌러야 삭제), ②이름변경
-   alert로 제목 변경 → 즉시 반영·새로고침 후 유지(서버 반영), ③Pin 시 맨 위 이동+핀 아이콘,
-   앱 재실행 후에도 핀 유지.
-
----
-
-브랜치 `claude/youthful-archimedes-aqigr4` — 크론 중앙 관리 화면 (T-146, Phase 18 후속):
-
-- **T-146** 프로필마다 흩어져있던 크론 시트를 **한 화면(CronManagerView)**으로 통합. 상단 드롭다운으로
-  프로필 필터링, 각 잡에 **재개/일시정지 · 지금 실행 · 편집 · 삭제** 버튼 + 상태 배지·사람이 읽는 스케줄·최근/다음
-  실행 시각. 우상단 **CREATE(+)** 로 새 잡 생성. 기존 파일만 수정 — `CronJobsView.swift` 내용을 `CronManagerView`로
-  재작성(**pbxproj 무수정**), `CronJobEditView`를 생성·편집 양용으로 일반화.
-  - 서버(브리지): `POST /profiles/<n>/cron`(새 잡 추가), `POST /profiles/<n>/cron/<id>/run`(즉시 실행 — `hermes cron run <id>`), `DELETE /profiles/<n>/cron/<id>`(제거), PUT 화이트리스트 `name` 추가.
-  - 진입점: 프로필 보드 툴바 "크론 관리"(전체) + 카드 시계 버튼(해당 프로필로 필터된 같은 화면).
-
-> ⚠️ **"지금 실행"의 CLI 형태(`hermes cron run <id>`)는 hermes-agent 버전에 따라 다를 수 있음** — 실패 시
-> 앱 배너에 hermes stdout/stderr가 그대로 뜨므로 그 메시지로 실제 서브커맨드 확인 후 보정.
-
-이전 브랜치 `claude/profile-cronjob-config-ui-bhh2ip` — 프로필 생성/삭제/모델 카탈로그/크론잡 (PR #3 병합):
-
-- **T-138** 프로필별 크론잡 조회·편집 (신규 `CronModels.swift`/`CronJobsView.swift`/`CronJobEditView.swift`)
-- **T-139~143** 프로필 생성('+' 카드) + 모델 카탈로그 선택. 생성은 `hermes profile create --clone-from default`로 확정
-- **T-144** 생성 시 config.yaml 누락 진단/보정 (서버만, env 주입 + 검증/detail)
-- **T-145** 프로필 삭제 (`DELETE /profiles/<n>`, ProfileDetailView 삭제 버튼)
-
-검증 순서:
-1. **브리지 재배포** — `cp ./server/hermes_bridge.py ~/.hermes/bridge/` + LaunchAgent 재기동 (HANDOFF §2.5). 안 하면 신규 엔드포인트가 "브리지 HTTP 404".
-2. **Xcode 빌드** — pbxproj 무수정(기존 파일만 변경)이라 추가 등록 불필요. 그대로 빌드.
-3. **실기기** — 프로필 보드 "크론 관리" → 드롭다운 필터, 잡 일시정지/재개·삭제·편집, "지금 실행" 결과 배너 확인.
-
-> "지금 실행" 외 동작(필터·일시정지·편집·삭제)은 jobs.json 파일 조작이라 CLI 의존성 없음 — 우선 검증 가능.
+> ⚠️ **주의 (T-216)**: 맥미니 게이트웨이는 2026-10-22부터 멀티플렉스(`:8642`, default 외 `/p/<profile>/`)로 전환되어 있어, iOS·Android의 게이트웨이 직결은 현재 `default` 프로필만 동작한다. 봇 탭(Hermes-bot `:8900` 경유)은 전 프로필 정상.
 
 ---
 
 ## 과거 기록
+
+### 2026-06-16 (PR #5 / T-146~T-147)
+- `claude/busy-ritchie-cx2ohx` (T-147 세션 핀·이름변경), `claude/youthful-archimedes-aqigr4` (T-146 크론 중앙 관리), `claude/profile-cronjob-config-ui-bhh2ip` (T-138~145) — 세부 내역은 `docs/TASKS.md` 참조.
 
 ### T-012 블로커 — 해소됨 (2026-06-10, Claude)
 - 증상: xcodebuild가 `Services/ProfileDetailView.swift`를 빌드 입력으로 요구하나 실제 파일은 `Views/ProfileDetailView.swift`였음.

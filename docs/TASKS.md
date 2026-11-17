@@ -45,11 +45,11 @@
 >   브랜치 `claude/fix-profile-model-soul-auth-20260727`. **앱 재빌드·실기기 재설치 필수**
 >   (구 빌드에는 Bridge 테스트 버튼/타임아웃 수정이 없음).
 >
-> **다음 세션 예정 작업**:
-> 1. T-158 맥 빌드 + 실기기: 설정 → Hermes Bridge Token = 맥미니 HERMES_BRIDGE_TOKEN 후 model/SOUL 확인
-> 2. T-REV01 맥 빌드 검증 → DONE으로 갱신
-> 3. App Store Connect Review Notes 업데이트 후 재제출
-> 4. T-C01 Sign in with Apple 실기기 런타임 검증 (Supabase id_token 흐름)
+> **다음 세션 예정 작업 (2026-11-17 기준)**:
+> 1. **T-216**: 앱(iOS·Android) 게이트웨이 직결 멀티플렉스(`/p/<profile>/` + 프로필별 키) 대응 (현재 default 외 프로필 직결 불가)
+> 2. **Phase 28 + T-204~209/T-215**: Android APK 실기기 검증 (채널 토론, 크론 `.deleted` 제외, 멘션 칩·커서·칸반·Git·Live 버튼)
+> 3. **T-210 마무리 → T-211**: `hermes mcp install` 동작 확인 후 Bridge MCP API 구현
+> 4. **(iOS 미검증 적체분)**: T-158~159 · T-REV01 · Phase 15~21 맥 빌드 + 실기기 확인, T-C01/T-C03 런타임 검증
 
 > **2026-11-12 현황 (Phase 22~25)**:
 > - Phase 22~25 코드 작성 완료 — 맥 빌드/실기기 검증 대기, 신규 Swift 7개 pbxproj 등록됨, 다국어 키 41개 추가(ko/en/zh-Hans)

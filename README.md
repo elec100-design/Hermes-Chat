@@ -33,7 +33,7 @@
 - **프로필 보드** — 2×3 그리드로 등록된 hermes-agent 프로필을 한눈에 표시. 온라인 상태 실시간 프로브
 - **프로필 자동 검색** — 8642~8651 포트를 병렬 스캔해 활성 게이트웨이를 자동 등록 (Bridge가 있으면 Bridge 목록 우선)
   > ⚠️ **멀티플렉스 미대응 (T-216)**: 앱(iOS·Android)의 게이트웨이 직결은 아직 "프로필 = 포트" 구조다. 지금 맥미니에서는 **default만 직결되고**, 다른 프로필의 세션 직결(보드·세션 목록·Deep think·봇 프로필의 "지난 세션")은 동작하지 않는다. 봇 채팅은 Hermes-bot 경유라 정상
-- **프로필 생성** — 보드의 `+` 카드 → 이름·SOUL 입력 → Bridge가 **백엔드에 완전 생성**(`hermes profile create <name> --clone-from default`로 default의 config.yaml/.env/SOUL.md/skills 복제, 포트 자동 할당, 게이트웨이 기동·헬스 폴링)
+- **프로필 생성** — 보드의 `+` 카드 → 이름·SOUL 입력 → Bridge가 **백엔드에 완전 생성**(`hermes profile create <name> --clone-from default`로 default의 config.yaml/.env/SOUL.md/skills 복제; 멀티플렉스 환경 대응은 T-217 예정)
 - **프로필 삭제** — 상세 화면의 "프로필 삭제"(확인 다이얼로그) → Bridge `hermes profile delete <name> -y`로 백엔드에서 제거하고 앱 목록에서도 정리 (default는 삭제 불가)
 - **프로필 전환** — 탭 한 번으로 전환. 이전 프로필 응답이 늦게 도착해도 세대 카운터로 안전하게 폐기
 - **프로필 상세 편집** — **모델 카탈로그 드롭다운**(`cache/model_catalog.json`, 없으면 default 카탈로그 폴백)에서 선택·저장(재시작), SOUL.md 편집기, 게이트웨이 재시작 버튼 (확인 다이얼로그 포함)
@@ -105,6 +105,23 @@
 - API Key · Bridge 토큰 → **Keychain** 저장 (UserDefaults 평문 저장 없음)
 - 프로필별 API Key도 Keychain 분리 보관 (`profileApiKey.<name>` 키)
 
+### Hermes Bot · Live 전체화면 · 글라스 연동 (iOS Phase 16~17, 23~24-B)
+- **봇 탭 (Phase 24-B)** — Hermes-bot 서버(`:8900`) 연동. 봇/채널 목록, DM·채널 채팅(`@멘션` 칩), 승인 목록(승인/거절 + 메모). 멀티플렉스 경유로 전 프로필 동작 (Simulator 빌드 통과, 실기기 검증 대기)
+- **Live 전체화면 (Phase 23)** — `LiveVoiceView`(상태 원·실시간/응답 자막·바로 보내기/끼어들기/응답 중단)
+- **메타 글라스 사진 & Siri/위젯/더블탭 (Phase 16~17, NEEDS-BUILD)** — 카메라 롤 동기화 감지 후 음성 질문·전송, Siri/위젯/URL 스킴(`hermes://voice`)·AVRCP 탭 제어
+
+### Android 앱 (`android/`, Phase 25~28)
+- **봇 중심 구조** — 대화 · 작업(워크스페이스) · 칸반 · 크론 · 대시보드 · 더보기 6탭, Galaxy Z Fold 커버/펼침 적응형 레이아웃 (T-170~T-199 실기기 검증 완료)
+- **대화 & Live** — DM/채널 채팅, GFM 마크다운 표, 첨부 이미지 원본/뷰어, Meta Wearables DAT SDK 직접 촬영 기반 핸즈프리 Live(T-187~195, NEEDS-BUILD)
+- **워크스페이스 & git 팝업** — 작업 폴더별 다중 작업 채팅, `GET /git/status` · `POST /git/<commit|pull|push|pr|merge|deploy>`
+- **사용량 보드 & 채널 토론** — `paseo usage` 기반 에이전트 계정별 사용량 팝업(`GET /usage`), 채널 다중 봇 토론 시트/진행 줄(Phase 28, NEEDS-BUILD)
+- **알림** — WorkManager 15분 주기 + 포그라운드 30초 폴링으로 봇 답장·승인 요청 알림
+
+> **현재 진행 요약 (2026-11-17)**:
+> - **완료·실기기 확인**: iOS Phase 1~14(Deep think 포함), Android Phase 26~27 핵심(T-170~184, T-197~199)
+> - **빌드/실기기 검증 대기 (`NEEDS-BUILD`)**: iOS Phase 15~21·A/C·T-REV01·T-158~159, Android 글라스 Live/UI 개편/채널 토론(T-187~189, T-191~196, T-200~202, T-205~209, T-215), Bridge T-204
+> - **계획/진행 중**: Phase 29 MCP 서버 관리(T-210 DOING), Phase 30 게이트웨이 직결 멀티플렉스 대응(T-216~T-218 TODO)
+
 ---
 
 ## 맥미니 초기 설정
@@ -149,9 +166,10 @@ launchctl load ~/Library/LaunchAgents/com.hermes.bridge.plist
 | 파일 | 내용 |
 |------|------|
 | `docs/PLAN.md` | 전체 아키텍처 설계 및 Phase별 계획 |
-| `docs/TASKS.md` | 작업 상태 보드 (TODO/DOING/DONE) |
+| `docs/TASKS.md` | 작업 상태 보드 (TODO/DOING/NEEDS-BUILD/DONE) |
 | `docs/HANDOFF.md` | 에이전트 교대 프로토콜, 빌드 명령, pbxproj 등록 절차 |
-| `server/hermes_bridge.py` | Hermes Bridge 서버 (단일 파일, stdlib만 사용) |
+| `docs/BUILD_STATUS.md` | 맥 빌드/실기기 검증 대기 요약 |
+| `server/hermes_bridge.py` | Hermes Bridge 서버 (단일 파일, stdlib만 사용) — `server/README.md` |
 | `android/` | Android 앱 (Kotlin + Jetpack Compose, 봇 중심) — `android/README.md` |
 | `scripts/setup_profiles_api.sh` | (구) 프로필별 포트 배정 스크립트 — 멀티플렉스 전환 후 미사용 |
 

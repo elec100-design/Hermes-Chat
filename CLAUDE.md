@@ -15,8 +15,8 @@
 - 프로젝트 이름: **HermesChat** (GitHub: `elec100-design/Hermes-Chat`)
 - 주요 목표: 맥미니(M4)에 상주하는 hermes-agent를 아이폰에서 채팅·음성·칸반·프로필 관리로 쓰는 클라이언트
 - 기술 스택: **SwiftUI** (iOS 앱) + **Python stdlib 단일 파일 Bridge**(`server/hermes_bridge.py`) + hermes-agent 게이트웨이 API
-- 현재 상태: **개발 중** — Phase 14(Deep think)까지 main 병합·실기기 검증 완료. Phase 15~25는 NEEDS-BUILD(맥 빌드/실기기 검증 대기) — Phase 22~24: 실시간 스트리밍·중단·Live 전체화면·Hermes Bot 탭, Phase 25: Android MVP(`android/`). Android 는 Phase 26~27 에서 봇 중심으로 재구성돼 폴드 실기기 검증까지 끝났고(T-170~T-199), Phase 28(채널 토론)은 NEEDS-BUILD, Phase 29(MCP 서버 관리)는 계획 단계
-- 접속: Tailscale 사설망(`100.83.59.60`) — 게이트웨이 `:8642+`, Bridge `:8765`, 대시보드 `:8000`, Hermes-bot `:8900`
+- 현재 상태: **개발 중** — iOS Phase 14(Deep think)까지 main 병합·실기기 검증 완료. iOS Phase 22~24-B(실시간 스트리밍·중단·Live 전체화면·Hermes Bot 탭)는 11-13 Simulator 빌드 + XCTest 34건 통과(실기기 검증 대기), Phase 15~21·A/C는 NEEDS-BUILD. Android는 Phase 26~27 핵심(T-170~184, T-197~199) 실기기 검증 완료, 글라스 DAT Live·UI 개편(T-187~196)과 Phase 28(채널 토론·UX 개선 T-200~202, T-205~209, T-215)은 NEEDS-BUILD(로컬 빌드·단위 테스트 114건 통과). Bridge T-204(`.deleted` 제외) 재배포 완료. Phase 29(MCP 서버 관리, T-210 DOING) · Phase 30(게이트웨이 직결 멀티플렉스 대응, T-216~218 TODO) 진행 중.
+- 접속: Tailscale 사설망(`100.83.59.60`) — 멀티플렉스 게이트웨이 `:8642` (`default`는 접두사 없음, 그 외 `/p/<profile>/` — 현재 앱 직결은 T-216 전까지 default만 동작), Bridge `:8765`, 대시보드 `:8000`, Hermes-bot `:8900`
 
 ## 코딩 스타일 및 규칙
 - 언어: Swift 6.0+ / SwiftUI + async/await 우선
@@ -93,5 +93,5 @@
 
 ---
 
-**마지막 업데이트**: 2026-11-16
+**마지막 업데이트**: 2026-11-17
 **Claude 버전 선호**: 최신 Claude (Opus / Sonnet)
