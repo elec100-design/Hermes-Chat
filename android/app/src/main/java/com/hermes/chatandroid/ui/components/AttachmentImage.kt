@@ -77,10 +77,15 @@ private fun decode(bytes: ByteArray, maxSide: Int): LoadedImage? {
 }
 
 @Composable
-private fun rememberAttachmentImage(store: AttachmentImageStore, path: String, maxSide: Int): ImageLoad {
-    val state by produceState<ImageLoad>(ImageLoad.Loading, path, maxSide) {
+private fun rememberAttachmentImage(
+    store: AttachmentImageStore,
+    path: String,
+    maxSide: Int,
+    channelId: Int? = null,
+): ImageLoad {
+    val state by produceState<ImageLoad>(ImageLoad.Loading, path, maxSide, channelId) {
         value = try {
-            val bytes = store.load(path)
+            val bytes = store.load(path, channelId = channelId)
             val img = bytes?.let { withContext(Dispatchers.Default) { decode(it, maxSide) } }
             if (img != null) ImageLoad.Ready(img) else ImageLoad.Unavailable
         } catch (e: CancellationException) {
@@ -101,10 +106,11 @@ fun AttachmentImage(
     store: AttachmentImageStore,
     attachment: BotAttachment,
     modifier: Modifier = Modifier,
+    channelId: Int? = null,
     fallback: @Composable () -> Unit,
 ) {
     var open by remember(attachment.path) { mutableStateOf(false) }
-    when (val load = rememberAttachmentImage(store, attachment.path, maxSide = 1600)) {
+    when (val load = rememberAttachmentImage(store, attachment.path, maxSide = 1600, channelId = channelId)) {
         ImageLoad.Unavailable -> fallback()
         ImageLoad.Loading -> Surface(
             modifier = modifier.size(width = 220.dp, height = 132.dp),
@@ -129,14 +135,14 @@ fun AttachmentImage(
             )
         }
     }
-    if (open) ImageViewerDialog(store, attachment, onDismiss = { open = false })
+    if (open) ImageViewerDialog(store, attachment, channelId = channelId, onDismiss = { open = false })
 }
 
 /** 원본 전체 화면 보기 — 두 손가락 확대·이동, 두 번 탭으로 확대/원래대로. */
 @Composable
-fun ImageViewerDialog(store: AttachmentImageStore, attachment: BotAttachment, onDismiss: () -> Unit) {
+fun ImageViewerDialog(store: AttachmentImageStore, attachment: BotAttachment, channelId: Int? = null, onDismiss: () -> Unit) {
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        val load = rememberAttachmentImage(store, attachment.path, maxSide = 4096)
+        val load = rememberAttachmentImage(store, attachment.path, maxSide = 4096, channelId = channelId)
         var scale by remember { mutableFloatStateOf(1f) }
         var offset by remember { mutableStateOf(Offset.Zero) }
         Box(Modifier.fillMaxSize().background(Color.Black)) {

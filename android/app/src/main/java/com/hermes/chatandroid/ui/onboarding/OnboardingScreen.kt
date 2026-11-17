@@ -61,7 +61,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.hermes.chatandroid.AppContainer
+import com.hermes.chatandroid.data.ChatUx
 import com.hermes.chatandroid.data.Settings
+import com.hermes.chatandroid.net.BotApi
+import com.hermes.chatandroid.ui.bots.botErrorText
 import com.hermes.chatandroid.ui.bots.checkBotServer
 import com.hermes.chatandroid.ui.components.ErrorBanner
 import com.hermes.chatandroid.ui.components.HermesCard
@@ -80,12 +83,17 @@ fun OnboardingScreen(
     onFinished: () -> Unit,
     onDemo: () -> Unit,
     modifier: Modifier = Modifier,
+    initialInviteUrl: String? = null,
+    initialInviteCode: String? = null,
 ) {
     val repo = container.settingsRepository
-    var step by rememberSaveable { mutableStateOf(0) }
+    var step by rememberSaveable { mutableStateOf(if (!initialInviteCode.isNullOrBlank()) 10 else 0) }
     var botUrl by rememberSaveable { mutableStateOf(repo.current.botHost.ifBlank { DEFAULT_BOT_URL }) }
     var botToken by rememberSaveable { mutableStateOf(repo.current.botToken) }
     var botOk by rememberSaveable { mutableStateOf(false) }
+    var inviteUrlOrHost by rememberSaveable { mutableStateOf(initialInviteUrl ?: "") }
+    var inviteCode by rememberSaveable { mutableStateOf(initialInviteCode ?: "") }
+    var inviteName by rememberSaveable { mutableStateOf(repo.current.botDisplayName) }
     var host by rememberSaveable { mutableStateOf(repo.current.host) }
     var apiKey by rememberSaveable { mutableStateOf(repo.current.apiKey) }
     var profiles by remember { mutableStateOf(repo.current.profiles) }
@@ -95,7 +103,15 @@ fun OnboardingScreen(
     val scope = rememberCoroutineScope()
     val hc = MaterialTheme.hermesColors
 
-    fun saveBot() = repo.update { it.copy(botHost = botUrl.trim(), botToken = botToken.trim()) }
+    fun saveBot(role: String = "owner", userId: Int = 0, displayName: String = "") = repo.update {
+        it.copy(
+            botHost = botUrl.trim(),
+            botToken = botToken.trim(),
+            botRole = role,
+            botUserId = userId,
+            botDisplayName = displayName,
+        )
+    }
     fun saveGateway() = repo.update { it.copy(host = host.trim(), apiKey = apiKey.trim(), profiles = profiles) }
 
     Surface(
@@ -231,7 +247,16 @@ fun OnboardingScreen(
                                                 else {
                                                     val r = checkBotServer(api)
                                                     botOk = r.ok
-                                                    if (r.ok) info = r.message else error = r.message
+                                                    if (r.ok) {
+                                                        val u = r.userInfo
+                                                        if (u != null && u.isGuest) {
+                                                            saveBot(role = "guest", userId = u.userId, displayName = u.displayName)
+                                                            info = r.message
+                                                            onFinished()
+                                                            return@launch
+                                                        }
+                                                        info = r.message
+                                                    } else error = r.message
                                                 }
                                                 busy = false
                                             }
@@ -313,6 +338,44 @@ fun OnboardingScreen(
                             info?.let { ConnectionOkBanner(it) }
                         }
 
+                        10 -> {
+                            StepHeader(
+                                icon = Icons.Rounded.Forum,
+                                tint = MaterialTheme.colorScheme.primary,
+                                title = "초대 링크로 채널 참여",
+                                subtitle = "전달받은 초대 링크(또는 서버 주소·코드)와 채널에서 쓸 이름을 입력하세요.",
+                            )
+                            HermesCard {
+                                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    HermesTextField(
+                                        value = inviteUrlOrHost,
+                                        onValueChange = { raw ->
+                                            inviteUrlOrHost = raw
+                                            val parsed = ChatUx.parseInviteInput(raw, inviteCode)
+                                            if (parsed != null && (raw.contains("/invite/") || raw.startsWith("hermes"))) {
+                                                inviteCode = parsed.second
+                                            }
+                                        },
+                                        label = "초대 링크 또는 서버 주소",
+                                        placeholder = "https://chat.example.com/invite/...",
+                                        keyboardType = KeyboardType.Uri,
+                                    )
+                                    HermesTextField(
+                                        value = inviteCode,
+                                        onValueChange = { inviteCode = it },
+                                        label = "초대 코드 (링크를 넣으면 자동 채움)",
+                                    )
+                                    HermesTextField(
+                                        value = inviteName,
+                                        onValueChange = { inviteName = it },
+                                        label = "표시할 이름 (닉네임)",
+                                        placeholder = "예: 민수",
+                                    )
+                                }
+                            }
+                            error?.let { ErrorBanner(it) }
+                        }
+
                         else -> {
                             Spacer(Modifier.height(32.dp))
                             Column(
@@ -351,9 +414,16 @@ fun OnboardingScreen(
                         shape = CircleShape,
                         modifier = Modifier.fillMaxWidth().height(50.dp),
                     ) {
-                        Text("서버 연결하기")
+                        Text("내 서버 연결하기")
                         Spacer(Modifier.width(6.dp))
                         Icon(Icons.AutoMirrored.Rounded.ArrowForward, null, Modifier.size(18.dp))
+                    }
+                    OutlinedButton(
+                        onClick = { error = null; info = null; step = 10 },
+                        shape = CircleShape,
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                    ) {
+                        Text("초대 링크·코드로 참여")
                     }
                     OutlinedButton(
                         onClick = onDemo,
@@ -400,6 +470,53 @@ fun OnboardingScreen(
                             shape = CircleShape,
                             modifier = Modifier.height(46.dp),
                         ) { Text("다음") }
+                    }
+                }
+                10 -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    TextButton({ step = 0; error = null; info = null }) { Text("이전") }
+                    Spacer(Modifier.weight(1f))
+                    Button(
+                        onClick = {
+                            val parsed = ChatUx.parseInviteInput(inviteUrlOrHost, inviteCode)
+                            if (parsed == null) {
+                                error = "초대 링크(또는 서버 주소와 초대 코드)를 입력하세요."
+                                return@Button
+                            }
+                            if (inviteName.isBlank()) {
+                                error = "채널에서 사용할 이름을 입력하세요."
+                                return@Button
+                            }
+                            busy = true; error = null
+                            scope.launch {
+                                try {
+                                    val res = BotApi(parsed.first, "", container.httpClient).acceptInvite(parsed.second, inviteName)
+                                    repo.update {
+                                        it.copy(
+                                            botHost = parsed.first,
+                                            botToken = res.token,
+                                            botRole = "guest",
+                                            botUserId = res.user.userId,
+                                            botDisplayName = res.user.displayName,
+                                            demoMode = false,
+                                            onboardingComplete = true,
+                                        )
+                                    }
+                                    onFinished()
+                                } catch (e: kotlinx.coroutines.CancellationException) {
+                                    throw e
+                                } catch (e: Exception) {
+                                    error = botErrorText(e)
+                                } finally {
+                                    busy = false
+                                }
+                            }
+                        },
+                        enabled = !busy && inviteUrlOrHost.isNotBlank() && inviteName.isNotBlank(),
+                        shape = CircleShape,
+                        modifier = Modifier.height(46.dp),
+                    ) {
+                        if (busy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                        else Text("채널 참여하기")
                     }
                 }
                 else -> Button(

@@ -7,6 +7,7 @@ package com.hermes.chatandroid.net
 class AttachmentImageStore(
     private val bridge: () -> BridgeApi?,
     private val maxBytes: Int = 32 * 1024 * 1024,
+    private val botApi: () -> BotApi? = { null },
 ) {
     private val cache = LinkedHashMap<String, ByteArray>(16, 0.75f, true)
     private var total = 0
@@ -29,14 +30,19 @@ class AttachmentImageStore(
     private fun cached(path: String): ByteArray? = cache[path]
 
     /**
-     * [path] = 서버가 준 맥미니 절대경로. Bridge 로 받을 수 없는 자리(로컬 폴백 업로드 등)면 null,
-     * 네트워크·인증 오류는 예외.
+     * [path] = 서버가 준 맥미니 절대경로. Bridge 로 먼저 시도하고, Bridge 미설정(게스트 등)이거나
+     * 로컬 경로면 [channelId] 경유 Hermes-bot 첨부 다운로드로 폴백한다.
      */
-    suspend fun load(path: String): ByteArray? {
+    suspend fun load(path: String, channelId: Int? = null): ByteArray? {
         cached(path)?.let { return it }
-        val rel = relativePath(path) ?: return null
-        val api = bridge() ?: return null
-        return api.fetchRaw(rel).also { put(path, it) }
+        val rel = relativePath(path)
+        val bApi = bridge()
+        if (rel != null && bApi != null) {
+            return bApi.fetchRaw(rel).also { put(path, it) }
+        }
+        val cid = channelId ?: return null
+        val bot = botApi() ?: return null
+        return bot.fetchChannelAttachment(cid, path).also { put(path, it) }
     }
 
     companion object {

@@ -158,12 +158,28 @@ fun AppNav(
 ) {
     val repo = container.settingsRepository
     val settings by repo.settings.collectAsStateWithLifecycle()
+    var pendingInvite by remember { mutableStateOf<Pair<String?, String>?>(null) }
 
-    if (!settings.onboardingComplete) {
+    LaunchedEffect(openRequest) {
+        if (openRequest is OpenRequest.Invite) {
+            pendingInvite = openRequest.url to openRequest.code
+            onOpenHandled()
+        }
+    }
+
+    if (!settings.onboardingComplete || pendingInvite != null) {
         OnboardingScreen(
             container = container,
-            onFinished = { repo.update { it.copy(onboardingComplete = true) } },
-            onDemo = { repo.update { it.copy(demoMode = true, onboardingComplete = true) } },
+            onFinished = {
+                pendingInvite = null
+                repo.update { it.copy(onboardingComplete = true) }
+            },
+            onDemo = {
+                pendingInvite = null
+                repo.update { it.copy(demoMode = true, onboardingComplete = true) }
+            },
+            initialInviteUrl = pendingInvite?.first,
+            initialInviteCode = pendingInvite?.second,
         )
         return
     }
@@ -180,11 +196,14 @@ fun AppNav(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val lifecycleState by lifecycleOwner.lifecycle.currentStateFlow.collectAsState()
-    val notifyOn = settings.notificationsEnabled && !settings.demoMode
+    val isGuest = settings.isGuestMode
+    val visibleTabs = remember(isGuest) { if (isGuest) listOf(ChatsTab, MoreTab) else Tabs }
+    val notifyOn = settings.notificationsEnabled && !settings.demoMode && !isGuest
 
-    // 승인 탭 배지 + 알림(T-184): 화면이 보이는 동안 30초마다 확인. 백그라운드는 WorkManager(15분)가 맡는다.
+    // 승인 탭 배지 + 알림(T-184): 화면이 보이는 동안 30초마다 확인. 게스트 모드에서는 비활성.
     var pendingCount by remember { mutableIntStateOf(0) }
-    LaunchedEffect(settings.botHost, settings.botToken, notifyOn) {
+    LaunchedEffect(settings.botHost, settings.botToken, notifyOn, isGuest) {
+        if (isGuest) { pendingCount = 0; return@LaunchedEffect }
         lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
                 val api = container.botApi()
@@ -241,12 +260,13 @@ fun AppNav(
     LaunchedEffect(openRequest) {
         when (openRequest) {
             is OpenRequest.Channel -> { selectedBotChannelId = openRequest.channelId; navigateTab(ChatsTab) }
-            OpenRequest.Approvals -> navController.navigate(Routes.APPROVALS) { launchSingleTop = true }
+            OpenRequest.Approvals -> if (!isGuest) navController.navigate(Routes.APPROVALS) { launchSingleTop = true }
             is OpenRequest.Tab ->
-                if (openRequest.route == Routes.APPROVALS) navController.navigate(Routes.APPROVALS) { launchSingleTop = true }
-                else Tabs.firstOrNull { it.route == openRequest.route }?.let(navigateTab)
+                if (openRequest.route == Routes.APPROVALS && !isGuest) navController.navigate(Routes.APPROVALS) { launchSingleTop = true }
+                else visibleTabs.firstOrNull { it.route == openRequest.route }?.let(navigateTab)
             // Live 진행 알림 → Live 가 켜져 있는 그 채팅으로
             OpenRequest.Live -> container.live.ui.value.target?.let { selectedBotChannelId = it.channelId; navigateTab(ChatsTab) }
+            is OpenRequest.Invite -> Unit
             null -> return@LaunchedEffect
         }
         onOpenHandled()
@@ -259,7 +279,7 @@ fun AppNav(
                 containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                 header = { Spacer(Modifier.height(8.dp)) },
             ) {
-                Tabs.forEach { tab ->
+                visibleTabs.forEach { tab ->
                     val selected = currentTab == tab
                     NavigationRailItem(
                         selected = selected,
@@ -275,16 +295,18 @@ fun AppNav(
                         label = { TabLabel(tab, selected) },
                     )
                 }
-                // 레일 맨 아래: 에이전트별 사용량 보드
-                Spacer(Modifier.weight(1f))
-                IconButton(onClick = { showUsage = true }) {
-                    Icon(
-                        Icons.Outlined.DataUsage,
-                        contentDescription = stringResource(R.string.usage_title),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                if (!isGuest) {
+                    // 레일 맨 아래: 에이전트별 사용량 보드
+                    Spacer(Modifier.weight(1f))
+                    IconButton(onClick = { showUsage = true }) {
+                        Icon(
+                            Icons.Outlined.DataUsage,
+                            contentDescription = stringResource(R.string.usage_title),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Spacer(Modifier.height(12.dp))
                 }
-                Spacer(Modifier.height(12.dp))
             }
             VerticalDivider(thickness = 0.7.dp, color = MaterialTheme.hermesColors.cardBorder)
         }
@@ -299,7 +321,7 @@ fun AppNav(
                             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                             tonalElevation = 0.dp,
                         ) {
-                            Tabs.forEach { tab ->
+                            visibleTabs.forEach { tab ->
                                 val selected = currentTab == tab
                                 NavigationBarItem(
                                     selected = selected,

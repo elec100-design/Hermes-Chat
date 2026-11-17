@@ -132,10 +132,11 @@ class BotsViewModel(private val container: AppContainer) : ViewModel() {
             return
         }
         _state.update { it.copy(refreshing = !initial) }
+        val isGuest = container.settingsRepository.current.isGuestMode
         viewModelScope.launch {
             try {
-                if (!initial) runCatching { api.refreshHealth() } // 당겨서 새로고침: 헬스 점도 갱신
-                val bots = api.fetchBots()
+                if (!initial && !isGuest) runCatching { api.refreshHealth() } // 당겨서 새로고침: 헬스 점도 갱신
+                val bots = if (isGuest) emptyList() else api.fetchBots()
                 val channels = api.fetchChannels()
                 _state.update { BotsUiState(loading = false, bots = bots, channels = channels) }
             } catch (e: Exception) {
@@ -184,8 +185,11 @@ fun BotsScreen(
     var sidebarExpanded by rememberSaveable { mutableStateOf(true) }
 
     val configured = container.botApi() != null
+    val isGuest = settings.isGuestMode
     val hc = MaterialTheme.hermesColors
-    val homeBots = remember(state.bots, container.botActivity) { sortBotsForHome(state.bots, container.botActivity) }
+    val homeBots = remember(state.bots, container.botActivity, isGuest) {
+        if (isGuest) emptyList() else sortBotsForHome(state.bots, container.botActivity)
+    }
     val onlineCount = remember(homeBots) { homeBots.count { it.isOnline } }
 
     val q = query.trim()
@@ -225,6 +229,7 @@ fun BotsScreen(
             BotSidebarPanel(
                 configured = configured,
                 demoMode = settings.demoMode,
+                isGuestMode = isGuest,
                 onlineCount = onlineCount,
                 state = state,
                 visibleBots = visibleBots,
@@ -331,6 +336,7 @@ fun BotsScreen(
 private fun BotSidebarPanel(
     configured: Boolean,
     demoMode: Boolean,
+    isGuestMode: Boolean,
     onlineCount: Int,
     state: BotsUiState,
     visibleBots: List<Bot>,
@@ -376,6 +382,12 @@ private fun BotSidebarPanel(
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
                         contentColor = MaterialTheme.colorScheme.primary,
                     )
+                } else if (isGuestMode) {
+                    StatusPill(
+                        text = "게스트",
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
                 } else if (configured && !state.loading && onlineCount > 0) {
                     StatusPill(
                         text = "온라인 $onlineCount",
@@ -386,22 +398,24 @@ private fun BotSidebarPanel(
                 }
                 Spacer(Modifier.weight(1f))
                 if (configured) {
-                    IconButton(onClick = onOpenApprovals) {
-                        BadgedBox(
-                            badge = {
-                                if (pendingApprovals > 0) {
-                                    Badge(
-                                        containerColor = MaterialTheme.colorScheme.error,
-                                        contentColor = MaterialTheme.colorScheme.onError,
-                                    ) { Text("$pendingApprovals") }
-                                }
-                            },
-                        ) {
-                            Icon(
-                                if (pendingApprovals > 0) Icons.Rounded.Notifications else Icons.Outlined.Notifications,
-                                contentDescription = if (pendingApprovals > 0) "승인 요청 ${pendingApprovals}건" else "승인 요청",
-                                tint = if (pendingApprovals > 0) MaterialTheme.colorScheme.primary else LocalContentColor.current,
-                            )
+                    if (!isGuestMode) {
+                        IconButton(onClick = onOpenApprovals) {
+                            BadgedBox(
+                                badge = {
+                                    if (pendingApprovals > 0) {
+                                        Badge(
+                                            containerColor = MaterialTheme.colorScheme.error,
+                                            contentColor = MaterialTheme.colorScheme.onError,
+                                        ) { Text("$pendingApprovals") }
+                                    }
+                                },
+                            ) {
+                                Icon(
+                                    if (pendingApprovals > 0) Icons.Rounded.Notifications else Icons.Outlined.Notifications,
+                                    contentDescription = if (pendingApprovals > 0) "승인 요청 ${pendingApprovals}건" else "승인 요청",
+                                    tint = if (pendingApprovals > 0) MaterialTheme.colorScheme.primary else LocalContentColor.current,
+                                )
+                            }
                         }
                     }
                     IconButton(onClick = onRefresh, enabled = !state.refreshing) {
@@ -448,36 +462,38 @@ private fun BotSidebarPanel(
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    item(key = "sec_bots") {
-                        SidebarSectionHeader(
-                            title = "봇",
-                            count = if (q.isEmpty()) totalBotCount else visibleBots.size,
-                        )
-                    }
-                    if (visibleBots.isEmpty()) {
-                        item(key = "empty_bots") {
-                            SidebarInlineEmpty(
-                                text = if (q.isNotEmpty()) "일치하는 봇이 없습니다." else "대화할 봇이 없습니다.",
+                    if (!isGuestMode) {
+                        item(key = "sec_bots") {
+                            SidebarSectionHeader(
+                                title = "봇",
+                                count = if (q.isEmpty()) totalBotCount else visibleBots.size,
                             )
                         }
-                    } else {
-                        items(visibleBots, key = { "b${it.id}" }) { b ->
-                            SidebarBotRow(
-                                bot = b,
-                                selected = b.dmChannelId != null && b.dmChannelId == selectedChannelId,
-                                onAvatar = { onOpenBotProfile(b.id) },
-                                onClick = { onSelectBot(b) },
-                            )
+                        if (visibleBots.isEmpty()) {
+                            item(key = "empty_bots") {
+                                SidebarInlineEmpty(
+                                    text = if (q.isNotEmpty()) "일치하는 봇이 없습니다." else "대화할 봇이 없습니다.",
+                                )
+                            }
+                        } else {
+                            items(visibleBots, key = { "b${it.id}" }) { b ->
+                                SidebarBotRow(
+                                    bot = b,
+                                    selected = b.dmChannelId != null && b.dmChannelId == selectedChannelId,
+                                    onAvatar = { onOpenBotProfile(b.id) },
+                                    onClick = { onSelectBot(b) },
+                                )
+                            }
                         }
                     }
 
                     item(key = "sec_channels") {
                         SidebarSectionHeader(
-                            title = "채널",
+                            title = if (isGuestMode) "초대된 채널" else "채널",
                             count = if (q.isEmpty()) totalChannelCount else visibleChannels.size,
-                            actionLabel = "+ 새 채널",
+                            actionLabel = if (isGuestMode) null else "+ 새 채널",
                             onAction = onCreateChannel,
-                            modifier = Modifier.padding(top = 12.dp),
+                            modifier = if (isGuestMode) Modifier else Modifier.padding(top = 12.dp),
                         )
                     }
                     if (visibleChannels.isEmpty()) {

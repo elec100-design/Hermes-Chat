@@ -160,4 +160,32 @@ class BotApiTest {
         assertEquals("POST", r.method)
         assertEquals("/api/channels/4/reset-context", r.path)
     }
+
+    @Test fun acceptInviteChannelStreamAndGuestCheck() = runBlocking {
+        server.enqueue(json("""{"token":"guest-tok","user":{"id":7,"display_name":"민수","role":"guest"},"channel":{"id":9,"title":"협업방","guest_bot_mode":"read_only"}}"""))
+        val res = api("").acceptInvite("inv-code", "민수")
+        assertEquals("guest-tok", res.token)
+        assertEquals(7, res.user.userId)
+        assertEquals("read_only", res.channel.guestBotMode)
+
+        val streamBody =
+            "event: ready\ndata: {\"channel_id\":9}\n\n" +
+                "event: message\ndata: {\"id\":101,\"channel_id\":9,\"role\":\"user\",\"author\":\"민수\",\"body\":\"안녕\",\"author_user_id\":7,\"is_mine\":true}\n\n" +
+                "event: revoked\ndata: {\"channel_id\":9}\n\n"
+        server.enqueue(MockResponse().setHeader("Content-Type", "text/event-stream").setBody(streamBody))
+        val events = api("guest-tok").channelStream(9).toList()
+        assertEquals(3, events.size)
+        val msg = (events[1] as com.hermes.chatandroid.data.ChannelStreamEvent.Message).message
+        assertEquals(7, msg.authorUserId)
+        assertTrue(msg.isSentByMe(7))
+        assertTrue(events[2] is com.hermes.chatandroid.data.ChannelStreamEvent.Revoked)
+
+        server.enqueue(MockResponse().setBody("""{"status":"ok"}"""))
+        server.enqueue(json("""{"detail":"관리자 권한이 필요합니다"}""", 403))
+        server.enqueue(json("""{"user_id":7,"display_name":"민수","role":"guest"}"""))
+        server.enqueue(json("""{"data":[{"id":9,"title":"협업방"}]}"""))
+        val guestCheck = checkBotServer(api("guest-tok"))
+        assertTrue(guestCheck.ok)
+        assertTrue(guestCheck.userInfo?.isGuest == true)
+    }
 }

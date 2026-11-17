@@ -86,6 +86,7 @@ fun BotAttachmentChips(
     modifier: Modifier = Modifier,
     images: AttachmentImageStore? = null,
     alignEnd: Boolean = false,
+    channelId: Int? = null,
 ) {
     if (items.isEmpty()) return
     val (pictures, files) = items.partition { it.isImage && images != null }
@@ -95,7 +96,7 @@ fun BotAttachmentChips(
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         pictures.forEach { a ->
-            AttachmentImage(images!!, a, fallback = { AttachmentChip(a) })
+            AttachmentImage(images!!, a, channelId = channelId, fallback = { AttachmentChip(a) })
         }
         if (files.isNotEmpty()) {
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {

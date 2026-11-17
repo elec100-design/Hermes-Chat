@@ -10,11 +10,16 @@ import com.hermes.chatandroid.data.BotPatch
 import com.hermes.chatandroid.data.BotPostResult
 import com.hermes.chatandroid.data.BotStep
 import com.hermes.chatandroid.data.BotStreamEvent
+import com.hermes.chatandroid.data.BotUserInfo
 import com.hermes.chatandroid.data.BrowseResult
+import com.hermes.chatandroid.data.ChannelHumanMember
+import com.hermes.chatandroid.data.ChannelInvite
 import com.hermes.chatandroid.data.ChannelPatch
+import com.hermes.chatandroid.data.ChannelStreamEvent
 import com.hermes.chatandroid.data.DiscoverResult
 import com.hermes.chatandroid.data.Discussion
 import com.hermes.chatandroid.data.DiscussionRequest
+import com.hermes.chatandroid.data.InviteAcceptResult
 import com.hermes.chatandroid.data.Parsers
 import com.hermes.chatandroid.data.PushRequestResult
 import com.hermes.chatandroid.data.Workspace
@@ -49,6 +54,23 @@ open class BotApi(
     open suspend fun health(): Boolean = try {
         http.fetchText(Request.Builder().url(joinUrl(baseUrl, "health")).build()); true
     } catch (e: Exception) { false }
+
+    /** 현재 토큰의 사용자·권한(`owner` | `guest`). 구버전 서버(404)면 owner 폴백용 null. */
+    open suspend fun fetchMe(): BotUserInfo =
+        Parsers.parseUserInfo(http.fetchText(req("api/me").build()))
+            ?: throw ApiException(0, "사용자 정보를 해석할 수 없습니다")
+
+    /** 초대 코드 수락 (무인증). 반환된 `token` 을 이후 `botToken` 으로 저장한다. */
+    open suspend fun acceptInvite(code: String, displayName: String): InviteAcceptResult {
+        val json = buildJsonObject { put("display_name", displayName.trim()) }
+        val encoded = URLEncoder.encode(code.trim(), "UTF-8")
+        val text = http.fetchText(
+            Request.Builder().url(joinUrl(baseUrl, "api/invites/$encoded/accept"))
+                .post(jsonBody(json.toString())).build(),
+        )
+        return Parsers.parseInviteAccept(text)
+            ?: throw ApiException(0, "초대 응답을 해석할 수 없습니다")
+    }
 
     open suspend fun fetchChannels(): List<BotChannel> =
         Parsers.parseBotChannels(http.fetchText(req("api/channels").build()))
@@ -185,9 +207,44 @@ open class BotApi(
             patch.workdir?.let { put("workdir", it) }
             patch.botChat?.let { put("bot_chat", if (it) 1 else 0) }
             patch.status?.let { put("status", it) }
+            patch.guestBotMode?.let { put("guest_bot_mode", it) }
         }
         val text = http.fetchText(req("api/channels/$id").patch(jsonBody(json.toString())).build())
         return Parsers.parseJsonChannel(text) ?: throw ApiException(0, "채널 응답을 해석할 수 없습니다")
+    }
+
+    open suspend fun createChannelInvite(
+        channelId: Int,
+        label: String = "",
+        maxUses: Int? = null,
+        expiresHours: Int? = null,
+    ): ChannelInvite {
+        val json = buildJsonObject {
+            if (label.isNotBlank()) put("label", label.trim())
+            maxUses?.let { put("max_uses", it) }
+            expiresHours?.let { put("expires_hours", it) }
+        }
+        val text = http.fetchText(req("api/channels/$channelId/invites").post(jsonBody(json.toString())).build())
+        return Parsers.parseChannelInvite(text) ?: throw ApiException(0, "초대 응답을 해석할 수 없습니다")
+    }
+
+    open suspend fun fetchChannelInvites(channelId: Int): List<ChannelInvite> =
+        Parsers.parseChannelInvites(http.fetchText(req("api/channels/$channelId/invites").build()))
+
+    open suspend fun revokeChannelInvite(channelId: Int, inviteId: Int) {
+        http.fetchText(req("api/channels/$channelId/invites/$inviteId").delete().build())
+    }
+
+    open suspend fun fetchChannelUsers(channelId: Int): List<ChannelHumanMember> =
+        Parsers.parseChannelUsers(http.fetchText(req("api/channels/$channelId/users").build()))
+
+    open suspend fun removeChannelUser(channelId: Int, userId: Int) {
+        http.fetchText(req("api/channels/$channelId/users/$userId").delete().build())
+    }
+
+    open suspend fun fetchChannelAttachment(channelId: Int, path: String): ByteArray {
+        val q = URLEncoder.encode(path, "UTF-8")
+        return longHttp.fetchBytes(req("api/channels/$channelId/attachments/file?path=$q").build())
     }
 
     open suspend fun addChannelMember(channelId: Int, botId: Int) {
@@ -285,7 +342,23 @@ open class BotApi(
         streamHttp.sseFrames(req("jobs/$jobId/stream").header("Accept", "text/event-stream").build())
             .mapNotNull { mapFrame(it) }
 
+    /** 채널 실시간 이벤트 SSE (타인 발화·봇 응답 시작/완료·강퇴). */
+    open fun channelStream(channelId: Int): Flow<ChannelStreamEvent> =
+        streamHttp.sseFrames(req("api/channels/$channelId/stream").header("Accept", "text/event-stream").build())
+            .mapNotNull { mapChannelFrame(it) }
+
     companion object {
+        fun mapChannelFrame(f: SseFrame): ChannelStreamEvent? {
+            val obj = parseJsonOrNull(f.data).asObject()
+            return when (f.event) {
+                "ready" -> ChannelStreamEvent.Ready
+                "message" -> obj?.let(Parsers::parseBotMessage)?.let { ChannelStreamEvent.Message(it) }
+                "revoked" -> ChannelStreamEvent.Revoked
+                "user_removed" -> obj?.int("user_id")?.let { ChannelStreamEvent.UserRemoved(it) }
+                else -> null
+            }
+        }
+
         fun mapFrame(f: SseFrame): BotStreamEvent? {
             val obj = parseJsonOrNull(f.data).asObject()
             return when (f.event) {

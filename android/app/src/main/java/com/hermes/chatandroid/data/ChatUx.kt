@@ -37,14 +37,16 @@ object ChatUx {
     }
 
     /** 봇이 둘 이상인 채널에서 멘션이 없으면 전송을 막는다. DM·봇 한 명은 막지 않는다. */
-    fun needsRecipientPick(channel: BotChannel?, body: String): Boolean {
+    fun needsRecipientPick(channel: BotChannel?, body: String, isGuest: Boolean = false): Boolean {
         if (channel == null || channel.isDm) return false
+        if (isGuest && channel.guestBotMode == "mention_off") return false
         if (channel.members.size < 2) return false
         return !hasMention(body)
     }
 
     /** 봇이 하나인 채널만 @slug 를 붙인다. 이미 멘션이 있거나 DM 이면 그대로. */
-    fun addressSolo(body: String, channel: BotChannel?): String {
+    fun addressSolo(body: String, channel: BotChannel?, isGuest: Boolean = false): String {
+        if (isGuest && channel?.guestBotMode == "mention_off") return body
         val only = channel?.takeIf { !it.isDm }?.members?.singleOrNull() ?: return body
         return if (hasMention(body)) body else "@${only.slug} $body".trim()
     }
@@ -91,5 +93,49 @@ object ChatUx {
     fun glassesErrorText(raw: String): String = when {
         raw.contains("All discovered devices are powered off or disconnected") -> "안경 전원이 꺼졌거나 연결이 끊겼습니다"
         else -> raw
+    }
+
+    /**
+     * 초대 링크(`https://host/invite/<code>`, `hermes://invite?url=...&code=...`) 또는
+     * (서버 주소, 코드) 입력에서 `(normalizedServerUrl, inviteCode)` 를 추출한다.
+     */
+    fun parseInviteInput(rawUrlOrLink: String, rawCode: String = ""): Pair<String, String>? {
+        val input = rawUrlOrLink.trim()
+        val explicitCode = rawCode.trim()
+        if (input.isEmpty()) return null
+
+        return try {
+            val uri = java.net.URI(input)
+            val scheme = uri.scheme?.lowercase()
+            if (scheme == "hermes" || scheme == "hermeschat") {
+                val params = (uri.rawQuery ?: "").split('&').mapNotNull { pair ->
+                    val idx = pair.indexOf('=')
+                    if (idx <= 0) null
+                    else java.net.URLDecoder.decode(pair.substring(0, idx), "UTF-8") to
+                        java.net.URLDecoder.decode(pair.substring(idx + 1), "UTF-8")
+                }.toMap()
+                val url = params["url"]?.trim()?.trimEnd('/') ?: return null
+                val code = params["code"]?.trim()?.takeIf { it.isNotEmpty() } ?: explicitCode
+                if (code.isEmpty()) null else url to code
+            } else {
+                val path = uri.path ?: ""
+                val marker = "/invite/"
+                val idx = path.indexOf(marker)
+                if (idx >= 0 && uri.host != null) {
+                    val code = path.substring(idx + marker.length).trim('/').takeIf { it.isNotEmpty() } ?: explicitCode
+                    val origin = buildString {
+                        append(scheme ?: "https").append("://").append(uri.host)
+                        if (uri.port > 0) append(":").append(uri.port)
+                    }
+                    if (code.isEmpty()) null else origin to code
+                } else {
+                    val norm = Settings.normalizeUrl(input, 8900) ?: return null
+                    if (explicitCode.isEmpty()) null else norm to explicitCode
+                }
+            }
+        } catch (_: Exception) {
+            val norm = Settings.normalizeUrl(input, 8900) ?: return null
+            if (explicitCode.isEmpty()) null else norm to explicitCode
+        }
     }
 }

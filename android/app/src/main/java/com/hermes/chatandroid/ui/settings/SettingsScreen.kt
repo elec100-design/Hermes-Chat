@@ -180,7 +180,38 @@ fun SettingsScreen(
                 }
             }
 
-            SectionCard("Hermes Bot 서버", "봇 목록, DM, 채널, 승인 기능을 제공합니다.") {
+            if (settings.isGuestMode) {
+                SectionCard("채널 게스트 계정", "초대된 채널에 참여 중입니다.") {
+                    Text(
+                        "이름: ${settings.botDisplayName.ifBlank { "게스트" }}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Text(
+                        "서버: ${settings.botBaseUrl ?: settings.botHost}",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = FontFamily.Monospace,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    OutlinedButton(
+                        onClick = {
+                            repo.update {
+                                it.copy(
+                                    botToken = "",
+                                    botRole = "owner",
+                                    botUserId = 0,
+                                    botDisplayName = "",
+                                    onboardingComplete = false,
+                                )
+                            }
+                        },
+                        shape = CircleShape,
+                        modifier = Modifier.fillMaxWidth().height(44.dp),
+                    ) { Text("게스트 나가기 / 다른 서버 연결") }
+                }
+            }
+
+            if (!settings.isGuestMode) SectionCard("Hermes Bot 서버", "봇 목록, DM, 채널, 승인 기능을 제공합니다.") {
                 HermesTextField(
                     value = settings.botHost,
                     onValueChange = { v -> repo.update { it.copy(botHost = v) } },
@@ -202,6 +233,18 @@ fun SettingsScreen(
                             botTesting = true; botResult = null
                             scope.launch {
                                 val r = checkBotServer(api)
+                                val u = r.userInfo
+                                if (r.ok && u != null && u.isGuest) {
+                                    repo.update {
+                                        it.copy(
+                                            botRole = "guest",
+                                            botUserId = u.userId,
+                                            botDisplayName = u.displayName,
+                                        )
+                                    }
+                                } else if (r.ok) {
+                                    repo.update { it.copy(botRole = "owner") }
+                                }
                                 botResult = r.ok to r.message
                                 botTesting = false
                             }
@@ -269,6 +312,7 @@ fun SettingsScreen(
                 }
             }
 
+            if (!settings.isGuestMode) {
             SectionCard("알림", "봇이 답을 마쳤을 때와 승인 요청이 왔을 때 알려줍니다.") {
                 val notifyPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -406,6 +450,7 @@ fun SettingsScreen(
                     label = "Bridge 토큰",
                     secret = true,
                 )
+            }
             }
 
             SectionCard("앱 정보") {

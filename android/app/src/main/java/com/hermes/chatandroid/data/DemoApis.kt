@@ -140,6 +140,23 @@ class DemoBotApi(private val wordDelayMs: Long = 40L) : BotApi("", "") {
 
     override suspend fun health() = true
 
+    override suspend fun fetchMe() = BotUserInfo(1, "나", "owner")
+
+    override suspend fun acceptInvite(code: String, displayName: String) =
+        throw ApiException(400, "데모 모드에서는 초대 링크를 사용할 수 없습니다")
+
+    override suspend fun createChannelInvite(channelId: Int, label: String, maxUses: Int?, expiresHours: Int?) =
+        ChannelInvite(nextId++, channelId, label, "demo-invite", "https://demo.invalid/invite/demo", "hermes://invite?code=demo", maxUses, 0)
+
+    override suspend fun fetchChannelInvites(channelId: Int): List<ChannelInvite> = emptyList()
+    override suspend fun revokeChannelInvite(channelId: Int, inviteId: Int) {}
+    override suspend fun fetchChannelUsers(channelId: Int): List<ChannelHumanMember> =
+        listOf(ChannelHumanMember(1, "나", "owner"))
+    override suspend fun removeChannelUser(channelId: Int, userId: Int) {}
+    override suspend fun fetchChannelAttachment(channelId: Int, path: String): ByteArray =
+        throw ApiException(404, "데모 모드에는 첨부 파일이 없습니다")
+    override fun channelStream(channelId: Int): Flow<ChannelStreamEvent> = kotlinx.coroutines.flow.emptyFlow()
+
     /** 실제 서버처럼 DM 은 목록에 없다. */
     override suspend fun fetchChannels(): List<BotChannel> = channels.filter { !it.isDm && it.status != "archived" }
 

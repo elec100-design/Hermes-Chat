@@ -92,6 +92,8 @@ data class BotChannel(
     val kind: String? = null,
     val workdir: String? = null,
     val createdAt: String? = null,
+    /** "read_only" | "mention_off" | "full" (Hermes-bot P34). */
+    val guestBotMode: String? = null,
 ) {
     val isDm: Boolean get() = kind == "dm"
 }
@@ -122,12 +124,20 @@ data class BotMessage(
     val discussionId: Int? = null,
     /** "topic" | "statement" | "moderation" | "conclusion" */
     val discKind: String? = null,
+    val authorUserId: Int? = null,
+    val isMine: Boolean? = null,
 ) {
     /** `attachments` JSON 문자열을 풀어 낸 목록(없거나 깨졌으면 빈 목록). */
     val attachmentItems: List<BotAttachment> get() = Parsers.parseAttachments(attachments)
     val isUser: Boolean get() = role == "user"
     val isSystem: Boolean get() = role == "system"
     val isInFlight: Boolean get() = status == "queued" || status == "running"
+    fun isSentByMe(myUserId: Int): Boolean {
+        if (role != "user") return false
+        isMine?.let { return it }
+        if (myUserId <= 0) return true
+        return authorUserId == null || authorUserId == myUserId
+    }
 }
 
 /** 토론 한 판의 상태 — `GET /api/discussions/{id}`. */
@@ -240,7 +250,58 @@ data class ChannelPatch(
     val botChat: Boolean? = null,
     /** "active" | "archived". */
     val status: String? = null,
+    /** "read_only" | "mention_off" | "full". */
+    val guestBotMode: String? = null,
 )
+
+/** `GET /api/me` 응답 (Hermes-bot P34). */
+data class BotUserInfo(
+    val userId: Int,
+    val displayName: String,
+    /** "owner" | "guest". */
+    val role: String = "owner",
+    val publicUrl: String? = null,
+) {
+    val isGuest: Boolean get() = role == "guest"
+}
+
+/** 채널 초대 링크 정보 (`POST/GET /api/channels/{id}/invites`). */
+data class ChannelInvite(
+    val id: Int,
+    val channelId: Int,
+    val label: String = "",
+    val inviteCode: String? = null,
+    val inviteUrl: String? = null,
+    val deepLink: String? = null,
+    val maxUses: Int? = null,
+    val usesCount: Int = 0,
+    val expiresAt: String? = null,
+    val revoked: Boolean = false,
+    val createdAt: String? = null,
+)
+
+/** 채널에 초대된 사람 멤버 (`GET /api/channels/{id}/users`). */
+data class ChannelHumanMember(
+    val id: Int,
+    val displayName: String,
+    val role: String = "guest",
+    val joinedAt: String? = null,
+)
+
+/** `POST /api/invites/{code}/accept` 응답. */
+data class InviteAcceptResult(
+    val token: String,
+    val user: BotUserInfo,
+    val channel: BotChannel,
+)
+
+/** 채널 실시간 SSE 이벤트 (`GET /api/channels/{id}/stream`). */
+sealed interface ChannelStreamEvent {
+    data object Ready : ChannelStreamEvent
+    data class Message(val message: BotMessage) : ChannelStreamEvent
+    data object Revoked : ChannelStreamEvent
+    data class UserRemoved(val userId: Int) : ChannelStreamEvent
+}
 
 /** `POST /api/bots/discover` 요약. [source]: "bridge" | "scan". [skipped] 는 게이트웨이가 아니라 건너뛴 포트 설명들. */
 data class DiscoverResult(

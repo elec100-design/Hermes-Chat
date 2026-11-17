@@ -172,6 +172,7 @@ object Parsers {
             kind = o.text("kind"),
             workdir = o.text("workdir"),
             createdAt = o.text("created_at"),
+            guestBotMode = o.text("guest_bot_mode"),
         )
     }
 
@@ -181,10 +182,9 @@ object Parsers {
     fun parseBotChannels(body: String): List<BotChannel> =
         dataArray(body).mapNotNull { it.asObject()?.let(::parseBotChannel) }
 
-    fun parseBotMessages(body: String): List<BotMessage> = dataArray(body).mapNotNull { el ->
-        val o = el.asObject() ?: return@mapNotNull null
-        val id = o.int("id") ?: return@mapNotNull null
-        BotMessage(
+    fun parseBotMessage(o: JsonObject): BotMessage? {
+        val id = o.int("id") ?: return null
+        return BotMessage(
             id = id,
             channelId = o.int("channel_id"),
             seq = o.int("seq"),
@@ -205,7 +205,67 @@ object Parsers {
             iconKey = o.text("icon_key")?.takeIf { it.isNotEmpty() },
             discussionId = o.int("discussion_id"),
             discKind = o.text("disc_kind"),
+            authorUserId = o.int("author_user_id"),
+            isMine = o.bool("is_mine"),
         )
+    }
+
+    fun parseBotMessages(body: String): List<BotMessage> =
+        dataArray(body).mapNotNull { it.asObject()?.let(::parseBotMessage) }
+
+    fun parseUserInfo(body: String): BotUserInfo? =
+        parseJsonOrNull(body).asObject()?.let { parseUserInfoObject(it) }
+
+    fun parseUserInfoObject(o: JsonObject): BotUserInfo? {
+        val id = o.int("user_id") ?: o.int("id") ?: return null
+        return BotUserInfo(
+            userId = id,
+            displayName = o.text("display_name") ?: "나",
+            role = o.text("role") ?: "owner",
+            publicUrl = o.text("public_url")?.takeIf { it.isNotBlank() },
+        )
+    }
+
+    fun parseChannelInviteObject(o: JsonObject): ChannelInvite? {
+        val id = o.int("id") ?: return null
+        return ChannelInvite(
+            id = id,
+            channelId = o.int("channel_id") ?: 0,
+            label = o.text("label") ?: "",
+            inviteCode = o.text("invite_code"),
+            inviteUrl = o.text("invite_url"),
+            deepLink = o.text("deep_link"),
+            maxUses = o.int("max_uses"),
+            usesCount = o.int("uses_count") ?: 0,
+            expiresAt = o.text("expires_at"),
+            revoked = o.bool("revoked") ?: false,
+            createdAt = o.text("created_at"),
+        )
+    }
+
+    fun parseChannelInvite(body: String): ChannelInvite? =
+        parseJsonOrNull(body).asObject()?.let(::parseChannelInviteObject)
+
+    fun parseChannelInvites(body: String): List<ChannelInvite> =
+        dataArray(body).mapNotNull { it.asObject()?.let(::parseChannelInviteObject) }
+
+    fun parseChannelUsers(body: String): List<ChannelHumanMember> = dataArray(body).mapNotNull { el ->
+        val o = el.asObject() ?: return@mapNotNull null
+        val id = o.int("id") ?: return@mapNotNull null
+        ChannelHumanMember(
+            id = id,
+            displayName = o.text("display_name") ?: "사용자",
+            role = o.text("role") ?: "guest",
+            joinedAt = o.text("joined_at"),
+        )
+    }
+
+    fun parseInviteAccept(body: String): InviteAcceptResult? {
+        val o = parseJsonOrNull(body).asObject() ?: return null
+        val token = o.text("token")?.takeIf { it.isNotBlank() } ?: return null
+        val user = o.obj("user")?.let(::parseUserInfoObject) ?: return null
+        val ch = o.obj("channel")?.let(::parseBotChannel) ?: return null
+        return InviteAcceptResult(token, user, ch)
     }
 
     /** 토론 상태. id 가 없으면(오류 본문 등) null. */

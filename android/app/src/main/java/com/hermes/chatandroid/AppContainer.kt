@@ -45,8 +45,8 @@ class AppContainer(
     /** 봇 채팅을 열었을 때(채널 id, 제목, DM 이면 봇) — 앱이 바로가기·타일 기록을 연결한다. */
     var onChatOpened: ((Int, String, com.hermes.chatandroid.data.Bot?) -> Unit)? = null
 
-    /** 봇 채팅 첨부 이미지 원본(Bridge 로 내려받아 메모리에 보관). */
-    val attachmentImages = AttachmentImageStore(::bridgeApi)
+    /** 봇 채팅 첨부 이미지 원본(Bridge 우선, 게스트/로컬 폴백은 Hermes-bot 경유). */
+    val attachmentImages = AttachmentImageStore(::bridgeApi, botApi = ::botApi)
 
     /** 글라스 Live 대화(T-187/T-188). [HermesApp] 이 앱 컨텍스트로 붙인다 — 단위 테스트에서는 없음. */
     lateinit var live: LiveController
