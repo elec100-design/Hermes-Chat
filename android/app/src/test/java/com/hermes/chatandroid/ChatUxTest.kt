@@ -121,8 +121,24 @@ class ChatUxTest {
         val ch = channel(member(1, "opus"), member(2, "grok")).copy(guestBotMode = "mention_off")
         assertFalse(ChatUx.needsRecipientPick(ch, "사람끼리 대화", isGuest = true))
         assertTrue(ChatUx.needsRecipientPick(ch, "오너는 여전히 멘션 필요", isGuest = false))
+        assertFalse(ChatUx.needsRecipientPick(ch, "호스트도 게스트와 대화", isGuest = false, hasOtherHumans = true))
         val solo = channel(member(1, "opus")).copy(guestBotMode = "mention_off")
         assertEquals("안녕", ChatUx.addressSolo("안녕", solo, isGuest = true))
+        assertEquals("안녕", ChatUx.addressSolo("안녕", solo, isGuest = false, hasOtherHumans = true))
+    }
+
+    @Test fun extractAndReplaceMentionQuerySupportsUnicodeAndEmailGuard() {
+        val q1 = ChatUx.extractMentionQuery("안녕 @기")
+        assertEquals(3, q1?.atIndex)
+        assertEquals("기", q1?.prefix)
+        assertEquals("안녕 @테스트 기백 ", ChatUx.replaceMentionQuery("안녕 @기", q1!!, "테스트 기백"))
+
+        val q2 = ChatUx.extractMentionQuery("@")
+        assertEquals(0, q2?.atIndex)
+        assertEquals("", q2?.prefix)
+        assertEquals("@grok ", ChatUx.replaceMentionQuery("@", q2!!, "grok"))
+
+        assertNull(ChatUx.extractMentionQuery("foo@bar"))
     }
 
     @Test fun botMessageIsSentByMeSplitsOwnerAndOtherHuman() {

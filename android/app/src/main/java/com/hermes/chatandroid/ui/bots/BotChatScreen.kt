@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -31,6 +32,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -152,9 +154,11 @@ data class BotChatUiState(
     val startingDiscussion: Boolean = false,
     val resettingContext: Boolean = false,
     val revoked: Boolean = false,
+    val humanMembers: List<ChannelHumanMember> = emptyList(),
 ) {
     /** 이 대화에 지정된 작업 폴더(DM = 봇 기본 폴더, 채널 = 채널 폴더). */
     val workdir: String? get() = (dmBot?.workdir ?: channel?.workdir)?.takeIf { it.isNotBlank() }
+    val hasOtherHumans: Boolean get() = humanMembers.size > 1
 }
 
 /**
@@ -304,8 +308,9 @@ class BotChatViewModel(private val container: AppContainer, private val channelI
             try {
                 val ch = runCatching { api.fetchChannels().firstOrNull { it.id == channelId } }.getOrNull()
                 val dm = if (ch != null || settings.isGuestMode) null else runCatching { api.fetchBots(false).firstOrNull { it.dmChannelId == channelId } }.getOrNull()
+                val humans = if (ch != null && !ch.isDm) runCatching { api.fetchChannelUsers(channelId) }.getOrDefault(emptyList()) else emptyList()
                 val msgs = api.fetchMessages(channelId)
-                _state.update { it.copy(loading = false, channel = ch ?: it.channel, dmBot = dm ?: it.dmBot, error = null) }
+                _state.update { it.copy(loading = false, channel = ch ?: it.channel, dmBot = dm ?: it.dmBot, humanMembers = humans, error = null) }
                 if (!settings.isGuestMode && !ch?.workdir.isNullOrBlank() && _state.value.workspaces == null) loadWorkspaces()
                 if (!settings.demoMode) {
                     container.onChatOpened?.invoke(channelId, dm?.displayName ?: ch?.let { "#${it.title}" } ?: "대화", dm)
@@ -343,7 +348,14 @@ class BotChatViewModel(private val container: AppContainer, private val channelI
                             is ChannelStreamEvent.UserRemoved -> {
                                 if (myId > 0 && ev.userId == myId) {
                                     _state.update { it.copy(revoked = true, error = "채널에서 내보내졌습니다.") }
+                                } else {
+                                    val humans = runCatching { api.fetchChannelUsers(channelId) }.getOrNull()
+                                    if (humans != null) _state.update { it.copy(humanMembers = humans) }
                                 }
+                            }
+                            ChannelStreamEvent.UserJoined -> {
+                                val humans = runCatching { api.fetchChannelUsers(channelId) }.getOrNull()
+                                if (humans != null) _state.update { it.copy(humanMembers = humans) }
                             }
                             ChannelStreamEvent.Ready -> Unit
                         }
@@ -364,10 +376,16 @@ class BotChatViewModel(private val container: AppContainer, private val channelI
     /** 고른 봇에게 멘션을 붙여 보낸다. 기본값(마지막 답장 봇)도 이 경로로만 나간다. */
     fun sendTo(slug: String, text: String, onSent: () -> Unit) {
         _state.update { it.copy(pickRecipient = false) }
-        send(ChatUx.addressTo(text, slug), onSent)
+        send(ChatUx.addressTo(text, slug), onSent = onSent)
     }
 
-    fun send(text: String, onSent: () -> Unit) {
+    /** @멘션 없이 사람 참여자들에게만 메시지를 보낸다. */
+    fun sendPlain(text: String, onSent: () -> Unit) {
+        _state.update { it.copy(pickRecipient = false) }
+        send(text, allowWithoutBot = true, onSent = onSent)
+    }
+
+    fun send(text: String, allowWithoutBot: Boolean = false, onSent: () -> Unit) {
         val api = container.botApi() ?: return
         val body = text.trim()
         val files = _state.value.pending
@@ -375,12 +393,13 @@ class BotChatViewModel(private val container: AppContainer, private val channelI
         if ((body.isEmpty() && files.isEmpty()) || _state.value.sending || _state.value.revoked) return
         val channel = _state.value.channel
         val isGuest = container.settingsRepository.current.isGuestMode
-        if (ChatUx.needsRecipientPick(channel, body, isGuest = isGuest)) {
+        val hasOthers = _state.value.hasOtherHumans
+        if (!allowWithoutBot && ChatUx.needsRecipientPick(channel, body, isGuest = isGuest, hasOtherHumans = hasOthers)) {
             _state.update { it.copy(pickRecipient = true, info = null) }
             return
         }
-        val addressed = soloMention(body, channel, isGuest = isGuest)
-        val solo = ChatUx.soloRecipientSlug(_state.value.dmBot, channel)
+        val addressed = if (allowWithoutBot) body else ChatUx.addressSolo(body, channel, isGuest = isGuest, hasOtherHumans = hasOthers)
+        val solo = if (hasOthers || isGuest) null else ChatUx.soloRecipientSlug(_state.value.dmBot, channel)
         _state.update { it.copy(sending = true, info = null, error = null, pickRecipient = false) }
         viewModelScope.launch {
             try {
@@ -397,7 +416,7 @@ class BotChatViewModel(private val container: AppContainer, private val channelI
                 if (r.jobId != null && r.replyMessageId != null) follower.follow(r.replyMessageId, r.jobId)
                 val info = when {
                     r.error != null -> r.error
-                    r.jobId == null && channel != null && !channel.isDm && !(isGuest && channel.guestBotMode == "mention_off") -> {
+                    r.jobId == null && channel != null && !channel.isDm && !hasOthers && !isGuest -> {
                         val slug = channel.members.firstOrNull()?.slug
                         "@${slug ?: "봇이름"} 으로 멘션해야 답합니다"
                     }
@@ -676,6 +695,33 @@ fun BotChatScreen(
             }
         },
         bottomBar = {
+            val mentionBotsAllowed = !(isGuest && ch?.guestBotMode == "mention_off")
+            val mentionQuery = if (ch != null && !ch.isDm && !state.revoked) ChatUx.extractMentionQuery(input) else null
+            val mentionCandidates = remember(members, state.humanMembers, mentionBotsAllowed, settings.botUserId, mentionQuery) {
+                if (mentionQuery == null) emptyList()
+                else {
+                    val bots = if (mentionBotsAllowed) {
+                        members.map { MentionCandidate(it.slug, it.displayName, it.avatarText, it.tone, isBot = true) }
+                    } else emptyList()
+                    val humans = state.humanMembers
+                        .filter { it.id != settings.botUserId }
+                        .map {
+                            MentionCandidate(
+                                handle = it.displayName,
+                                subtitle = if (it.role == "owner") "호스트" else "게스트",
+                                avatar = "🧑",
+                                tone = null,
+                                isBot = false,
+                            )
+                        }
+                    val p = mentionQuery.prefix.trim()
+                    (bots + humans).filter {
+                        p.isEmpty() || it.handle.contains(p, ignoreCase = true) || it.subtitle.contains(p, ignoreCase = true)
+                    }
+                }
+            }
+            val showTop = liveHere || state.info != null || members.size > 1 || state.pending.isNotEmpty()
+                || ChatUx.soloRecipientSlug(dm, ch) != null || (mentionQuery != null && mentionCandidates.isNotEmpty())
             ChatComposerDock(
                 value = input,
                 onValueChange = { input = it },
@@ -686,8 +732,8 @@ fun BotChatScreen(
                 sending = state.sending,
                 placeholder = when {
                     state.revoked -> "채널 접근이 해제되었습니다"
-                    isGuest && ch?.guestBotMode == "mention_off" -> "참여자들과 대화하세요…"
-                    members.size > 1 -> "@봇이름 으로 멘션해 대화하세요…"
+                    isGuest && ch?.guestBotMode == "mention_off" -> "참여자들과 대화하세요 (@참여자 멘션 가능)…"
+                    ch != null && !ch.isDm -> "메시지를 입력하거나 @ 로 봇·참여자를 부르세요…"
                     else -> "메시지를 입력하세요…"
                 },
                 leadingActions = if (!isGuest && (dm != null || ch != null)) {
@@ -734,7 +780,7 @@ fun BotChatScreen(
                         }
                     }
                 } else null,
-                topContent = if (liveHere || state.info != null || members.size > 1 || state.pending.isNotEmpty() || ChatUx.soloRecipientSlug(dm, ch) != null) {
+                topContent = if (showTop) {
                     {
                         state.discussion?.takeIf { it.isRunning }?.let { DiscussionBar(it, onStop = vm::stopDiscussion) }
                         if (liveHere) {
@@ -838,6 +884,14 @@ fun BotChatScreen(
                                     }
                                 }
                             }
+                        }
+                        if (mentionQuery != null && mentionCandidates.isNotEmpty()) {
+                            MentionPopupCard(
+                                candidates = mentionCandidates,
+                                onPick = { cand ->
+                                    input = ChatUx.replaceMentionQuery(input, mentionQuery, cand.handle)
+                                },
+                            )
                         }
                     }
                 } else null,
@@ -958,8 +1012,11 @@ fun BotChatScreen(
                 }
             },
             confirmButton = {
-                defaultSlug?.let { slug ->
-                    TextButton(onClick = { vm.sendTo(slug, input) { input = "" } }) { Text("@$slug 에게") }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = { vm.sendPlain(input) { input = "" } }) { Text("봇 없이 보내기") }
+                    defaultSlug?.let { slug ->
+                        TextButton(onClick = { vm.sendTo(slug, input) { input = "" } }) { Text("@$slug 에게") }
+                    }
                 }
             },
             dismissButton = { TextButton(onClick = vm::dismissRecipientPick) { Text("취소") } },
@@ -980,6 +1037,77 @@ fun BotChatScreen(
             },
             dismissButton = { TextButton(onClick = { resetContextDialog = false }) { Text("취소") } },
         )
+    }
+}
+
+private data class MentionCandidate(
+    val handle: String,
+    val subtitle: String,
+    val avatar: String,
+    val tone: Int?,
+    val isBot: Boolean,
+)
+
+@Composable
+private fun MentionPopupCard(
+    candidates: List<MentionCandidate>,
+    onPick: (MentionCandidate) -> Unit,
+) {
+    val hc = MaterialTheme.hermesColors
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp),
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 4.dp,
+        shadowElevation = 6.dp,
+        border = BorderStroke(1.dp, hc.cardBorder),
+    ) {
+        Column(
+            modifier = Modifier
+                .heightIn(max = 190.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(vertical = 4.dp),
+        ) {
+            Text(
+                "호출할 봇 · 참여자",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+            )
+            candidates.forEachIndexed { idx, cand ->
+                if (idx > 0) HorizontalDivider(color = hc.subtleDivider)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onPick(cand) }
+                        .padding(horizontal = 12.dp, vertical = 9.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    if (cand.isBot) {
+                        BotAvatar(cand.avatar, cand.tone, size = 24.dp)
+                    } else {
+                        Text(cand.avatar, style = MaterialTheme.typography.bodyMedium)
+                    }
+                    Text(
+                        "@${cand.handle}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (cand.isBot) (toneColor(cand.tone) ?: MaterialTheme.colorScheme.primary)
+                        else MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        cand.subtitle,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
     }
 }
 

@@ -355,6 +355,7 @@ open class BotApi(
                 "message" -> obj?.let(Parsers::parseBotMessage)?.let { ChannelStreamEvent.Message(it) }
                 "revoked" -> ChannelStreamEvent.Revoked
                 "user_removed" -> obj?.int("user_id")?.let { ChannelStreamEvent.UserRemoved(it) }
+                "user_joined" -> ChannelStreamEvent.UserJoined
                 else -> null
             }
         }

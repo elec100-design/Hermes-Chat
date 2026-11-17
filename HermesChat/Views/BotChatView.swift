@@ -49,6 +49,9 @@ struct BotChatView: View {
             if isChannel && !members.isEmpty && !viewModel.shouldHideMemberChips && !viewModel.isRevoked {
                 memberChips
             }
+            if isChannel && !viewModel.isRevoked {
+                mentionPopup
+            }
             inputBar
         }
         .navigationTitle(title)
@@ -255,6 +258,96 @@ struct BotChatView: View {
             viewModel.input += " "
         }
         viewModel.input += "@\(slug) "
+    }
+
+    @ViewBuilder
+    private var mentionPopup: some View {
+        if let query = MentionAutocomplete.extractQuery(from: viewModel.input) {
+            let candidates = mentionCandidates(matching: query.prefix)
+            if !candidates.isEmpty {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("channel.mention.popup_title")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 12)
+                        .padding(.top, 8)
+                        .padding(.bottom, 4)
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 0) {
+                            ForEach(candidates) { cand in
+                                Button {
+                                    viewModel.input = MentionAutocomplete.replaceQuery(
+                                        query, with: cand.handle, in: viewModel.input
+                                    )
+                                } label: {
+                                    HStack(spacing: 10) {
+                                        Text(cand.avatar)
+                                        Text("@\(cand.handle)")
+                                            .font(.subheadline.weight(.semibold))
+                                        Text(cand.subtitle)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                        Spacer()
+                                    }
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                Divider()
+                            }
+                        }
+                    }
+                    .frame(maxHeight: 170)
+                }
+                .background(Color(.secondarySystemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color(.separator), lineWidth: 0.5)
+                )
+                .shadow(color: .black.opacity(0.08), radius: 6, y: 2)
+                .padding(.horizontal, 12)
+                .padding(.top, 6)
+            }
+        }
+    }
+
+    private struct MentionCandidateItem: Identifiable {
+        let id: String
+        let handle: String
+        let subtitle: String
+        let avatar: String
+    }
+
+    private func mentionCandidates(matching prefix: String) -> [MentionCandidateItem] {
+        var items: [MentionCandidateItem] = []
+        if !viewModel.shouldHideMemberChips {
+            for m in members {
+                items.append(MentionCandidateItem(
+                    id: "bot-\(m.id)",
+                    handle: m.slug,
+                    subtitle: m.displayName,
+                    avatar: m.avatarText
+                ))
+            }
+        }
+        let myId = viewModel.currentUserId
+        for u in viewModel.humanMembers where myId == 0 || u.id != myId {
+            items.append(MentionCandidateItem(
+                id: "user-\(u.id)",
+                handle: u.displayName,
+                subtitle: u.role == "owner"
+                    ? NSLocalizedString("channel.member.host", comment: "")
+                    : NSLocalizedString("channel.member.guest", comment: ""),
+                avatar: "🧑"
+            ))
+        }
+        let q = prefix.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !q.isEmpty else { return items }
+        return items.filter {
+            $0.handle.lowercased().contains(q) || $0.subtitle.lowercased().contains(q)
+        }
     }
 
     private var inputBar: some View {

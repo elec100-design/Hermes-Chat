@@ -36,17 +36,28 @@ object ChatUx {
         return lastReplierSlug(messages, members) ?: members.first().slug
     }
 
-    /** 봇이 둘 이상인 채널에서 멘션이 없으면 전송을 막는다. DM·봇 한 명은 막지 않는다. */
-    fun needsRecipientPick(channel: BotChannel?, body: String, isGuest: Boolean = false): Boolean {
+    /** 봇이 둘 이상인 채널에서 멘션이 없으면 수신 봇 선택 여부를 판정한다. 게스트 또는 다른 참여자가 있는 채널은 강제하지 않는다. */
+    fun needsRecipientPick(
+        channel: BotChannel?,
+        body: String,
+        isGuest: Boolean = false,
+        hasOtherHumans: Boolean = false,
+    ): Boolean {
         if (channel == null || channel.isDm) return false
-        if (isGuest && channel.guestBotMode == "mention_off") return false
+        if (isGuest || hasOtherHumans) return false
         if (channel.members.size < 2) return false
         return !hasMention(body)
     }
 
-    /** 봇이 하나인 채널만 @slug 를 붙인다. 이미 멘션이 있거나 DM 이면 그대로. */
-    fun addressSolo(body: String, channel: BotChannel?, isGuest: Boolean = false): String {
+    /** 봇이 하나인 채널만 @slug 를 붙인다. 이미 멘션이 있거나, 게스트·다자 채널이거나 DM 이면 그대로. */
+    fun addressSolo(
+        body: String,
+        channel: BotChannel?,
+        isGuest: Boolean = false,
+        hasOtherHumans: Boolean = false,
+    ): String {
         if (isGuest && channel?.guestBotMode == "mention_off") return body
+        if (isGuest || hasOtherHumans) return body
         val only = channel?.takeIf { !it.isDm }?.members?.singleOrNull() ?: return body
         return if (hasMention(body)) body else "@${only.slug} $body".trim()
     }
@@ -94,6 +105,20 @@ object ChatUx {
         raw.contains("All discovered devices are powered off or disconnected") -> "안경 전원이 꺼졌거나 연결이 끊겼습니다"
         else -> raw
     }
+
+    /** 커서 끝 `@검색어` 토큰 정보 (`@` 포함 시작 인덱스 + 검색어). 이메일(`a@b`)은 제외. */
+    data class MentionQuery(val atIndex: Int, val prefix: String)
+
+    private val trailingMention = Regex("(?:^|\\s)(@[^\\s@]*)$")
+
+    fun extractMentionQuery(text: String): MentionQuery? {
+        val m = trailingMention.find(text) ?: return null
+        val token = m.groupValues[1]
+        return MentionQuery(atIndex = text.length - token.length, prefix = token.substring(1))
+    }
+
+    fun replaceMentionQuery(text: String, query: MentionQuery, handle: String): String =
+        text.substring(0, query.atIndex) + "@$handle "
 
     /**
      * 초대 링크(`https://host/invite/<code>`, `hermes://invite?url=...&code=...`) 또는

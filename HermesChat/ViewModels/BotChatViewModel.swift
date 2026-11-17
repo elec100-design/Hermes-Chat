@@ -21,6 +21,8 @@ final class BotChatViewModel: ObservableObject {
     @Published var isRevoked = false
     /// P34: 채널 게스트 @멘션 정책 ("read_only" | "mention_off" | "full")
     @Published var guestBotMode: String?
+    /// P34: 채널 인간 참여자(호스트 + 게스트) — `@` 호출 팝업용
+    @Published var humanMembers: [ChannelHumanMember] = []
     /// 로드/전송 실패 — 화면에 인라인으로 표시(알럿 없음)
     @Published var errorMessage: String?
     /// 오류는 아니지만 알려야 할 때(멘션 없음 등)
@@ -56,6 +58,8 @@ final class BotChatViewModel: ObservableObject {
         self.guestBotMode = guestBotMode
     }
 
+    var currentUserId: Int { myUserId }
+
     var shouldHideMemberChips: Bool {
         isGuest && guestBotMode == "mention_off"
     }
@@ -71,6 +75,9 @@ final class BotChatViewModel: ObservableObject {
         defer { isLoading = false }
         if myUserId == 0, let me = try? await client.fetchMe() {
             myUserId = me.userId
+        }
+        if isChannel, let users = try? await client.fetchChannelUsers(channelId: channelId) {
+            humanMembers = users
         }
         do {
             let list = try await client.fetchMessages(channelId: channelId)
@@ -107,7 +114,7 @@ final class BotChatViewModel: ObservableObject {
             let result = try await client.postMessage(channelId: channelId, body: text)
             if let error = result.error, !error.isEmpty {
                 notice = error
-            } else if result.jobId == nil && isChannel && !(isGuest && guestBotMode == "mention_off") {
+            } else if result.jobId == nil && isChannel && humanMembers.count <= 1 && !(isGuest && guestBotMode == "mention_off") {
                 notice = NSLocalizedString("bot.chat.no_mention", comment: "")
             }
         } catch BotError.server(status: 403, _) {
@@ -206,6 +213,12 @@ final class BotChatViewModel: ObservableObject {
                                 self.errorMessage = NSLocalizedString("bot.chat.revoked", comment: "")
                                 self.channelStreamTask = nil
                                 return
+                            } else if let users = try? await self.client.fetchChannelUsers(channelId: self.channelId) {
+                                self.humanMembers = users
+                            }
+                        case .userJoined:
+                            if let users = try? await self.client.fetchChannelUsers(channelId: self.channelId) {
+                                self.humanMembers = users
                             }
                         }
                     }

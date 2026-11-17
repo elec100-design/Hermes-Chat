@@ -301,6 +301,7 @@ sealed interface ChannelStreamEvent {
     data class Message(val message: BotMessage) : ChannelStreamEvent
     data object Revoked : ChannelStreamEvent
     data class UserRemoved(val userId: Int) : ChannelStreamEvent
+    data object UserJoined : ChannelStreamEvent
 }
 
 /** `POST /api/bots/discover` 요약. [source]: "bridge" | "scan". [skipped] 는 게이트웨이가 아니라 건너뛴 포트 설명들. */

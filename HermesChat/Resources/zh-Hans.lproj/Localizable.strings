@@ -439,3 +439,5 @@
 "channel.members.human" = "频道访客成员";
 "channel.members.empty" = "暂无访客成员";
 "channel.members.remove" = "移出";
+"channel.member.host" = "房主";
+"channel.mention.popup_title" = "提及机器人或成员";

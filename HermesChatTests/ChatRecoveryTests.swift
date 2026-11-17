@@ -215,4 +215,20 @@ final class ChannelInviteTests: XCTestCase {
         XCTAssertEqual(inv.maxUses, 5)
         XCTAssertTrue(inv.revoked)
     }
+
+    func testMentionAutocompleteQueryAndReplace() {
+        let q1 = MentionAutocomplete.extractQuery(from: "안녕 @기")
+        XCTAssertEqual(q1?.atOffset, 3)
+        XCTAssertEqual(q1?.prefix, "기")
+        XCTAssertEqual(
+            MentionAutocomplete.replaceQuery(q1!, with: "테스트 기백", in: "안녕 @기"),
+            "안녕 @테스트 기백 "
+        )
+
+        let q2 = MentionAutocomplete.extractQuery(from: "@")
+        XCTAssertEqual(q2?.atOffset, 0)
+        XCTAssertEqual(MentionAutocomplete.replaceQuery(q2!, with: "grok", in: "@"), "@grok ")
+
+        XCTAssertNil(MentionAutocomplete.extractQuery(from: "user@example.com"))
+    }
 }

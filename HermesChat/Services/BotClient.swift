@@ -224,6 +224,8 @@ final class BotClient {
                                let uid = obj["user_id"] as? Int {
                                 continuation.yield(.userRemoved(userId: uid))
                             }
+                        case "user_joined":
+                            continuation.yield(.userJoined)
                         default:
                             continue
                         }

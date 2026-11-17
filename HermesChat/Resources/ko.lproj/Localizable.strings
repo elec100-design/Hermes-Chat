@@ -439,3 +439,5 @@
 "channel.members.human" = "참여 중인 게스트";
 "channel.members.empty" = "참여 중인 게스트가 없습니다";
 "channel.members.remove" = "내보내기";
+"channel.member.host" = "호스트";
+"channel.mention.popup_title" = "호출할 봇 · 참여자";

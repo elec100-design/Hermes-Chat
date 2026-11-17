@@ -424,6 +424,32 @@ enum ChannelStreamEvent: Equatable {
     case message(BotMessage)
     case revoked
     case userRemoved(userId: Int)
+    case userJoined
+}
+
+/// 입력창 끝 `@검색어` 추출 및 선택 결과 치환 도우미
+enum MentionAutocomplete {
+    struct Query: Equatable {
+        let atOffset: Int
+        let prefix: String
+    }
+
+    static func extractQuery(from text: String) -> Query? {
+        guard let regex = try? NSRegularExpression(pattern: "(?:^|\\s)(@[^\\s@]*)$") else { return nil }
+        let ns = text as NSString
+        let range = NSRange(location: 0, length: ns.length)
+        guard let match = regex.firstMatch(in: text, range: range),
+              match.numberOfRanges >= 2 else { return nil }
+        let tokenRange = match.range(at: 1)
+        let token = ns.substring(with: tokenRange)
+        return Query(atOffset: tokenRange.location, prefix: String(token.dropFirst()))
+    }
+
+    static func replaceQuery(_ query: Query, with handle: String, in text: String) -> String {
+        let ns = text as NSString
+        let safePrefix = ns.substring(to: min(query.atOffset, ns.length))
+        return "\(safePrefix)@\(handle) "
+    }
 }
 
 /// 초대 링크(`https://host/invite/<code>`, `hermes://invite?url=...&code=...`) 또는
