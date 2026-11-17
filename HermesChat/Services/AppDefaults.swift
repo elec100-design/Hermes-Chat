@@ -16,7 +16,42 @@ final class AppSettings: ObservableObject {
     @AppStorage("bridgeHost") var bridgeHost: String = ""
     /// Hermes Bot 서버 주소 (예: http://100.x.x.x:8900). 비어 있으면 봇 탭은 안내 화면.
     @AppStorage("botHost") var botHost: String = ""
+    /// Hermes-bot 사용자 역할 ("owner" | "guest")
+    @AppStorage("botRole") var botRole: String = "owner"
+    /// Hermes-bot 사용자 id (/api/me)
+    @AppStorage("botUserId") var botUserId: Int = 0
+    /// Hermes-bot 표시 이름
+    @AppStorage("botDisplayName") var botDisplayName: String = ""
     @AppStorage("dashboardPort") var dashboardPort: Int = 8000
+
+    var isGuestMode: Bool { botRole == "guest" }
+
+    /// 딥링크(`hermes://invite?url=...&code=...`)로 들어온 대기 중인 초대 정보
+    @Published var pendingInviteURL: String? = nil
+    @Published var pendingInviteCode: String? = nil
+
+    func applyBotUserInfo(_ info: BotUserInfo) {
+        botRole = info.role
+        botUserId = info.userId
+        botDisplayName = info.displayName
+    }
+
+    func enterGuestSession(serverURL: String, result: InviteAcceptResult) {
+        botHost = serverURL
+        botToken = result.token
+        applyBotUserInfo(result.user)
+        pendingInviteURL = nil
+        pendingInviteCode = nil
+        isDemoMode = false
+        isFirstLaunchComplete = true
+    }
+
+    func leaveGuestMode() {
+        botToken = ""
+        botRole = "owner"
+        botUserId = 0
+        botDisplayName = ""
+    }
     /// 온보딩 완료 여부 — false면 앱 시작 시 OnboardingView를 표시한다.
     @AppStorage("isFirstLaunchComplete") var isFirstLaunchComplete: Bool = false
     /// App Review 데모 모드 — 서버/계정 없이 앱의 모든 기능을 체험할 수 있다.

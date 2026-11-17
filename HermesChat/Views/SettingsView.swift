@@ -16,6 +16,7 @@ struct SettingsView: View {
     @State private var isTestingBot = false
     @State private var showDashboard = false
     @State private var showSubscriptionSheet = false
+    @State private var showInviteJoinSheet = false
     @State private var newProfileName = ""
     @State private var newProfilePort = ""
     @State private var discoveryResult: String? = nil
@@ -30,7 +31,19 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
-            Section("settings.connection") {
+            if appSettings.isGuestMode {
+                Section("settings.guest.title") {
+                    LabeledContent("invite.join.name.placeholder", value: appSettings.botDisplayName.isEmpty ? "-" : appSettings.botDisplayName)
+                    LabeledContent("settings.bot", value: appSettings.botHost)
+                    Button("settings.bot.join_invite") {
+                        showInviteJoinSheet = true
+                    }
+                    Button("settings.guest.leave", role: .destructive) {
+                        appSettings.leaveGuestMode()
+                    }
+                }
+            } else {
+                Section("settings.connection") {
                 TextField("settings.connection.host", text: $appSettings.serverHost)
                     .textContentType(.URL)
                     .keyboardType(.URL)
@@ -348,6 +361,10 @@ struct SettingsView: View {
                     }
                     .font(.footnote)
                 }
+
+                Button("settings.bot.join_invite") {
+                    showInviteJoinSheet = true
+                }
             } header: {
                 Text("settings.bot")
             } footer: {
@@ -382,6 +399,7 @@ struct SettingsView: View {
             Section {
                 Link("settings.tailscale.download", destination: URL(string: "https://tailscale.com")!)
             }
+            } // !isGuestMode
 
             Section {
                 Button {
@@ -409,6 +427,11 @@ struct SettingsView: View {
         .fullScreenCover(isPresented: $showDashboard) {
             DashboardWebView(appSettings: appSettings)
         }
+        .sheet(isPresented: $showInviteJoinSheet) {
+            NavigationStack {
+                InviteJoinView(appSettings: appSettings, onCancel: { showInviteJoinSheet = false })
+            }
+        }
         .alert("settings.profile.rename.title", isPresented: $showEditAlert, presenting: editingProfile) { profile in
             TextField("settings.profile.rename.placeholder", text: $editingProfileName)
             Button("common.cancel", role: .cancel) { }
@@ -422,7 +445,7 @@ struct SettingsView: View {
         }
     }
 
-    /// 봇 서버 연결 테스트 — /health 로 서버 확인 후 /api/bots 로 토큰·응답 확인
+    /// 봇 서버 연결 테스트 — /health 로 서버 확인 후 /api/me·/api/bots 로 토큰·권한 확인
     private func testBotConnection() {
         guard let client = appSettings.botClient else { return }
         isTestingBot = true
@@ -430,8 +453,22 @@ struct SettingsView: View {
         Task {
             do {
                 try await client.health()
-                _ = try await client.fetchBots()
-                botTestResult = .success
+                if let me = try? await client.fetchMe() {
+                    appSettings.applyBotUserInfo(me)
+                    if me.isGuest {
+                        botTestResult = .success
+                        isTestingBot = false
+                        return
+                    }
+                }
+                do {
+                    _ = try await client.fetchBots()
+                    botTestResult = .success
+                } catch BotError.server(status: 403, _) {
+                    let me = try await client.fetchMe()
+                    appSettings.applyBotUserInfo(me)
+                    botTestResult = .success
+                }
             } catch BotError.unauthorized {
                 botTestResult = .failure(NSLocalizedString("settings.bot.test.unauthorized", comment: ""))
             } catch {

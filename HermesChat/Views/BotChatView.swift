@@ -5,12 +5,15 @@ import SwiftUI
 /// 봇의 진행 중 응답은 `BotChatViewModel.streaming` 에서, 확정본은 서버 메시지 본문에서 온다.
 struct BotChatView: View {
     @ObservedObject var appSettings: AppSettings
+    let client: BotClient
+    let channelId: Int
     let title: String
     let isChannel: Bool
     let members: [BotMember]
 
     @StateObject private var viewModel: BotChatViewModel
     @State private var showResetConfirm = false
+    @State private var showInviteSheet = false
 
     init(
         appSettings: AppSettings,
@@ -18,14 +21,24 @@ struct BotChatView: View {
         channelId: Int,
         title: String,
         isChannel: Bool,
-        members: [BotMember] = []
+        members: [BotMember] = [],
+        initialGuestBotMode: String? = nil
     ) {
         _appSettings = ObservedObject(wrappedValue: appSettings)
+        self.client = client
+        self.channelId = channelId
         self.title = title
         self.isChannel = isChannel
         self.members = members
         _viewModel = StateObject(
-            wrappedValue: BotChatViewModel(client: client, channelId: channelId, isChannel: isChannel)
+            wrappedValue: BotChatViewModel(
+                client: client,
+                channelId: channelId,
+                isChannel: isChannel,
+                myUserId: appSettings.botUserId,
+                isGuest: appSettings.isGuestMode,
+                guestBotMode: initialGuestBotMode
+            )
         )
     }
 
@@ -33,20 +46,42 @@ struct BotChatView: View {
         VStack(spacing: 0) {
             messageList
             statusLines
-            if isChannel && !members.isEmpty { memberChips }
+            if isChannel && !members.isEmpty && !viewModel.shouldHideMemberChips && !viewModel.isRevoked {
+                memberChips
+            }
             inputBar
         }
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    showResetConfirm = true
-                } label: {
-                    Image(systemName: "arrow.counterclockwise")
+            if !appSettings.isGuestMode {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    if isChannel {
+                        Button {
+                            showInviteSheet = true
+                        } label: {
+                            Image(systemName: "person.badge.plus")
+                        }
+                        .accessibilityLabel(LocalizedStringKey("channel.invite.manage"))
+                    }
+                    Button {
+                        showResetConfirm = true
+                    } label: {
+                        Image(systemName: "arrow.counterclockwise")
+                    }
+                    .disabled(viewModel.isResettingContext || viewModel.isSending)
+                    .accessibilityLabel(LocalizedStringKey("bot.chat.reset_context.title"))
                 }
-                .disabled(viewModel.isResettingContext || viewModel.isSending)
-                .accessibilityLabel(LocalizedStringKey("bot.chat.reset_context.title"))
+            }
+        }
+        .sheet(isPresented: $showInviteSheet) {
+            ChannelInviteSheet(
+                client: client,
+                channelId: channelId,
+                channelTitle: title,
+                initialGuestBotMode: viewModel.guestBotMode ?? "read_only"
+            ) { newMode in
+                viewModel.guestBotMode = newMode
             }
         }
         .confirmationDialog(
@@ -111,15 +146,26 @@ struct BotChatView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.horizontal, 24)
         } else {
-            VStack(alignment: .leading, spacing: 0) {
-                // 채널에서는 누가 말하는지 봇 버블 위에 표시
-                if isChannel && !message.isUser {
-                    Text(verbatim: "\(senderAvatar(message)) \(senderName(message))")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 30)
+            let mine = viewModel.isMessageFromMe(message)
+            VStack(alignment: mine ? .trailing : .leading, spacing: 2) {
+                // 채널에서는 타인/봇 발화자 표시
+                if isChannel && !mine {
+                    if message.isUser {
+                        Text(verbatim: "🧑 \(senderName(message))")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 30)
+                    } else {
+                        Text(verbatim: "\(senderAvatar(message)) \(senderName(message))")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 30)
+                    }
                 }
-                MessageBubble(message: chatMessage(for: message))
+                MessageBubble(message: chatMessage(for: message, isMine: mine))
+                if let atts = Self.parseAttachments(message.attachments), !atts.isEmpty {
+                    BotChannelAttachmentStrip(client: client, channelId: channelId, items: atts, alignRight: mine)
+                }
             }
         }
     }
@@ -132,11 +178,11 @@ struct BotChatView: View {
     private func senderName(_ message: BotMessage) -> String {
         if let name = message.displayName, !name.isEmpty { return name }
         if let author = message.author, !author.isEmpty { return author }
-        return "bot"
+        return message.isUser ? NSLocalizedString("channel.member.guest", comment: "") : "bot"
     }
 
     /// 표시 텍스트: 진행 중이면 스트림 버퍼, 실패면 경고 + 오류, 그 외 확정 본문
-    private func chatMessage(for message: BotMessage) -> ChatMessage {
+    private func chatMessage(for message: BotMessage, isMine: Bool) -> ChatMessage {
         let text: String
         if message.isUser {
             text = message.body
@@ -149,7 +195,7 @@ struct BotChatView: View {
         }
         return ChatMessage(
             id: message.uuid,
-            role: message.isUser ? .user : .assistant,
+            role: isMine ? .user : .assistant,
             content: text
         )
     }
@@ -216,6 +262,7 @@ struct BotChatView: View {
             TextField("chat.message.placeholder", text: $viewModel.input, axis: .vertical)
                 .textFieldStyle(.roundedBorder)
                 .lineLimit(1...5)
+                .disabled(viewModel.isRevoked)
             Button {
                 Task { await viewModel.send() }
             } label: {
@@ -223,7 +270,8 @@ struct BotChatView: View {
                     .font(.system(size: 18, weight: .semibold))
             }
             .disabled(
-                viewModel.isSending
+                viewModel.isRevoked
+                    || viewModel.isSending
                     || viewModel.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             )
             .accessibilityLabel(LocalizedStringKey("Send"))
@@ -231,5 +279,341 @@ struct BotChatView: View {
         .padding(.horizontal)
         .padding(.vertical, 8)
         .background(.thinMaterial)
+    }
+
+    private static func parseAttachments(_ raw: String?) -> [BotChannelAttachmentItem]? {
+        guard let raw, !raw.isEmpty, let data = raw.data(using: .utf8) else { return nil }
+        return try? JSONDecoder().decode([BotChannelAttachmentItem].self, from: data)
+    }
+}
+
+// MARK: - 채널 첨부 이미지/파일 스트립 (게스트 Bridge 없음 대응)
+
+private struct BotChannelAttachmentItem: Decodable, Identifiable {
+    let name: String
+    let path: String
+    let mime: String?
+
+    var id: String { path }
+    var isImage: Bool {
+        if let mime, mime.hasPrefix("image/") { return true }
+        let lower = (name + path).lowercased()
+        return lower.hasSuffix(".png") || lower.hasSuffix(".jpg") || lower.hasSuffix(".jpeg")
+            || lower.hasSuffix(".webp") || lower.hasSuffix(".gif")
+    }
+}
+
+private struct BotChannelAttachmentStrip: View {
+    let client: BotClient
+    let channelId: Int
+    let items: [BotChannelAttachmentItem]
+    let alignRight: Bool
+
+    var body: some View {
+        HStack {
+            if alignRight { Spacer(minLength: 40) }
+            VStack(alignment: alignRight ? .trailing : .leading, spacing: 6) {
+                ForEach(items) { item in
+                    if item.isImage {
+                        BotChannelAttachmentImage(client: client, channelId: channelId, item: item)
+                    } else {
+                        Label(item.name, systemImage: "doc")
+                            .font(.caption)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(Color(.tertiarySystemBackground))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                    }
+                }
+            }
+            if !alignRight { Spacer(minLength: 40) }
+        }
+        .padding(.horizontal, 20)
+    }
+}
+
+private struct BotChannelAttachmentImage: View {
+    let client: BotClient
+    let channelId: Int
+    let item: BotChannelAttachmentItem
+
+    @State private var imageData: Data?
+
+    var body: some View {
+        Group {
+            if let imageData, let uiImage = UIImage(data: imageData) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: 220, maxHeight: 220)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+            } else {
+                Label(item.name, systemImage: "photo")
+                    .font(.caption)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color(.tertiarySystemBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+        }
+        .task(id: item.path) {
+            if let data = try? await client.fetchChannelAttachment(channelId: channelId, path: item.path) {
+                imageData = data
+            }
+        }
+    }
+}
+
+// MARK: - 오너용 채널 초대 · 멤버 관리 시트 (P34 / T-227)
+
+private struct ChannelInviteSheet: View {
+    let client: BotClient
+    let channelId: Int
+    let channelTitle: String
+    let initialGuestBotMode: String
+    let onGuestBotModeChanged: (String) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var guestBotMode: String = "read_only"
+    @State private var invites: [ChannelInvite] = []
+    @State private var members: [ChannelHumanMember] = []
+    @State private var labelInput = ""
+    @State private var expiresHours: Int = 168
+    @State private var maxUsesChoice: Int = 0
+    @State private var isLoading = false
+    @State private var isCreating = false
+    @State private var statusBanner: String?
+    @State private var errorMessage: String?
+
+    init(
+        client: BotClient,
+        channelId: Int,
+        channelTitle: String,
+        initialGuestBotMode: String,
+        onGuestBotModeChanged: @escaping (String) -> Void
+    ) {
+        self.client = client
+        self.channelId = channelId
+        self.channelTitle = channelTitle
+        self.initialGuestBotMode = initialGuestBotMode
+        self.onGuestBotModeChanged = onGuestBotModeChanged
+        _guestBotMode = State(initialValue: initialGuestBotMode.isEmpty ? "read_only" : initialGuestBotMode)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Picker("channel.guest_bot_mode", selection: $guestBotMode) {
+                        Text("channel.guest_bot_mode.read_only").tag("read_only")
+                        Text("channel.guest_bot_mode.mention_off").tag("mention_off")
+                        Text("channel.guest_bot_mode.full").tag("full")
+                    }
+                    .onChange(of: guestBotMode) { _, newValue in
+                        Task { await updateBotMode(newValue) }
+                    }
+                } header: {
+                    Text("channel.guest_bot_mode")
+                } footer: {
+                    Text("channel.guest_bot_mode.desc")
+                }
+
+                Section("channel.invite.create") {
+                    TextField("channel.invite.label.placeholder", text: $labelInput)
+                    Picker("channel.invite.expires", selection: $expiresHours) {
+                        Text("channel.invite.expires.24h").tag(24)
+                        Text("channel.invite.expires.7d").tag(168)
+                        Text("channel.invite.expires.never").tag(0)
+                    }
+                    Picker("channel.invite.max_uses", selection: $maxUsesChoice) {
+                        Text("channel.invite.max_uses.unlimited").tag(0)
+                        Text("channel.invite.max_uses.1").tag(1)
+                        Text("channel.invite.max_uses.10").tag(10)
+                    }
+                    Button {
+                        Task { await createInvite() }
+                    } label: {
+                        HStack {
+                            Spacer()
+                            if isCreating {
+                                ProgressView()
+                            } else {
+                                Label("channel.invite.create_and_copy", systemImage: "link.badge.plus")
+                                    .bold()
+                            }
+                            Spacer()
+                        }
+                    }
+                    .disabled(isCreating)
+                }
+
+                if let statusBanner {
+                    Section {
+                        Label(statusBanner, systemImage: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                            .font(.footnote)
+                    }
+                }
+                if let errorMessage {
+                    Section {
+                        Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.red)
+                            .font(.footnote)
+                    }
+                }
+
+                Section("channel.invite.list") {
+                    if invites.isEmpty && !isLoading {
+                        Text("channel.invite.empty").foregroundStyle(.secondary)
+                    }
+                    ForEach(invites) { inv in
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack {
+                                Text(inv.label.isEmpty ? "#\(inv.id)" : inv.label)
+                                    .font(.headline)
+                                Spacer()
+                                if inv.revoked {
+                                    Text("channel.invite.revoked")
+                                        .font(.caption)
+                                        .foregroundStyle(.red)
+                                } else if let max = inv.maxUses {
+                                    Text("\(inv.usesCount)/\(max)")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                } else {
+                                    Text("\(inv.usesCount)")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            if !inv.revoked {
+                                HStack(spacing: 12) {
+                                    if let url = inv.inviteUrl, !url.isEmpty {
+                                        Button("channel.invite.copy_web") {
+                                            UIPasteboard.general.string = url
+                                            statusBanner = NSLocalizedString("channel.invite.copied", comment: "")
+                                        }
+                                        .font(.caption)
+                                        .buttonStyle(.bordered)
+                                    }
+                                    if let deep = inv.deepLink, !deep.isEmpty {
+                                        Button("channel.invite.copy_app") {
+                                            UIPasteboard.general.string = deep
+                                            statusBanner = NSLocalizedString("channel.invite.copied", comment: "")
+                                        }
+                                        .font(.caption)
+                                        .buttonStyle(.bordered)
+                                    }
+                                    Spacer()
+                                    Button("channel.invite.revoke", role: .destructive) {
+                                        Task { await revokeInvite(inv.id) }
+                                    }
+                                    .font(.caption)
+                                    .buttonStyle(.borderless)
+                                }
+                            }
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
+
+                Section("channel.members.human") {
+                    if members.isEmpty && !isLoading {
+                        Text("channel.members.empty").foregroundStyle(.secondary)
+                    }
+                    ForEach(members) { member in
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(member.displayName)
+                                if let joined = member.joinedAt, !joined.isEmpty {
+                                    Text(joined).font(.caption2).foregroundStyle(.secondary)
+                                }
+                            }
+                            Spacer()
+                            if member.role == "guest" {
+                                Button("channel.members.remove", role: .destructive) {
+                                    Task { await removeMember(member.id) }
+                                }
+                                .font(.caption)
+                                .buttonStyle(.borderless)
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle(channelTitle)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("common.done") { dismiss() }
+                }
+            }
+            .task { await reload() }
+            .refreshable { await reload() }
+        }
+    }
+
+    private func reload() async {
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            async let invs = client.fetchChannelInvites(channelId: channelId)
+            async let usrs = client.fetchChannelUsers(channelId: channelId)
+            invites = try await invs
+            members = try await usrs
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func updateBotMode(_ mode: String) async {
+        do {
+            _ = try await client.updateChannelGuestBotMode(channelId: channelId, mode: mode)
+            onGuestBotModeChanged(mode)
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func createInvite() async {
+        isCreating = true
+        defer { isCreating = false }
+        do {
+            let inv = try await client.createChannelInvite(
+                channelId: channelId,
+                label: labelInput,
+                maxUses: maxUsesChoice > 0 ? maxUsesChoice : nil,
+                expiresHours: expiresHours > 0 ? expiresHours : nil
+            )
+            invites.insert(inv, at: 0)
+            labelInput = ""
+            if let copyTarget = inv.inviteUrl ?? inv.deepLink {
+                UIPasteboard.general.string = copyTarget
+                statusBanner = NSLocalizedString("channel.invite.copied", comment: "")
+            }
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func revokeInvite(_ id: Int) async {
+        do {
+            try await client.revokeChannelInvite(channelId: channelId, inviteId: id)
+            await reload()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func removeMember(_ userId: Int) async {
+        do {
+            try await client.removeChannelUser(channelId: channelId, userId: userId)
+            members.removeAll { $0.id == userId }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 }

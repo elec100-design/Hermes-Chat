@@ -83,11 +83,38 @@ struct BotChannel: Identifiable, Decodable, Equatable, Hashable {
     let updatedAt: String?
     let members: [BotMember]
     let preview: String?
+    /// P34: 게스트 @멘션 정책 ("read_only" | "mention_off" | "full")
+    let guestBotMode: String?
 
     enum CodingKeys: String, CodingKey {
         case id, slug, title, topic, status, members, preview
         case botChat = "bot_chat"
         case updatedAt = "updated_at"
+        case guestBotMode = "guest_bot_mode"
+    }
+
+    init(
+        id: Int,
+        slug: String? = nil,
+        title: String,
+        topic: String? = nil,
+        botChat: Int? = nil,
+        status: String? = nil,
+        updatedAt: String? = nil,
+        members: [BotMember] = [],
+        preview: String? = nil,
+        guestBotMode: String? = nil
+    ) {
+        self.id = id
+        self.slug = slug
+        self.title = title
+        self.topic = topic
+        self.botChat = botChat
+        self.status = status
+        self.updatedAt = updatedAt
+        self.members = members
+        self.preview = preview
+        self.guestBotMode = guestBotMode
     }
 
     init(from decoder: Decoder) throws {
@@ -101,6 +128,7 @@ struct BotChannel: Identifiable, Decodable, Equatable, Hashable {
         updatedAt = c.lenient(String.self, .updatedAt)
         members = c.lenient([BotMember].self, .members) ?? []
         preview = c.lenient(String.self, .preview)
+        guestBotMode = c.lenient(String.self, .guestBotMode)
     }
 }
 
@@ -116,6 +144,10 @@ struct BotMessage: Identifiable, Decodable, Equatable {
     let status: String?
     let jobId: Int?
     let authorBotId: Int?
+    /// P34: 인간 발화자 user id (오너 또는 게스트)
+    let authorUserId: Int?
+    /// P34: 서버가 요청자 기준으로 계산해 내려주는 내 발화 여부
+    let isMine: Bool?
     /// 계약상 "JSON 을 담은 문자열 또는 null" — 지금 화면에선 해석하지 않는다.
     let attachments: String?
     let error: String?
@@ -128,8 +160,46 @@ struct BotMessage: Identifiable, Decodable, Equatable {
         case channelId = "channel_id"
         case jobId = "job_id"
         case authorBotId = "author_bot_id"
+        case authorUserId = "author_user_id"
+        case isMine = "is_mine"
         case createdAt = "created_at"
         case displayName = "display_name"
+    }
+
+    init(
+        id: Int,
+        channelId: Int? = nil,
+        seq: Int? = nil,
+        role: String,
+        author: String? = nil,
+        body: String,
+        status: String? = nil,
+        jobId: Int? = nil,
+        authorBotId: Int? = nil,
+        authorUserId: Int? = nil,
+        isMine: Bool? = nil,
+        attachments: String? = nil,
+        error: String? = nil,
+        createdAt: String? = nil,
+        displayName: String? = nil,
+        avatar: String? = nil
+    ) {
+        self.id = id
+        self.channelId = channelId
+        self.seq = seq
+        self.role = role
+        self.author = author
+        self.body = body
+        self.status = status
+        self.jobId = jobId
+        self.authorBotId = authorBotId
+        self.authorUserId = authorUserId
+        self.isMine = isMine
+        self.attachments = attachments
+        self.error = error
+        self.createdAt = createdAt
+        self.displayName = displayName
+        self.avatar = avatar
     }
 
     init(from decoder: Decoder) throws {
@@ -143,6 +213,8 @@ struct BotMessage: Identifiable, Decodable, Equatable {
         status = c.lenient(String.self, .status)
         jobId = c.lenient(Int.self, .jobId)
         authorBotId = c.lenient(Int.self, .authorBotId)
+        authorUserId = c.lenient(Int.self, .authorUserId)
+        isMine = c.lenient(Bool.self, .isMine) ?? c.lenient(Int.self, .isMine).map { $0 != 0 }
         attachments = c.lenient(String.self, .attachments)
         error = c.lenient(String.self, .error)
         createdAt = c.lenient(String.self, .createdAt)
@@ -159,6 +231,15 @@ struct BotMessage: Identifiable, Decodable, Equatable {
     var isSystem: Bool { role == "system" }
     /// 아직 진행 중인 봇 응답 (스트림으로 따라가야 한다)
     var isInFlight: Bool { status == "queued" || status == "running" }
+
+    /// 3분할 채팅 렌더링용 — 내가 보낸 user 메시지인지 판정한다.
+    /// SSE 브로드캐스트에는 `is_mine` 이 없을 수 있어 `authorUserId == myUserId` 를 함께 본다.
+    func isSentByMe(myUserId: Int) -> Bool {
+        guard isUser else { return false }
+        if let isMine { return isMine }
+        if myUserId > 0, let authorUserId { return authorUserId == myUserId }
+        return authorUserId == nil
+    }
 }
 
 struct BotApproval: Identifiable, Decodable, Equatable {
@@ -227,4 +308,185 @@ enum BotJobEvent: Equatable {
     case delta(String)
     /// 잡 종료. status: "done" | "failed"
     case end(status: String, error: String?)
+}
+
+// MARK: - Phase 31 / Hermes-bot P34: 채널 초대 · 게스트 · 멀티 유저
+
+/// `GET /api/me` 응답
+struct BotUserInfo: Decodable, Equatable {
+    let userId: Int
+    let displayName: String
+    /// "owner" | "guest"
+    let role: String
+    let publicUrl: String?
+
+    var isGuest: Bool { role == "guest" }
+
+    enum CodingKeys: String, CodingKey {
+        case role
+        case userId = "user_id"
+        case id
+        case displayName = "display_name"
+        case publicUrl = "public_url"
+    }
+
+    init(userId: Int, displayName: String, role: String = "owner", publicUrl: String? = nil) {
+        self.userId = userId
+        self.displayName = displayName
+        self.role = role
+        self.publicUrl = publicUrl
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        userId = c.lenient(Int.self, .userId) ?? c.lenient(Int.self, .id) ?? 0
+        displayName = c.lenient(String.self, .displayName) ?? "나"
+        role = c.lenient(String.self, .role) ?? "owner"
+        let rawUrl = c.lenient(String.self, .publicUrl)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        publicUrl = (rawUrl?.isEmpty == false) ? rawUrl : nil
+    }
+}
+
+/// 채널 초대 링크 (`POST/GET /api/channels/{id}/invites`)
+struct ChannelInvite: Identifiable, Decodable, Equatable {
+    let id: Int
+    let channelId: Int
+    let label: String
+    let inviteCode: String?
+    let inviteUrl: String?
+    let deepLink: String?
+    let maxUses: Int?
+    let usesCount: Int
+    let expiresAt: String?
+    let revoked: Bool
+    let createdAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, label, revoked
+        case channelId = "channel_id"
+        case inviteCode = "invite_code"
+        case inviteUrl = "invite_url"
+        case deepLink = "deep_link"
+        case maxUses = "max_uses"
+        case usesCount = "uses_count"
+        case expiresAt = "expires_at"
+        case createdAt = "created_at"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(Int.self, forKey: .id)
+        channelId = c.lenient(Int.self, .channelId) ?? 0
+        label = c.lenient(String.self, .label) ?? ""
+        inviteCode = c.lenient(String.self, .inviteCode)
+        inviteUrl = c.lenient(String.self, .inviteUrl)
+        deepLink = c.lenient(String.self, .deepLink)
+        maxUses = c.lenient(Int.self, .maxUses)
+        usesCount = c.lenient(Int.self, .usesCount) ?? 0
+        expiresAt = c.lenient(String.self, .expiresAt)
+        revoked = c.lenient(Bool.self, .revoked) ?? ((c.lenient(Int.self, .revoked) ?? 0) != 0)
+        createdAt = c.lenient(String.self, .createdAt)
+    }
+}
+
+/// 채널에 참여 중인 인간 멤버 (`GET /api/channels/{id}/users`)
+struct ChannelHumanMember: Identifiable, Decodable, Equatable {
+    let id: Int
+    let displayName: String
+    let role: String
+    let joinedAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, role
+        case displayName = "display_name"
+        case joinedAt = "joined_at"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(Int.self, forKey: .id)
+        displayName = c.lenient(String.self, .displayName) ?? "게스트"
+        role = c.lenient(String.self, .role) ?? "guest"
+        joinedAt = c.lenient(String.self, .joinedAt)
+    }
+}
+
+/// `POST /api/invites/{code}/accept` 응답
+struct InviteAcceptResult: Decodable, Equatable {
+    let token: String
+    let user: BotUserInfo
+    let channel: BotChannel
+}
+
+/// 채널 실시간 SSE 이벤트 (`GET /api/channels/{id}/stream`)
+enum ChannelStreamEvent: Equatable {
+    case ready
+    case message(BotMessage)
+    case revoked
+    case userRemoved(userId: Int)
+}
+
+/// 초대 링크(`https://host/invite/<code>`, `hermes://invite?url=...&code=...`) 또는
+/// 서버 주소 + 초대 코드 입력에서 `(serverURL, code)` 를 추출한다.
+enum InviteInputParser {
+    static func parse(urlOrLink: String, code rawCode: String = "") -> (serverURL: String, code: String)? {
+        let input = urlOrLink.trimmingCharacters(in: .whitespacesAndNewlines)
+        let explicitCode = rawCode.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !input.isEmpty else { return nil }
+
+        if let comps = URLComponents(string: input),
+           let scheme = comps.scheme?.lowercased(),
+           scheme == "hermes" || scheme == "hermeschat" {
+            let items = comps.queryItems ?? []
+            guard let rawUrl = items.first(where: { $0.name == "url" })?.value?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .trimmingCharacters(in: CharacterSet(charactersIn: "/")),
+                  !rawUrl.isEmpty else {
+                return nil
+            }
+            let linkCode = items.first(where: { $0.name == "code" })?.value?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            let code = (linkCode?.isEmpty == false ? linkCode : nil) ?? explicitCode
+            guard !code.isEmpty else { return nil }
+            return (normalizeServerURL(rawUrl), code)
+        }
+
+        let normalizedInput = input.contains("://") ? input : "http://\(input)"
+        if let comps = URLComponents(string: normalizedInput), let host = comps.host, !host.isEmpty {
+            let path = comps.path
+            if let range = path.range(of: "/invite/") {
+                let tail = String(path[range.upperBound...])
+                    .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+                let code = tail.isEmpty ? explicitCode : tail
+                guard !code.isEmpty else { return nil }
+                var origin = "\(comps.scheme ?? "https")://\(host)"
+                if let port = comps.port { origin += ":\(port)" }
+                return (origin, code)
+            }
+            guard !explicitCode.isEmpty else { return nil }
+            return (normalizeServerURL(input), explicitCode)
+        }
+
+        return nil
+    }
+
+    static func normalizeServerURL(_ raw: String) -> String {
+        var s = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        if !s.contains("://") {
+            s = "http://" + s
+        }
+        if var comps = URLComponents(string: s) {
+            if comps.scheme?.lowercased() == "http", comps.port == nil,
+               let host = comps.host, !host.isEmpty,
+               (host == "localhost" || host.hasPrefix("100.") || host.hasPrefix("192.168.") || host.hasPrefix("10.") || host.hasSuffix(".local")) {
+                comps.port = 8900
+            }
+            if comps.path == "/" { comps.path = "" }
+            if let rebuilt = comps.url?.absoluteString {
+                return rebuilt.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            }
+        }
+        return s
+    }
 }

@@ -143,3 +143,76 @@ final class ChatRecoveryTests: XCTestCase {
         XCTAssertFalse(parser.sawRunCompleted)
     }
 }
+
+final class ChannelInviteTests: XCTestCase {
+
+    func testParseWebInviteLink() {
+        let parsed = InviteInputParser.parse(urlOrLink: "https://bot.example.com/invite/abc-123")
+        XCTAssertEqual(parsed?.serverURL, "https://bot.example.com")
+        XCTAssertEqual(parsed?.code, "abc-123")
+    }
+
+    func testParseDeepLinkInvite() {
+        let parsed = InviteInputParser.parse(
+            urlOrLink: "hermes://invite?url=https%3A%2F%2Fbot.example.com&code=xyz789"
+        )
+        XCTAssertEqual(parsed?.serverURL, "https://bot.example.com")
+        XCTAssertEqual(parsed?.code, "xyz789")
+    }
+
+    func testParseHostAndExplicitCode() {
+        let parsed = InviteInputParser.parse(urlOrLink: "100.64.0.5", code: "k99")
+        XCTAssertEqual(parsed?.serverURL, "http://100.64.0.5:8900")
+        XCTAssertEqual(parsed?.code, "k99")
+        XCTAssertNil(InviteInputParser.parse(urlOrLink: "https://bot.example.com", code: ""))
+    }
+
+    func testBotMessageIsSentByMeThreeWaySplit() {
+        let mineExplicit = BotMessage(id: 1, role: "user", body: "hi", authorUserId: 9, isMine: true)
+        XCTAssertTrue(mineExplicit.isSentByMe(myUserId: 5))
+
+        let otherViaSse = BotMessage(id: 2, role: "user", body: "hello", authorUserId: 7, isMine: nil)
+        XCTAssertFalse(otherViaSse.isSentByMe(myUserId: 5))
+        XCTAssertTrue(otherViaSse.isSentByMe(myUserId: 7))
+
+        let botMsg = BotMessage(id: 3, role: "bot", body: "reply", authorUserId: nil, isMine: true)
+        XCTAssertFalse(botMsg.isSentByMe(myUserId: 5))
+    }
+
+    func testDecodeInviteAcceptResultAndChannelGuestMode() throws {
+        let json = """
+        {
+          "token": "hb_guest_tok",
+          "user": { "user_id": 12, "display_name": "민수", "role": "guest", "public_url": "https://bot.example.com" },
+          "channel": { "id": 4, "title": "리뷰방", "guest_bot_mode": "read_only", "members": [] }
+        }
+        """
+        let decoded = try JSONDecoder().decode(InviteAcceptResult.self, from: Data(json.utf8))
+        XCTAssertEqual(decoded.token, "hb_guest_tok")
+        XCTAssertTrue(decoded.user.isGuest)
+        XCTAssertEqual(decoded.user.userId, 12)
+        XCTAssertEqual(decoded.user.publicUrl, "https://bot.example.com")
+        XCTAssertEqual(decoded.channel.guestBotMode, "read_only")
+    }
+
+    func testDecodeChannelInviteLenientRevoked() throws {
+        let json = """
+        {
+          "id": 3,
+          "channel_id": 4,
+          "label": "디자이너",
+          "invite_code": "cd12",
+          "invite_url": "https://bot.example.com/invite/cd12",
+          "deep_link": "hermes://invite?url=https%3A%2F%2Fbot.example.com&code=cd12",
+          "uses_count": 2,
+          "max_uses": 5,
+          "revoked": 1
+        }
+        """
+        let inv = try JSONDecoder().decode(ChannelInvite.self, from: Data(json.utf8))
+        XCTAssertEqual(inv.id, 3)
+        XCTAssertEqual(inv.usesCount, 2)
+        XCTAssertEqual(inv.maxUses, 5)
+        XCTAssertTrue(inv.revoked)
+    }
+}

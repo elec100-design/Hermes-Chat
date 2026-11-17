@@ -17,6 +17,10 @@ final class BotChatViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var isSending = false
     @Published var isResettingContext = false
+    /// P34: 게스트 강퇴/초대 폐기 여부 (채널 접근 차단)
+    @Published var isRevoked = false
+    /// P34: 채널 게스트 @멘션 정책 ("read_only" | "mention_off" | "full")
+    @Published var guestBotMode: String?
     /// 로드/전송 실패 — 화면에 인라인으로 표시(알럿 없음)
     @Published var errorMessage: String?
     /// 오류는 아니지만 알려야 할 때(멘션 없음 등)
@@ -24,18 +28,40 @@ final class BotChatViewModel: ObservableObject {
 
     let channelId: Int
     let isChannel: Bool
+    let isGuest: Bool
+    private var myUserId: Int
     private let client: BotClient
 
     /// 잡 id → 구독 Task (같은 잡 중복 구독 방지)
     private var followTasks: [Int: Task<Void, Never>] = [:]
+    /// 채널 SSE 스트림 구독 Task
+    private var channelStreamTask: Task<Void, Never>?
     /// 잡 id → 구독 시작 횟수. 서버 상태가 어긋나 end 직후에도 계속 running 으로 보일 때 무한 재구독을 막는다.
     private var followCounts: [Int: Int] = [:]
     private let maxFollowsPerJob = 4
 
-    init(client: BotClient, channelId: Int, isChannel: Bool) {
+    init(
+        client: BotClient,
+        channelId: Int,
+        isChannel: Bool,
+        myUserId: Int = 0,
+        isGuest: Bool = false,
+        guestBotMode: String? = nil
+    ) {
         self.client = client
         self.channelId = channelId
         self.isChannel = isChannel
+        self.myUserId = myUserId
+        self.isGuest = isGuest
+        self.guestBotMode = guestBotMode
+    }
+
+    var shouldHideMemberChips: Bool {
+        isGuest && guestBotMode == "mention_off"
+    }
+
+    func isMessageFromMe(_ message: BotMessage) -> Bool {
+        message.isSentByMe(myUserId: myUserId)
     }
 
     // MARK: - Load
@@ -43,6 +69,9 @@ final class BotChatViewModel: ObservableObject {
     func load() async {
         isLoading = true
         defer { isLoading = false }
+        if myUserId == 0, let me = try? await client.fetchMe() {
+            myUserId = me.userId
+        }
         do {
             let list = try await client.fetchMessages(channelId: channelId)
             messages = list
@@ -56,6 +85,10 @@ final class BotChatViewModel: ObservableObject {
             // 더 이상 진행 중이 아닌 메시지의 버퍼는 정리
             let live = Set(list.filter { $0.isInFlight }.map { $0.id })
             streaming = streaming.filter { live.contains($0.key) }
+            startChannelStreamIfNeeded()
+        } catch BotError.server(status: 403, _) {
+            isRevoked = true
+            errorMessage = NSLocalizedString("bot.chat.revoked", comment: "")
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -65,7 +98,7 @@ final class BotChatViewModel: ObservableObject {
 
     func send() async {
         let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, !isSending else { return }
+        guard !text.isEmpty, !isSending, !isRevoked else { return }
         isSending = true
         notice = nil
         errorMessage = nil
@@ -74,15 +107,20 @@ final class BotChatViewModel: ObservableObject {
             let result = try await client.postMessage(channelId: channelId, body: text)
             if let error = result.error, !error.isEmpty {
                 notice = error
-            } else if result.jobId == nil && isChannel {
+            } else if result.jobId == nil && isChannel && !(isGuest && guestBotMode == "mention_off") {
                 notice = NSLocalizedString("bot.chat.no_mention", comment: "")
             }
+        } catch BotError.server(status: 403, _) {
+            isRevoked = true
+            errorMessage = NSLocalizedString("bot.chat.revoked", comment: "")
         } catch {
             errorMessage = error.localizedDescription
             input = text  // 실패하면 입력을 되돌려 다시 보낼 수 있게
         }
         isSending = false
-        await load()
+        if !isRevoked {
+            await load()
+        }
     }
 
     /// 새 대화 경계 설정 — 화면 기록은 보존하고 이후 발화부터 새 맥락/세션으로 시작
@@ -142,8 +180,68 @@ final class BotChatViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Channel stream (P34)
+
+    func startChannelStreamIfNeeded() {
+        guard isChannel, !isRevoked, channelStreamTask == nil else { return }
+        channelStreamTask = Task { [weak self] in
+            guard let self else { return }
+            while !Task.isCancelled && !self.isRevoked {
+                do {
+                    for try await event in self.client.channelStream(channelId: self.channelId) {
+                        if Task.isCancelled { break }
+                        switch event {
+                        case .ready:
+                            break
+                        case .message(let msg):
+                            self.upsertMessage(msg)
+                        case .revoked:
+                            self.isRevoked = true
+                            self.errorMessage = NSLocalizedString("bot.chat.revoked", comment: "")
+                            self.channelStreamTask = nil
+                            return
+                        case .userRemoved(let userId):
+                            if self.myUserId > 0 && userId == self.myUserId {
+                                self.isRevoked = true
+                                self.errorMessage = NSLocalizedString("bot.chat.revoked", comment: "")
+                                self.channelStreamTask = nil
+                                return
+                            }
+                        }
+                    }
+                } catch BotError.server(status: 403, _) {
+                    self.isRevoked = true
+                    self.errorMessage = NSLocalizedString("bot.chat.revoked", comment: "")
+                    self.channelStreamTask = nil
+                    return
+                } catch {
+                    if Task.isCancelled { break }
+                }
+                if Task.isCancelled || self.isRevoked { break }
+                try? await Task.sleep(for: .seconds(2))
+            }
+            self.channelStreamTask = nil
+        }
+    }
+
+    private func upsertMessage(_ msg: BotMessage) {
+        if let idx = messages.firstIndex(where: { $0.id == msg.id }) {
+            messages[idx] = msg
+        } else {
+            messages.append(msg)
+            messages.sort { ($0.seq ?? $0.id) < ($1.seq ?? $1.id) }
+        }
+        if msg.isInFlight, let jobId = msg.jobId {
+            follow(jobId: jobId, messageId: msg.id)
+        } else if !msg.isInFlight {
+            streaming[msg.id] = nil
+        }
+    }
+
     /// 화면을 떠날 때 — 수신만 끊는다(서버의 잡은 계속 돈다). 돌아오면 load() 가 다시 구독한다.
     func stopFollowing() {
+        channelStreamTask?.cancel()
+        channelStreamTask = nil
         for task in followTasks.values { task.cancel() }
         followTasks.removeAll()
         followCounts.removeAll()

@@ -29,17 +29,19 @@ struct HermesChatApp: App {
                     .tabItem { Label("tab.bots", systemImage: "bubble.left.and.text.bubble.right") }
                     .tag(AppTab.bots)
 
-                ProfileBoardView(appSettings: appSettings, selectedTab: $selectedTab)
-                    .tabItem { Label("tab.board", systemImage: "square.grid.2x2") }
-                    .tag(AppTab.board)
+                if !appSettings.isGuestMode {
+                    ProfileBoardView(appSettings: appSettings, selectedTab: $selectedTab)
+                        .tabItem { Label("tab.board", systemImage: "square.grid.2x2") }
+                        .tag(AppTab.board)
 
-                SessionListView(appSettings: appSettings)
-                    .tabItem { Label("tab.sessions", systemImage: "bubble.left.and.bubble.right") }
-                    .tag(AppTab.sessions)
+                    SessionListView(appSettings: appSettings)
+                        .tabItem { Label("tab.sessions", systemImage: "bubble.left.and.bubble.right") }
+                        .tag(AppTab.sessions)
 
-                KanbanView(appSettings: appSettings)
-                    .tabItem { Label("tab.kanban", systemImage: "rectangle.split.3x1") }
-                    .tag(AppTab.kanban)
+                    KanbanView(appSettings: appSettings)
+                        .tabItem { Label("tab.kanban", systemImage: "rectangle.split.3x1") }
+                        .tag(AppTab.kanban)
+                }
 
                 NavigationStack {
                     SettingsView(appSettings: appSettings)
@@ -48,31 +50,46 @@ struct HermesChatApp: App {
                 .tag(AppTab.settings)
             }
             .fullScreenCover(isPresented: Binding(
-                get: { !appSettings.isFirstLaunchComplete },
-                set: { if !$0 { appSettings.isFirstLaunchComplete = true } }
+                get: { !appSettings.isFirstLaunchComplete || appSettings.pendingInviteCode != nil },
+                set: {
+                    if !$0 {
+                        appSettings.isFirstLaunchComplete = true
+                        appSettings.pendingInviteURL = nil
+                        appSettings.pendingInviteCode = nil
+                    }
+                }
             )) {
                 OnboardingView(appSettings: appSettings)
             }
+            .onChange(of: appSettings.isGuestMode) { _, guest in
+                if guest && selectedTab != .bots && selectedTab != .settings {
+                    selectedTab = .bots
+                }
+            }
             .task {
-                await NotificationService.shared.requestAuthorization()
-                // 콜드 런치(Siri·위젯·URL)로 진입 요청이 이미 들어와 있을 수 있다 (T-131)
-                await routeVoiceEntryIfNeeded()
+                if appSettings.isGuestMode {
+                    selectedTab = .bots
+                } else {
+                    await NotificationService.shared.requestAuthorization()
+                    // 콜드 런치(Siri·위젯·URL)로 진입 요청이 이미 들어와 있을 수 있다 (T-131)
+                    await routeVoiceEntryIfNeeded()
+                }
             }
             // 음성 진입 요청 라우팅 — 세션 탭으로 전환 후 대상 세션을 push (T-131)
             .onChange(of: coordinator.pendingVoiceEntry) { _, pending in
-                if pending { Task { await routeVoiceEntryIfNeeded() } }
+                if pending && !appSettings.isGuestMode { Task { await routeVoiceEntryIfNeeded() } }
             }
-            // hermes://voice 딥링크 (T-133)
+            // hermes://voice, hermes://invite 딥링크 (T-133, T-226)
             .onOpenURL { url in handleDeepLink(url) }
             .onChange(of: scenePhase) { _, phase in
-                // 칸반 전이(done/blocked) 감지 폴링 — 포그라운드에서만 (T-093)
-                if phase == .active {
+                // 칸반 전이(done/blocked) 감지 폴링 — 포그라운드에서만, 게스트 제외 (T-093, T-226)
+                if phase == .active && !appSettings.isGuestMode {
                     NotificationService.shared.startPolling(appSettings: appSettings)
                 } else {
                     NotificationService.shared.stopPolling()
                 }
                 // 백그라운드 진입 시 주기 폴링 예약 — iOS가 기회적으로만 실행 (T-095)
-                if phase == .background {
+                if phase == .background && !appSettings.isGuestMode {
                     Self.scheduleBackgroundRefresh()
                 }
             }
@@ -136,6 +153,17 @@ struct HermesChatApp: App {
             let sessionId = URLComponents(url: url, resolvingAgainstBaseURL: false)?
                 .queryItems?.first(where: { $0.name == "session" })?.value
             coordinator.requestVoiceEntry(sessionId: sessionId)
+        case "invite":
+            let comps = URLComponents(url: url, resolvingAgainstBaseURL: false)
+            let inviteUrl = comps?.queryItems?.first(where: { $0.name == "url" })?.value
+            let inviteCode = comps?.queryItems?.first(where: { $0.name == "code" })?.value
+            if let parsed = InviteInputParser.parse(urlOrLink: url.absoluteString) {
+                appSettings.pendingInviteURL = parsed.serverURL
+                appSettings.pendingInviteCode = parsed.code
+            } else if let inviteCode, !inviteCode.isEmpty {
+                appSettings.pendingInviteURL = inviteUrl
+                appSettings.pendingInviteCode = inviteCode
+            }
         default:
             break
         }

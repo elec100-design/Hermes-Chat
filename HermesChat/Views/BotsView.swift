@@ -12,6 +12,7 @@ struct BotsView: View {
         let title: String
         let isChannel: Bool
         let members: [BotMember]
+        let guestBotMode: String?
     }
 
     @State private var bots: [Bot] = []
@@ -34,7 +35,7 @@ struct BotsView: View {
             }
             .navigationTitle("tab.bots")
             .toolbar {
-                if let client = appSettings.botClient {
+                if let client = appSettings.botClient, !appSettings.isGuestMode {
                     ToolbarItemGroup(placement: .topBarTrailing) {
                         NavigationLink {
                             BotApprovalsView(client: client) { pendingApprovals = $0 }
@@ -60,7 +61,8 @@ struct BotsView: View {
                         channelId: target.channelId,
                         title: target.title,
                         isChannel: target.isChannel,
-                        members: target.members
+                        members: target.members,
+                        initialGuestBotMode: target.guestBotMode
                     )
                 }
             }
@@ -71,8 +73,8 @@ struct BotsView: View {
                     }
                 }
             }
-            // 주소가 바뀌면(설정에서 입력 후 돌아온 경우 포함) 다시 읽는다
-            .task(id: appSettings.botHost) { await load() }
+            // 주소·권한이 바뀌면(설정·초대 참여 후 돌아온 경우 포함) 다시 읽는다
+            .task(id: "\(appSettings.botHost)|\(appSettings.botRole)|\(appSettings.botToken)") { await load() }
         }
     }
 
@@ -111,17 +113,19 @@ struct BotsView: View {
                 }
             }
 
-            Section("bots.section.bots") {
-                if bots.isEmpty && loaded && errorMessage == nil {
-                    Text("bots.empty.bots").foregroundStyle(.secondary)
-                }
-                ForEach(bots) { bot in
-                    if let dm = bot.dmChannelId {
-                        NavigationLink(value: ChatTarget(
-                            channelId: dm, title: bot.displayName, isChannel: false, members: []
-                        )) { botRow(bot) }
-                    } else {
-                        botRow(bot)  // DM 채널이 아직 없는 봇은 열 수 없다
+            if !appSettings.isGuestMode {
+                Section("bots.section.bots") {
+                    if bots.isEmpty && loaded && errorMessage == nil {
+                        Text("bots.empty.bots").foregroundStyle(.secondary)
+                    }
+                    ForEach(bots) { bot in
+                        if let dm = bot.dmChannelId {
+                            NavigationLink(value: ChatTarget(
+                                channelId: dm, title: bot.displayName, isChannel: false, members: [], guestBotMode: nil
+                            )) { botRow(bot) }
+                        } else {
+                            botRow(bot)  // DM 채널이 아직 없는 봇은 열 수 없다
+                        }
                     }
                 }
             }
@@ -134,7 +138,7 @@ struct BotsView: View {
                 }
                 ForEach(channels) { channel in
                     NavigationLink(value: ChatTarget(
-                        channelId: channel.id, title: channel.title, isChannel: true, members: channel.members
+                        channelId: channel.id, title: channel.title, isChannel: true, members: channel.members, guestBotMode: channel.guestBotMode
                     )) { channelRow(channel) }
                 }
             }
@@ -207,9 +211,38 @@ struct BotsView: View {
         guard let client = appSettings.botClient else { return }
         isLoading = true
         defer { isLoading = false }
+        if let me = try? await client.fetchMe() {
+            appSettings.applyBotUserInfo(me)
+        }
+        if appSettings.isGuestMode {
+            bots = []
+            pendingApprovals = 0
+            do {
+                channels = try await client.fetchChannels()
+                channelsError = nil
+                errorMessage = nil
+            } catch {
+                channels = []
+                errorMessage = error.localizedDescription
+            }
+            loaded = true
+            return
+        }
         do {
             bots = try await client.fetchBots()
             errorMessage = nil
+        } catch BotError.server(status: 403, _) {
+            // 게스트 토큰인데 아직 role 이 갱신되지 않았을 때 자동 전환
+            if let me = try? await client.fetchMe() {
+                appSettings.applyBotUserInfo(me)
+                if me.isGuest {
+                    await load()
+                    return
+                }
+            }
+            errorMessage = "권한이 없습니다 (403)"
+            loaded = true
+            return
         } catch {
             errorMessage = error.localizedDescription
             loaded = true

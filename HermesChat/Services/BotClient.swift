@@ -36,11 +36,46 @@ final class BotClient {
         self.token = token.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    // MARK: - Health
+    // MARK: - Health / Me / Invites (P34)
 
     /// 연결 확인 — 서버가 떠 있으면 성공, 아니면 throw. (/health 는 무인증)
     func health() async throws {
         _ = try await request("GET", "health", timeout: 10)
+    }
+
+    /// 현재 토큰의 사용자·권한("owner" | "guest") 조회.
+    func fetchMe() async throws -> BotUserInfo {
+        let data = try await request("GET", "api/me")
+        return try decode(BotUserInfo.self, from: data)
+    }
+
+    /// 초대 코드 수락 (무인증 — 기존 Authorization 헤더를 붙이지 않는다).
+    func acceptInvite(code: String, displayName: String) async throws -> InviteAcceptResult {
+        let encodedCode = code.trimmingCharacters(in: .whitespacesAndNewlines)
+            .addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? code
+        let url = baseURL.appendingPathComponent("api/invites/\(encodedCode)/accept")
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "POST"
+        urlRequest.timeoutInterval = 15
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.httpBody = try JSONSerialization.data(withJSONObject: [
+            "display_name": displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        ])
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await URLSession.shared.data(for: urlRequest)
+        } catch {
+            throw BotError.network(error)
+        }
+        guard let http = response as? HTTPURLResponse else {
+            throw BotError.server(status: 0, message: "응답 없음")
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            throw BotError.server(status: http.statusCode, message: Self.detail(from: data))
+        }
+        return try decode(InviteAcceptResult.self, from: data)
     }
 
     // MARK: - Bots / Channels
@@ -83,6 +118,125 @@ final class BotClient {
     /// 새 대화 경계 설정 — 화면 기록은 유지하고 이후 발화부터 새 맥락/세션으로 시작한다.
     func resetChannelContext(channelId: Int) async throws {
         _ = try await request("POST", "api/channels/\(channelId)/reset-context", body: Data("{}".utf8))
+    }
+
+    // MARK: - Channel Invites & Human Members (P34)
+
+    func updateChannelGuestBotMode(channelId: Int, mode: String) async throws -> BotChannel {
+        let body = try JSONSerialization.data(withJSONObject: ["guest_bot_mode": mode])
+        let data = try await request("PATCH", "api/channels/\(channelId)", body: body)
+        return try decode(BotChannel.self, from: data)
+    }
+
+    func createChannelInvite(
+        channelId: Int,
+        label: String = "",
+        maxUses: Int? = nil,
+        expiresHours: Int? = nil
+    ) async throws -> ChannelInvite {
+        var payload: [String: Any] = [:]
+        let trimmedLabel = label.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedLabel.isEmpty { payload["label"] = trimmedLabel }
+        if let maxUses { payload["max_uses"] = maxUses }
+        if let expiresHours { payload["expires_hours"] = expiresHours }
+        let body = try JSONSerialization.data(withJSONObject: payload)
+        let data = try await request("POST", "api/channels/\(channelId)/invites", body: body)
+        return try decode(ChannelInvite.self, from: data)
+    }
+
+    func fetchChannelInvites(channelId: Int) async throws -> [ChannelInvite] {
+        struct Response: Decodable { let data: [ChannelInvite] }
+        let data = try await request("GET", "api/channels/\(channelId)/invites")
+        return try decode(Response.self, from: data).data
+    }
+
+    func revokeChannelInvite(channelId: Int, inviteId: Int) async throws {
+        _ = try await request("DELETE", "api/channels/\(channelId)/invites/\(inviteId)")
+    }
+
+    func fetchChannelUsers(channelId: Int) async throws -> [ChannelHumanMember] {
+        struct Response: Decodable { let data: [ChannelHumanMember] }
+        let data = try await request("GET", "api/channels/\(channelId)/users")
+        return try decode(Response.self, from: data).data
+    }
+
+    func removeChannelUser(channelId: Int, userId: Int) async throws {
+        _ = try await request("DELETE", "api/channels/\(channelId)/users/\(userId)")
+    }
+
+    func fetchChannelAttachment(channelId: Int, path: String) async throws -> Data {
+        try await request("GET", "api/channels/\(channelId)/attachments/file", query: ["path": path], timeout: 60)
+    }
+
+    /// 채널 실시간 이벤트 스트림 (타인 발화·봇 응답·강퇴 알림)
+    func channelStream(channelId: Int) -> AsyncThrowingStream<ChannelStreamEvent, Error> {
+        var urlRequest = URLRequest(url: baseURL.appendingPathComponent("api/channels/\(channelId)/stream"))
+        urlRequest.httpMethod = "GET"
+        urlRequest.timeoutInterval = 600
+        urlRequest.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+        if !token.isEmpty {
+            urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let request = urlRequest
+
+        return AsyncThrowingStream { continuation in
+            let task = Task {
+                do {
+                    let (bytes, response) = try await URLSession.shared.bytes(for: request)
+                    guard let http = response as? HTTPURLResponse else {
+                        continuation.finish(throwing: BotError.server(status: 0, message: "응답 없음"))
+                        return
+                    }
+                    guard http.statusCode == 200 else {
+                        if http.statusCode == 401 {
+                            continuation.finish(throwing: BotError.unauthorized)
+                        } else {
+                            continuation.finish(throwing: BotError.server(
+                                status: http.statusCode, message: "채널 스트림을 열 수 없습니다"))
+                        }
+                        return
+                    }
+
+                    var currentEvent = ""
+                    let decoder = JSONDecoder()
+                    for try await line in bytes.lines {
+                        if line.hasPrefix("event:") {
+                            currentEvent = line.dropFirst(6).trimmingCharacters(in: .whitespaces)
+                            continue
+                        }
+                        guard line.hasPrefix("data:") else { continue }
+                        let payload = line.dropFirst(5).trimmingCharacters(in: .whitespaces)
+                        let eventName = currentEvent
+                        currentEvent = ""
+                        let data = Data(payload.utf8)
+
+                        switch eventName {
+                        case "ready":
+                            continuation.yield(.ready)
+                        case "message":
+                            if let msg = try? decoder.decode(BotMessage.self, from: data) {
+                                continuation.yield(.message(msg))
+                            }
+                        case "revoked":
+                            continuation.yield(.revoked)
+                        case "user_removed":
+                            if let obj = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+                               let uid = obj["user_id"] as? Int {
+                                continuation.yield(.userRemoved(userId: uid))
+                            }
+                        default:
+                            continue
+                        }
+                    }
+                    continuation.finish()
+                } catch is CancellationError {
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
     }
 
     // MARK: - Job stream (SSE)
