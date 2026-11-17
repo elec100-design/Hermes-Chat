@@ -54,11 +54,17 @@
 > **2026-11-12 현황 (Phase 22~25)**:
 > - Phase 22~25 코드 작성 완료 — 맥 빌드/실기기 검증 대기, 신규 Swift 7개 pbxproj 등록됨, 다국어 키 41개 추가(ko/en/zh-Hans)
 
+> **2026-11-17 현황 (게이트웨이 구성 변경 반영)**:
+> - 맥미니 게이트웨이는 **2026-10-22부터 멀티플렉스**(`gateway.multiplex_profiles: true`) — :8642 하나가 전 프로필, default 외는 `/p/<profile>/` + 그 프로필 키(PLAN §0.1a). 8643~ 포트는 닫혀 있다(11-17 `lsof` 확인).
+> - 앱(iOS·Android) 게이트웨이 직결은 아직 포트 기준 → **default 외 프로필 직결 불가**. 봇·채널·토론(Hermes-bot 경유)은 정상. 대응 태스크 **Phase 30 / T-216~T-218**.
+> - T-000·`scripts/setup_profiles_api.sh` 는 옛 구성 기록이다. 다시 실행하지 않는다.
+> - Android 는 Phase 26~28 로 봇 중심 구조(T-170~T-209, T-215)가 들어갔고, 최근 작업은 아래 Phase 28·29 표와 빌드 검증 기록을 본다.
+
 ## 즉시 (사람 또는 맥미니 Hermes가 1회 수행)
 
 | ID | 작업 | 상태 |
 |----|------|------|
-| T-000 | 맥미니에서 `bash scripts/setup_profiles_api.sh <API_KEY>` 실행 → 프로필별 API 서버 활성화 | DONE (06-10, default+6프로필 8642~8648 헬스체크 통과) |
+| T-000 | 맥미니에서 `bash scripts/setup_profiles_api.sh <API_KEY>` 실행 → 프로필별 API 서버 활성화 | DONE (06-10, default+6프로필 8642~8648 헬스체크 통과) — ⚠️ 10-22 멀티플렉스 전환으로 무효, 재실행 금지 (PLAN §0.1a) |
 | T-001 | Xcode에서 `claude/busy-meitner-lhc5os` 브랜치 빌드 + 실기기에서 프로필 전환 확인 | DONE (Hermes, 06-10) |
 
 ## Phase 2-2 / 2-3 — 프로필 전환 · 자동제목 · 검색
@@ -492,6 +498,16 @@
 | T-212 | Android 더보기 > MCP 서버 — 프로필 선택, 등록됨(토글·테스트·제거), 추가(카탈로그 체크 목록 + URL) | `android/…/ui/more`, `…/net/BridgeApi.kt` | TODO (T-211 뒤) |
 | T-213 | 자격증명 — API 키 입력(프로필 `.env`), OAuth 기기 코드 로그인(`hermes mcp login --flow device`) 중계 | Bridge + Android | TODO (T-212 뒤) |
 | T-214 | iOS·Hermes-bot 웹에 같은 화면 | — | TODO |
+
+## Phase 30 — 게이트웨이 직결 멀티플렉스 대응 (계획, PLAN Phase 30)
+
+> 배경: 게이트웨이가 10-22부터 멀티플렉스(PLAN §0.1a). 앱 직결은 포트 기준이라 default 외 프로필이 안 닿는다. Hermes-bot P28 이 같은 문제를 푼 방식을 따른다.
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-216 | 프로필 base URL 을 `host:8642` + (default 외) `/p/<name>` 로 조립, 프로필별 키 사용. 발견은 Bridge 이름 목록 → `/p/<name>/health` 프로브, 실패 시 옛 포트 폴백. 세션 목록·채팅·Deep think·봇 프로필 "지난 세션" 전부 이 경로로. URL 조립 단위 테스트(멀티플렉스/옛 포트) | iOS `Models/ProfileModels.swift`·`Services/AppDefaults.swift`·`Views/CreateProfileView.swift`, Android `…/data/Settings*`·`…/ui/chat/ChatViewModel.kt`·`…/ui/AppNav.kt`·`…/ui/bots/profile/BotProfileScreen.kt` | TODO |
+| T-217 | 프로필 생성·재시작을 멀티플렉스에 맞춤 — 생성 시 포트 할당 대신 프로필 `.env` `API_SERVER_KEY` 확인·생성 후 `/p/<name>/health` 확인. 프로필별 `gateway restart` 가 멀티플렉스에서 어떻게 도는지 먼저 맥미니에서 확인 | `server/hermes_bridge.py`, iOS `CreateProfileView`·`ProfileDetailView` | TODO (맥미니 확인 먼저) |
+| T-218 | (선택) Bridge `/profiles` 에 `multiplex`·`base_path` 를 함께 돌려주고, 멀티플렉스면 옛 `port`·`api_enabled` 를 쓰지 않게 표시 | `server/hermes_bridge.py`, `server/README.md` | TODO |
 
 ## Phase A — 앱스토어 상품화 Phase 0: 컴플라이언스 + 다국어 기반
 

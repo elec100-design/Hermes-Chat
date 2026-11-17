@@ -60,8 +60,8 @@ curl -H "Authorization: Bearer $BRIDGE_TOKEN" http://127.0.0.1:8765/profiles
 | 메서드/경로 | 설명 |
 |---|---|
 | `GET /health` | 헬스체크 (인증 불필요) |
-| `GET /profiles` | 프로필 목록 `[{name, port, api_enabled}]` |
-| `POST /profiles/{name}/restart` | 해당 프로필 게이트웨이 재시작 (백그라운드 분리 실행 후 최대 10초 헬스 폴링) |
+| `GET /profiles` | 프로필 목록 `[{name, port, api_enabled}]` — ⚠️ `port`·`api_enabled` 는 프로필 `.env` 의 옛 값. 게이트웨이가 멀티플렉스(:8642, default 외 `/p/<name>/`)인 지금은 의미 없음 (docs/PLAN.md §0.1a, T-218) |
+| `POST /profiles/{name}/restart` | 해당 프로필 게이트웨이 재시작 (백그라운드 분리 실행 후 최대 10초 헬스 폴링). 멀티플렉스에서 default 외 프로필 재시작 동작은 확인 필요(T-217) |
 | `GET /profiles/{name}/soul` | SOUL.md 내용 `{content}` |
 | `PUT /profiles/{name}/soul` | SOUL.md 저장 (body: `{"content": "..."}`, 이전본 .bak 백업) |
 | `POST /upload/{profile}` | 파일 업로드 (raw body + `X-Filename` 헤더) → `{path}` |

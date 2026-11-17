@@ -1,6 +1,6 @@
 # HermesChat
 
-맥미니에서 실행 중인 [hermes-agent](https://github.com/NousResearch/hermes-agent)를 아이폰에서 사용하는 SwiftUI 네이티브 앱.
+맥미니에서 실행 중인 [hermes-agent](https://github.com/NousResearch/hermes-agent)를 아이폰에서 사용하는 SwiftUI 네이티브 앱. Android 앱(`android/`, 봇 중심)도 같은 저장소에 있다.
 
 ## 아키텍처
 
@@ -11,16 +11,17 @@
          Tailscale VPN               │
 ┌──────────────▼─────────────────────▼───────────────┐
 │ 맥미니                                              │
-│  :8642  default 프로필 게이트웨이 API               │
-│  :8643  프로필A 게이트웨이 API                      │
-│  :8644  프로필B 게이트웨이 API  …                   │
+│  :8642  멀티플렉스 게이트웨이 API (전 프로필 공유)  │
+│         default = /…,  그 외 = /p/<profile>/…        │
 │  :8765  Hermes Bridge (hermes_bridge.py)            │
+│  :8900  Hermes-bot 서버 (봇·채널·승인)              │
 │  :8000  hermes-agent 대시보드                       │
 │  ~/.hermes/kanban.db  내장 칸반 DB                  │
 └─────────────────────────────────────────────────────┘
 ```
 
-- **게이트웨이 API** — 세션 생성·대화·SSE 스트리밍 등 공식 REST API
+- **게이트웨이 API** — 세션 생성·대화·SSE 스트리밍 등 공식 REST API. 2026-10-22부터 `gateway.multiplex_profiles: true` — 게이트웨이 **하나(:8642)**가 모든 프로필을 서비스한다. default는 접두사 없이, 나머지는 `/p/<profile>/…`, 인증은 그 프로필 `.env`의 `API_SERVER_KEY`. 프로필별 포트(8643~)는 더 이상 없다 (상세: `docs/PLAN.md` §0.1a)
+- **Hermes-bot 서버(:8900)** — 봇(=프로필)·채널·승인 백엔드. 멀티플렉스 `/p/<profile>/` 라우팅을 지원해 봇 탭은 전 프로필에 닿는다
 - **Hermes Bridge** — 게이트웨이가 지원하지 않는 기능(SOUL.md 편집, 파일 업로드, 칸반 쓰기 등)을 담당하는 단일 Python 파일 서버
 - **Tailscale** — 공유기 설정 없이 외부에서 맥미니에 접근
 
@@ -31,6 +32,7 @@
 ### 멀티 프로필 관리
 - **프로필 보드** — 2×3 그리드로 등록된 hermes-agent 프로필을 한눈에 표시. 온라인 상태 실시간 프로브
 - **프로필 자동 검색** — 8642~8651 포트를 병렬 스캔해 활성 게이트웨이를 자동 등록 (Bridge가 있으면 Bridge 목록 우선)
+  > ⚠️ **멀티플렉스 미대응 (T-216)**: 앱(iOS·Android)의 게이트웨이 직결은 아직 "프로필 = 포트" 구조다. 지금 맥미니에서는 **default만 직결되고**, 다른 프로필의 세션 직결(보드·세션 목록·Deep think·봇 프로필의 "지난 세션")은 동작하지 않는다. 봇 채팅은 Hermes-bot 경유라 정상
 - **프로필 생성** — 보드의 `+` 카드 → 이름·SOUL 입력 → Bridge가 **백엔드에 완전 생성**(`hermes profile create <name> --clone-from default`로 default의 config.yaml/.env/SOUL.md/skills 복제, 포트 자동 할당, 게이트웨이 기동·헬스 폴링)
 - **프로필 삭제** — 상세 화면의 "프로필 삭제"(확인 다이얼로그) → Bridge `hermes profile delete <name> -y`로 백엔드에서 제거하고 앱 목록에서도 정리 (default는 삭제 불가)
 - **프로필 전환** — 탭 한 번으로 전환. 이전 프로필 응답이 늦게 도착해도 세대 카운터로 안전하게 폐기
@@ -125,18 +127,20 @@ launchctl load ~/Library/LaunchAgents/com.hermes.bridge.plist
 > ```
 > (LaunchAgent 파일명은 등록 시 쓴 이름. 위 절차 전문은 `docs/HANDOFF.md` §2.5)
 
-### 2. 프로필별 API 서버 활성화
-```bash
-bash scripts/setup_profiles_api.sh <API_KEY>
-# default + 각 프로필에 8642~부터 포트 자동 배정,
-# API_SERVER_HOST=0.0.0.0, API_SERVER_MODEL_NAME=<프로필명> 설정 후 재시작
-```
+### 2. 게이트웨이 API (멀티플렉스)
+`~/.hermes/config.yaml`의 `gateway.multiplex_profiles: true` 상태에서 default 게이트웨이 하나(:8642)만 띄운다.
+- default `.env`: `API_SERVER_ENABLED=true`, `API_SERVER_PORT=8642`, `API_SERVER_HOST=<Tailscale IP>`(현재 `100.83.59.60`), `API_SERVER_KEY`
+- 다른 프로필은 자기 `.env`에 `API_SERVER_KEY`만 있으면 `:8642/p/<profile>/`로 응답한다 (키 없으면 401 — default 키를 상속하지 않음)
+- 확인: `curl http://100.83.59.60:8642/p/wiki/health` → `{"status": "ok", ...}`
+
+> `scripts/setup_profiles_api.sh`(프로필마다 8643~ 포트 배정)는 **멀티플렉스 이전 구조용이라 쓰지 않는다.** 멀티플렉스에서 프로필별 게이트웨이를 따로 띄우면 종료 코드 75로 끝난다.
 
 ### 3. 앱 설정
 1. **서버 주소** — `http://<Tailscale IP>` 입력
 2. **API Key** 입력
-3. **프로필 자동 검색** 버튼 탭 → 활성 게이트웨이 자동 등록
+3. **프로필 자동 검색** 버튼 탭 → 활성 게이트웨이 자동 등록 (현재는 default만 — T-216)
 4. (선택) **Bridge URL** — `http://<Tailscale IP>:8765` 입력
+5. (선택) **Hermes-bot URL** — `http://<Tailscale IP>:8900` 입력 → 봇 탭(전 프로필)
 
 ---
 
@@ -148,7 +152,8 @@ bash scripts/setup_profiles_api.sh <API_KEY>
 | `docs/TASKS.md` | 작업 상태 보드 (TODO/DOING/DONE) |
 | `docs/HANDOFF.md` | 에이전트 교대 프로토콜, 빌드 명령, pbxproj 등록 절차 |
 | `server/hermes_bridge.py` | Hermes Bridge 서버 (단일 파일, stdlib만 사용) |
-| `scripts/setup_profiles_api.sh` | 맥미니 프로필 API 서버 초기화 스크립트 |
+| `android/` | Android 앱 (Kotlin + Jetpack Compose, 봇 중심) — `android/README.md` |
+| `scripts/setup_profiles_api.sh` | (구) 프로필별 포트 배정 스크립트 — 멀티플렉스 전환 후 미사용 |
 
 ---
 
