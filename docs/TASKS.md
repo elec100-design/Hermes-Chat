@@ -453,7 +453,7 @@
 | T-201 | 토론 UI — 입력 카드 토론 버튼(봇 2+ 채널), 시작 시트(주제·진행자·참가자·발언 횟수·도구 허용, 서버 거절 사유는 시트 안에 표시), 진행 줄(봇별 사용/한도·중지), 진행·최종 결론 꼬리표 | `…/ui/bots/chat/DiscussionSheet.kt`(신규), `…/ui/bots/BotChatScreen.kt` | NEEDS-BUILD (11-16 클라우드 컨테이너 빌드·단위 테스트 101개 통과, 실기기 미검증) |
 | T-202 | 단위 테스트 — 토론 필드·상태 파싱, 시작/중지 요청 본문·경로, 400 detail 전달 | `android/app/src/test/…/{BotParsersTest,BotApiTest}.kt` | NEEDS-BUILD (11-16 클라우드 컨테이너 빌드·단위 테스트 101개 통과, 실기기 미검증) |
 | T-203 | iOS 토론 UI — 봇 채팅에 같은 시트·진행 줄. 그 전까지 iOS·웹은 채널에서 `/토론 <주제>` 로 연다(서버가 처리) | `HermesChat/Views/BotChatView.swift` 등 | TODO |
-| T-204 | (발견된 버그, 토론과 무관) 크론 탭 프로필 필터에 `.deleted 0` 칩이 뜬다 — Bridge 프로필 나열(`PROFILES_DIR.iterdir()`)이 휴지통 디렉터리 `.deleted` 를 프로필로 돌려준다. `.` 으로 시작하는 디렉터리 제외 + 맥미니 Bridge 재배포 | `server/hermes_bridge.py` | TODO |
+| T-204 | (발견된 버그, 토론과 무관) 크론 탭 프로필 필터에 `.deleted 0` 칩이 뜬다 — Bridge 프로필 나열(`PROFILES_DIR.iterdir()`)이 휴지통 디렉터리 `.deleted` 를 프로필로 돌려준다. `.` 으로 시작하는 디렉터리 제외 + 맥미니 Bridge 재배포 | `server/hermes_bridge.py` | NEEDS-BUILD (11-17 default — 수정·Bridge 재배포, `/profiles` 응답에 `.deleted` 없음 확인. 크론 칩 실기기 확인 대기) |
 | T-205 | 멘션 없이 보낸 메시지가 사라지는 문제 — 봇 2명 이상이면 전송을 막고 수신 봇을 고른다(기본값=마지막으로 답한 봇). 봇 1명은 자동 slug 유지하고 누가 받았는지만 표시. 빈 화면의 주 동작은 안내 문구와 봇 칩을 한 덩어리로. 서버는 멘션 없을 때 job_id=null 만 주고 오류 문구는 없음(확인만, 서버 무수정) | `android/…/data/ChatUx.kt`, `…/ui/bots/BotChatScreen.kt`, `test/…/ChatUxTest.kt` | NEEDS-BUILD |
 | T-206 | 칸반 보드 첫 화면 — BoardOrder 유지. 처음 열 때 실행 중 열로 스크롤, 실행 중이 비면 대기 열. 빈 열은 좁은 헤더로 접고 탭하면 펼침. 오른쪽에 열이 더 있으면 스크롤 힌트 | `android/…/ui/kanban/KanbanScreen.kt`, `KanbanLayout.kt` | NEEDS-BUILD |
 | T-207 | Git 버튼과 작업 경로 — 불러오는 중·브랜치 없음·오류를 나누고, 넓은 헤더는 경로를 가운데서 줄여 끝 폴더·브랜치·변경 수를 보이게 함 | `android/…/data/ChatUx.kt`, `…/ui/workspaces/GitActions.kt`, `test/…/ChatUxTest.kt` | NEEDS-BUILD |
@@ -487,7 +487,7 @@
 
 | ID | 작업 | 파일 | 상태 |
 |----|------|------|------|
-| T-210 | **맥미니 사전 확인**(착수 조건): ①`hermes mcp --help` 서브커맨드 목록(특히 list·remove 유무) ②`hermes mcp catalog` 출력 형식 ③`hermes [-p <프로필>] mcp install <name>` 이 입력 없이 끝나는지·무엇을 묻는지 ④프로필별 `config.yaml` 의 `mcp_servers` 블록 실제 모양 ⑤멀티플렉스 게이트웨이에서 프로필별 MCP 가 따로 적용되는지. 결과를 PLAN §0.4 에 기록 | 맥미니 | TODO (맥 에이전트/사용자) |
+| T-210 | **맥미니 사전 확인**(착수 조건): ①`hermes mcp --help` 서브커맨드 목록(특히 list·remove 유무) ②`hermes mcp catalog` 출력 형식 ③`hermes [-p <프로필>] mcp install <name>` 이 입력 없이 끝나는지·무엇을 묻는지 ④프로필별 `config.yaml` 의 `mcp_servers` 블록 실제 모양 ⑤멀티플렉스 게이트웨이에서 프로필별 MCP 가 따로 적용되는지. 결과를 PLAN §0.4 에 기록 | 맥미니 | DOING(default, 11-17) — ①②④⑤ 확인·PLAN §0.4 기록. ③ install 은 쓰기라 미실행 |
 | T-211 | Bridge MCP API — 카탈로그·프로필별 목록(값 마스킹)·추가(카탈로그/URL)·켜기끄기·제거·연결 테스트. 쓰기는 `hermes mcp` CLI 경유, CLI 에 없는 것만 `mcp_servers` 블록 라인 편집(.bak) | `server/hermes_bridge.py` | TODO (T-210 뒤) |
 | T-212 | Android 더보기 > MCP 서버 — 프로필 선택, 등록됨(토글·테스트·제거), 추가(카탈로그 체크 목록 + URL) | `android/…/ui/more`, `…/net/BridgeApi.kt` | TODO (T-211 뒤) |
 | T-213 | 자격증명 — API 키 입력(프로필 `.env`), OAuth 기기 코드 로그인(`hermes mcp login --flow device`) 중계 | Bridge + Android | TODO (T-212 뒤) |
@@ -569,3 +569,4 @@
 | 11-16 | claude/hermes-chat-improvements-wc6g8f (T-200~T-202) | ANDROID BUILD SUCCESSFUL | Claude Code 클라우드 컨테이너 — `:app:testDebugUnitTest :app:assembleDebug` 통과(JDK 21, SDK platform 36), 단위 테스트 101개(토론 파서·API 2건 추가). 화면은 눈으로 확인하지 못했다(에뮬레이터 없음) — 맥미니 빌드 APK 로 Phase 28 체크리스트 수행 필요. 서버는 Hermes-bot P32(pytest 276 통과 + 실제 uvicorn·러너 루프로 토론 한 판 HTTP 구동 확인) |
 | 11-16 | claude/hermes-chat-improvements-wc6g8f @ a0acc65 | ANDROID BUILD SUCCESSFUL | T-205 `./gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug` 통과, 단위 테스트 107개. 실기기 미검증 |
 | 11-16 | claude/hermes-chat-improvements-wc6g8f @ 59e1b37 | ANDROID BUILD SUCCESSFUL | T-215 `./gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug` 통과, 단위 테스트 114개. 실기기 미검증 |
+| 11-17 | claude/t204-bridge-dotdirs (main 909ef69 + T-204) | ANDROID BUILD SUCCESSFUL | default 맥미니 — `JAVA_HOME=openjdk@17 ./gradlew :app:testDebugUnitTest :app:assembleDebug --rerun-tasks` 통과, 단위 테스트 114개(실패 0). APK sha256 e084d565…5f0f, 18888 배포본과 해시 일치. 실기기 미검증(adb 미연결) |

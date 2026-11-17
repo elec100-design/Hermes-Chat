@@ -79,7 +79,7 @@ def poll_health(port, timeout_sec):
 def list_profile_names():
     names = ["default"]
     if PROFILES_DIR.is_dir():
-        names += sorted(p.name for p in PROFILES_DIR.iterdir() if p.is_dir())
+        names += sorted(p.name for p in PROFILES_DIR.iterdir() if p.is_dir() and not p.name.startswith("."))
     return names
 
 
