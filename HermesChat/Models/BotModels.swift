@@ -435,7 +435,7 @@ enum MentionAutocomplete {
     }
 
     static func extractQuery(from text: String) -> Query? {
-        guard let regex = try? NSRegularExpression(pattern: "(?:^|\\s)(@[^\\s@]*)$") else { return nil }
+        guard let regex = try? NSRegularExpression(pattern: "(?:^|[^A-Za-z0-9._%+-])(@[^\\s@]*)$") else { return nil }
         let ns = text as NSString
         let range = NSRange(location: 0, length: ns.length)
         guard let match = regex.firstMatch(in: text, range: range),

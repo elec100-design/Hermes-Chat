@@ -109,7 +109,7 @@ object ChatUx {
     /** 커서 끝 `@검색어` 토큰 정보 (`@` 포함 시작 인덱스 + 검색어). 이메일(`a@b`)은 제외. */
     data class MentionQuery(val atIndex: Int, val prefix: String)
 
-    private val trailingMention = Regex("(?:^|\\s)(@[^\\s@]*)$")
+    private val trailingMention = Regex("(?:^|[^A-Za-z0-9._%+-])(@[^\\s@]*)$")
 
     fun extractMentionQuery(text: String): MentionQuery? {
         val m = trailingMention.find(text) ?: return null
