@@ -139,22 +139,37 @@ fun ChannelAvatarGroup(
 }
 
 /** 봇 서버 연결 확인 결과. [ok] 면 [message] 는 성공 안내. */
-data class BotConnectionResult(val ok: Boolean, val message: String)
+data class BotConnectionResult(
+    val ok: Boolean,
+    val message: String,
+    val userInfo: com.hermes.chatandroid.data.BotUserInfo? = null,
+)
 
 /**
  * `/health`(무인증)로 도달성, 이어서 인증이 필요한 `/api/bots` 로 토큰을 확인한다.
- * 401 은 "네트워크"가 아니라 토큰 문제로 분명히 안내한다.
+ * 401 은 "네트워크"가 아니라 토큰 문제, 403 은 게스트 토큰이므로 `/api/me` + `/api/channels` 로 판정한다.
  */
 suspend fun checkBotServer(api: BotApi): BotConnectionResult {
-    if (!api.health()) return BotConnectionResult(false, "서버에 연결할 수 없습니다. 주소와 Tailscale 연결을 확인하세요.")
+    if (!api.health()) return BotConnectionResult(false, "서버에 연결할 수 없습니다. 주소와 네트워크 연결을 확인하세요.")
     return try {
         val n = api.fetchBots(activeOnly = false).size
         BotConnectionResult(true, "연결 성공 (봇 ${n}개)")
     } catch (e: kotlinx.coroutines.CancellationException) {
         throw e
     } catch (e: ApiException) {
-        if (e.code == 401) BotConnectionResult(false, "토큰이 올바르지 않거나 필요합니다. 서버에 HB_API_TOKEN 이 설정돼 있으면 같은 토큰을 입력하세요.")
-        else BotConnectionResult(false, e.message ?: "서버 오류")
+        when (e.code) {
+            401 -> BotConnectionResult(false, "토큰이 올바르지 않거나 필요합니다. 서버에 HB_API_TOKEN 이 설정돼 있으면 같은 토큰을 입력하세요.")
+            403 -> {
+                val me = runCatching { api.fetchMe() }.getOrNull()
+                if (me != null && me.isGuest) {
+                    val chCount = api.fetchChannels().size
+                    BotConnectionResult(true, "게스트 연결 성공 (${me.displayName} · 채널 ${chCount}개)", userInfo = me)
+                } else {
+                    BotConnectionResult(false, e.message ?: "접근 권한이 없습니다 (403)")
+                }
+            }
+            else -> BotConnectionResult(false, e.message ?: "서버 오류")
+        }
     } catch (e: Exception) {
         BotConnectionResult(false, e.message?.takeIf { it.isNotBlank() } ?: "서버에 연결할 수 없습니다.")
     }

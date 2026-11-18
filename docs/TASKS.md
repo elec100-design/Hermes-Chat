@@ -466,6 +466,8 @@
 | T-208 | 크론 카드 — 접히면 이름·다음 실행·마지막 성공/실패만. cron 식과 프롬프트는 펼쳤을 때만. 추가 버튼이 마지막 카드를 가리지 않게 목록 아래 여백. 실패 필터·실행 기록은 만들지 않음 | `android/…/ui/cron/CronScreen.kt` | NEEDS-BUILD |
 | T-209 | 에이전트 칩을 누르면 커서가 맨 앞이 아니라 @이름 뒤에 있게. BasicTextField String 오버로드는 바깥에서 글을 바꾸면 선택을 0에 남긴다 | `android/…/data/ComposerCaret.kt`, `…/ui/components/ChatComposer.kt`, `…/ui/bots/BotChatScreen.kt` | NEEDS-BUILD |
 | T-215 | Live 버튼에 Live 글자. 글라스 오류는 아는 문구만 한국어로 바꾸고 원문은 자세히에 둔다. 오류가 있으면 업데이트 후 다시 연결을 숨긴다. 촬영 크기 안내는 짧게 | `android/…/data/ChatUx.kt`, `…/ui/bots/chat/LiveBar.kt`, `…/ui/settings/GlassesSettings.kt`, `test/…/ChatUxTest.kt` | NEEDS-BUILD |
+| T-219 | (Hermes-bot P33 연동) Android 봇 채팅 상단 "새 대화 (맥락 초기화)"(`POST /api/channels/{id}/reset-context`) + 토론 결론 카드 `"이 결론으로 이어서 요청"` 버튼 + `BotApiTest` 단위 테스트 | `android/…/net/BotApi.kt`, `…/data/DemoApis.kt`, `…/ui/bots/BotChatScreen.kt`, `test/…/BotApiTest.kt` | NEEDS-BUILD (11-17 로컬 빌드·단위 115·lintDebug 통과, 서버 P33 맥락 유지 실기 통과, `reset-context` UI 는 새 APK 설치 후 확인) |
+| T-220 | (Hermes-bot P33 연동) iOS 봇 채팅 툴바 "새 대화 시작"(`POST /api/channels/{id}/reset-context`) + 다국어 4키(ko/en/zh-Hans) | `HermesChat/Services/BotClient.swift`, `ViewModels/BotChatViewModel.swift`, `Views/BotChatView.swift`, `Resources/*.lproj/Localizable.strings` | NEEDS-BUILD (11-17 iOS Simulator BUILD SUCCEEDED, 실기기 미검증) |
 
 **T-215 실기기 검증 체크리스트** (미실행 — 59e1b37 단위 114·assembleDebug·lintDebug 통과):
 커버:
@@ -508,6 +510,21 @@
 | T-216 | 프로필 base URL 을 `host:8642` + (default 외) `/p/<name>` 로 조립, 프로필별 키 사용. 발견은 Bridge 이름 목록 → `/p/<name>/health` 프로브, 실패 시 옛 포트 폴백. 세션 목록·채팅·Deep think·봇 프로필 "지난 세션" 전부 이 경로로. URL 조립 단위 테스트(멀티플렉스/옛 포트) | iOS `Models/ProfileModels.swift`·`Services/AppDefaults.swift`·`Views/CreateProfileView.swift`, Android `…/data/Settings*`·`…/ui/chat/ChatViewModel.kt`·`…/ui/AppNav.kt`·`…/ui/bots/profile/BotProfileScreen.kt` | TODO |
 | T-217 | 프로필 생성·재시작을 멀티플렉스에 맞춤 — 생성 시 포트 할당 대신 프로필 `.env` `API_SERVER_KEY` 확인·생성 후 `/p/<name>/health` 확인. 프로필별 `gateway restart` 가 멀티플렉스에서 어떻게 도는지 먼저 맥미니에서 확인 | `server/hermes_bridge.py`, iOS `CreateProfileView`·`ProfileDetailView` | TODO (맥미니 확인 먼저) |
 | T-218 | (선택) Bridge `/profiles` 에 `multiplex`·`base_path` 를 함께 돌려주고, 멀티플렉스면 옛 `port`·`api_enabled` 를 쓰지 않게 표시 | `server/hermes_bridge.py`, `server/README.md` | TODO |
+
+## Phase 31 — 채널 초대 · 멀티 유저 · 게스트 모드 (계획: PLAN Phase 31, 2026-11-17)
+
+> 진행 순서: **1단계 `Hermes-bot` P34** (별도 저장소, 진행 중) → **2단계 Android (`T-221~T-224`)** → **3단계 iOS v1.1 (`T-225~T-228`)**.
+
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| T-221 | Android — `BotApi`/`Models`/`Settings` 게스트 모드 기반: `GET /api/me`, `acceptInvite`, `author_user_id` 3분할 모델, 초대 관리 API, 채널 SSE(`api/channels/{id}/stream`) + 첨부 파일 경로(`api/channels/{id}/attachments/file`) | `android/…/{data,net}/*` | NEEDS-BUILD (11-17 testDebugUnitTest·assembleDebug·lintDebug 통과) |
+| T-222 | Android — 온보딩/설정 "초대 코드·링크로 참여" + `hermes://invite` 딥링크 + 게스트 전용 네비게이션(초대된 채널만 표시, 작업/칸반/크론/대시보드/승인/Bridge 숨김) | `android/…/ui/{AppNav,onboarding,settings}/*` | NEEDS-BUILD (11-17 testDebugUnitTest·assembleDebug·lintDebug 통과) |
+| T-223 | Android — `BotChatScreen` 타인 발화 좌측 말풍선+닉네임, 채널 SSE 실시간 반영, 오너용 채널 설정(초대 링크 발급·폐기·멤버 강퇴·`guest_bot_mode`) + 단위 테스트 | `android/…/ui/bots/*`, `test/…/*` | NEEDS-BUILD (11-17 testDebugUnitTest·assembleDebug·lintDebug 통과) |
+| T-224 | Android — 빌드(`testDebugUnitTest :assembleDebug :lintDebug`) 및 외부 도메인 게스트 실기기 검증 | `android/` | DOING(claude, 11-17) — 로컬 `./gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug` 통과, 외부 도메인 게스트 실기기 검증 대기 |
+| T-225 | iOS — `BotModels`/`BotClient`/`AppDefaults` 게스트 모드 기반: `/api/me`, `acceptInvite`, `authorUserId` 3분할, 초대 관리 API, 채널 SSE + 게스트 첨부 이미지 로더 | `HermesChat/{Models,Services}/*` | NEEDS-BUILD (11-17 Simulator 빌드·HermesChatTests 40건 통과) |
+| T-226 | iOS — `OnboardingView`/`SettingsView`/`HermesChatApp` 초대 참여 + `hermes://invite` 딥링크 + 게스트 탭 분기(보드/세션/칸반/승인 숨김) | `HermesChat/HermesChatApp.swift`, `Views/*` | NEEDS-BUILD (11-17 Simulator 빌드·HermesChatTests 40건 통과) |
+| T-227 | iOS — `BotChatView`/`BotChatViewModel` 타인 말풍선+닉네임·실시간 채널 SSE·오너 초대/멤버/강퇴 시트 + 다국어(ko/en/zh-Hans) 갱신 | `HermesChat/{ViewModels,Views,Resources}/*` | NEEDS-BUILD (11-17 Simulator 빌드·HermesChatTests 40건 통과) |
+| T-228 | iOS — 시뮬레이터 빌드/테스트 + 실기기 검증 + 버전업(`1.0`→`1.1`, 빌드 번호 증가 `3`→`4`) 후 App Store 심사·재배포 | `HermesChat/Resources/Info.plist`, `HermesChatTests/ChatRecoveryTests.swift` | DOING(claude, 11-17) — Info.plist 1.1(4) + Simulator 빌드·단위테스트 40건 통과, 실기기 검증·App Store 제출 대기 |
 
 ## Phase A — 앱스토어 상품화 Phase 0: 컴플라이언스 + 다국어 기반
 
@@ -586,3 +603,5 @@
 | 11-16 | claude/hermes-chat-improvements-wc6g8f @ a0acc65 | ANDROID BUILD SUCCESSFUL | T-205 `./gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug` 통과, 단위 테스트 107개. 실기기 미검증 |
 | 11-16 | claude/hermes-chat-improvements-wc6g8f @ 59e1b37 | ANDROID BUILD SUCCESSFUL | T-215 `./gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug` 통과, 단위 테스트 114개. 실기기 미검증 |
 | 11-17 | claude/t204-bridge-dotdirs (main 909ef69 + T-204) | ANDROID BUILD SUCCESSFUL | default 맥미니 — `JAVA_HOME=openjdk@17 ./gradlew :app:testDebugUnitTest :app:assembleDebug --rerun-tasks` 통과, 단위 테스트 114개(실패 0). APK sha256 e084d565…5f0f, 18888 배포본과 해시 일치. 실기기 미검증(adb 미연결) |
+| 11-17 | claude/docs-multiplex-sync (T-219, T-220) | ANDROID + iOS BUILD SUCCEEDED | Android `:app:testDebugUnitTest :app:assembleDebug :app:lintDebug` 통과(단위 테스트 115개, 실패 0) + iOS Simulator(`generic/platform=iOS Simulator`) 빌드 통과. 실기기 미검증. 서버(Hermes-bot P33 `claude/p33-context-continuity`) pytest 283 passed |
+| 11-17 | claude/phase31-channel-invites (T-221~T-228) | ANDROID + iOS BUILD & TEST SUCCEEDED | Phase 31 채널 초대·게스트 모드. 서버(`Hermes-bot-p31` `claude/p34-channel-invites` @ `e78c77a`) pytest 289 passed + Android `:app:testDebugUnitTest :app:assembleDebug :app:lintDebug` 통과 + iOS Simulator 빌드 및 `HermesChatTests`(iPhone 17, 40 tests: ChannelInviteTests 6 + ChatRecoveryTests 14 + SSEParserTests 20, failures 0) 통과. 실기기 검증 및 LaunchAgent 재기동(`ai.hermes.bot`)·App Store v1.1(4) 심사 제출 대기 |

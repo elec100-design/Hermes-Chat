@@ -32,6 +32,9 @@ class AndroidSettingsStore(context: Context) : SettingsStore {
         apiKey = secure.getString("apiKey", "") ?: "",
         bridgeToken = secure.getString("bridgeToken", "") ?: "",
         botToken = secure.getString("botToken", "") ?: "",
+        botRole = plain.getString("botRole", "owner") ?: "owner",
+        botUserId = plain.getInt("botUserId", 0),
+        botDisplayName = plain.getString("botDisplayName", "") ?: "",
         onboardingComplete = plain.getBoolean("onboardingComplete", false),
         demoMode = plain.getBoolean("demoMode", false),
         notificationsEnabled = plain.getBoolean("notificationsEnabled", true),
@@ -46,6 +49,9 @@ class AndroidSettingsStore(context: Context) : SettingsStore {
             .putString("selectedProfile", settings.selectedProfile)
             .putString("bridgeUrl", settings.bridgeUrl)
             .putString("botHost", settings.botHost)
+            .putString("botRole", settings.botRole)
+            .putInt("botUserId", settings.botUserId)
+            .putString("botDisplayName", settings.botDisplayName)
             .putBoolean("onboardingComplete", settings.onboardingComplete)
             .putBoolean("demoMode", settings.demoMode)
             .putBoolean("notificationsEnabled", settings.notificationsEnabled)

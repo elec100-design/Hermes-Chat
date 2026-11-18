@@ -95,16 +95,19 @@ fun MoreScreen(
                             StatusPill(
                                 text = when {
                                     settings.demoMode -> "데모 모드"
+                                    settings.isGuestMode -> "게스트"
                                     settings.botConfigured -> "설정됨"
                                     else -> "미설정"
                                 },
                                 containerColor = when {
                                     settings.demoMode -> MaterialTheme.colorScheme.primaryContainer
+                                    settings.isGuestMode -> MaterialTheme.colorScheme.secondaryContainer
                                     settings.botConfigured -> hc.online.copy(alpha = 0.14f)
                                     else -> hc.warningContainer
                                 },
                                 contentColor = when {
                                     settings.demoMode -> MaterialTheme.colorScheme.primary
+                                    settings.isGuestMode -> MaterialTheme.colorScheme.onSecondaryContainer
                                     settings.botConfigured -> hc.online
                                     else -> hc.onWarningContainer
                                 },
@@ -113,6 +116,7 @@ fun MoreScreen(
                         Text(
                             text = when {
                                 settings.demoMode -> "샘플 데이터로 동작 중입니다"
+                                settings.isGuestMode -> "${settings.botDisplayName.ifBlank { "게스트" }} · ${settings.botBaseUrl ?: ""}"
                                 settings.botBaseUrl != null -> settings.botBaseUrl!!
                                 else -> "탭해서 서버 주소와 토큰을 설정하세요"
                             },
@@ -143,23 +147,25 @@ fun MoreScreen(
                 icon = Icons.Rounded.Settings,
                 tint = MaterialTheme.colorScheme.primary,
                 title = "설정",
-                subtitle = "서버 연결, 토큰, 게이트웨이 프로필",
+                subtitle = if (settings.isGuestMode) "게스트 계정, 연결 정보, 로그아웃" else "서버 연결, 토큰, 게이트웨이 프로필",
                 onClick = onOpenSettings,
             )
-            MoreActionCard(
-                icon = Icons.Rounded.DataUsage,
-                tint = Color(0xFF4F86A8),
-                title = "사용량",
-                subtitle = "Claude · Grok 등 에이전트 계정별 한도와 재설정 시각",
-                onClick = onOpenUsage,
-            )
-            MoreActionCard(
-                icon = Icons.Rounded.Visibility,
-                tint = Color(0xFF4C8C5F),
-                title = "메타 글라스 · Live",
-                subtitle = if (settings.demoMode) "데모 모드에서는 사용할 수 없습니다" else "글라스 연결, 시야 사진 방식, 촬영 크기",
-                onClick = onOpenGlasses.takeIf { !settings.demoMode },
-            )
+            if (!settings.isGuestMode) {
+                MoreActionCard(
+                    icon = Icons.Rounded.DataUsage,
+                    tint = Color(0xFF4F86A8),
+                    title = "사용량",
+                    subtitle = "Claude · Grok 등 에이전트 계정별 한도와 재설정 시각",
+                    onClick = onOpenUsage,
+                )
+                MoreActionCard(
+                    icon = Icons.Rounded.Visibility,
+                    tint = Color(0xFF4C8C5F),
+                    title = "메타 글라스 · Live",
+                    subtitle = if (settings.demoMode) "데모 모드에서는 사용할 수 없습니다" else "글라스 연결, 시야 사진 방식, 촬영 크기",
+                    onClick = onOpenGlasses.takeIf { !settings.demoMode },
+                )
+            }
 
         }
     }

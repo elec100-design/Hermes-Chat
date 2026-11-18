@@ -4,16 +4,18 @@
 
 ## 현재 대기 (2026-11-17)
 
-### 1. Android (`android/`) — 로컬 빌드·단위 테스트 114건 통과, 실기기 검증 대기
-- **T-200~T-202 (Phase 28, 채널·워크스페이스 토론)**: 토론 버튼·시작 시트·진행 줄·꼬리표. 맥미니 Hermes-bot P32 배포 후 `TASKS.md` Phase 28 체크리스트 검증 필요.
+### 1. Android (`android/`) — 로컬 빌드·단위 테스트 115건·lintDebug 통과, 실기기 검증 대기
+- **T-219 (P33 맥락 유지 연동)**: 봇 채팅 상단 "새 대화 (맥락 초기화)" + 토론 결론 `"이 결론으로 이어서 요청"` 버튼.
+- **T-200~T-202 (Phase 28, 채널·워크스페이스 토론)**: 토론 버튼·시작 시트·진행 줄·꼬리표. 맥미니 Hermes-bot P32/P33 배포 후 `TASKS.md` Phase 28 체크리스트 검증 필요.
 - **T-205~T-209, T-215**: 멘션 수신 봇 선택(T-205), 칸반 첫 화면·빈 열 접기(T-206), Git 경로/상태 구분(T-207), 크론 카드 접기(T-208), `@이름` 칩 커서 위치(T-209), Live 버튼 글자·글라스 한국어 오류(T-215).
 - **T-187~T-189, T-191~T-196**: Meta Wearables DAT SDK 직접 촬영 Live, 채팅 첨부 이미지 뷰어, Live 채팅 통합, 작업 폴더 선택, Claude 앱 풍 디자인 개편, 5→6탭 재구성 및 승인 헤더 버튼화.
-- 최신 로컬 빌드: `11-17 | claude/t204-bridge-dotdirs (main 909ef69 + T-204) | ANDROID BUILD SUCCESSFUL` (단위 테스트 114건 통과, `app-debug.apk` sha256 `e084d565…5f0f`).
+- 최신 로컬 빌드: `11-17 | claude/docs-multiplex-sync (T-219)` (`:app:testDebugUnitTest :app:assembleDebug :app:lintDebug` 통과, 단위 테스트 115건).
 
 ### 2. Hermes Bridge (`server/hermes_bridge.py`)
 - **T-204**: `PROFILES_DIR.iterdir()`에서 `.`으로 시작하는 디렉터리(`.deleted`) 제외. Bridge 재배포 및 `/profiles` 응답 확인 완료 — 크론 칩 실기기 확인 대기.
 
 ### 3. iOS (`HermesChat/`) — Xcode 빌드 / 실기기 검증 대기
+- **T-220 (P33 맥락 유지 연동)**: 봇 채팅 툴바 "새 대화 시작"(`resetChannelContext`), `11-17` iOS Simulator 빌드 통과(실기기 검증 대기).
 - **Phase 22~24-B (T-149~T-157, T-167~T-168)**: `11-13` iOS Simulator 빌드 및 `HermesChatTests` 34건 통과(`e0b8819`) — 실기기 체크리스트 확인 대기.
 - **Phase 15~21**: 핸즈프리 음성(T-117~124), 메타 글라스 사진(T-125~130), Siri·위젯·글라스 탭(T-131~137, 위젯 타깃은 Xcode GUI 수동 생성 필요), 크론 중앙 관리(T-138, T-146), 프로필 생성/삭제/카탈로그(T-139~145), 세션 핀/이름변경(T-147), 대시보드 핀치 줌(T-148) — `NEEDS-BUILD`.
 - **Phase A / C / Hotfix**: T-A07~A08, T-C01~C05(런타임 검증 대기), T-REV01(Demo Mode), T-158~T-159(Bridge 토큰/업로드 타임아웃) — `NEEDS-BUILD`.

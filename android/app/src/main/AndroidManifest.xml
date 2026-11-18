@@ -47,12 +47,13 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- Meta AI 앱 등록·권한 요청 후 돌아오는 콜백 -->
+            <!-- Meta AI 앱 등록·권한 요청 후 돌아오는 콜백 + 채널 초대 딥링크 -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="hermeschat" />
+                <data android:scheme="hermes" />
             </intent-filter>
             <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
         </activity>

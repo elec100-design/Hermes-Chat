@@ -17,6 +17,10 @@ data class Settings(
     val apiKey: String = "",
     val bridgeToken: String = "",
     val botToken: String = "",
+    /** "owner" | "guest" (초대 코드로 참여한 채널 게스트). */
+    val botRole: String = "owner",
+    val botUserId: Int = 0,
+    val botDisplayName: String = "",
     val onboardingComplete: Boolean = false,
     /** 심사/체험용 데모 모드 — 네트워크 없이 [DemoData] 사용. */
     val demoMode: Boolean = false,
@@ -50,6 +54,7 @@ data class Settings(
         }
 
     val botConfigured: Boolean get() = demoMode || botHost.isNotBlank()
+    val isGuestMode: Boolean get() = !demoMode && botRole == "guest"
 
     companion object {
         const val DASHBOARD_PORT = 8000

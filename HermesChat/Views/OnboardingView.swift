@@ -9,6 +9,7 @@ struct OnboardingView: View {
     @State private var testResult: TestResult? = nil
     @State private var isTesting = false
     @State private var goToCloudAuth = false
+    @State private var goToInviteJoin = false
 
     enum TestResult {
         case success, failure(String)
@@ -28,16 +29,33 @@ struct OnboardingView: View {
                 .animation(.easeInOut, value: step)
             }
             .navigationBarHidden(true)
-        .navigationDestination(isPresented: $goToCloudAuth) {
-            AuthView(appSettings: appSettings)
-                .toolbar {
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button("onboarding.done.start") {
-                            appSettings.isFirstLaunchComplete = true
+            .navigationDestination(isPresented: $goToCloudAuth) {
+                AuthView(appSettings: appSettings)
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            Button("onboarding.done.start") {
+                                appSettings.isFirstLaunchComplete = true
+                            }
                         }
                     }
+            }
+            .navigationDestination(isPresented: $goToInviteJoin) {
+                InviteJoinView(appSettings: appSettings, onCancel: {
+                    appSettings.pendingInviteURL = nil
+                    appSettings.pendingInviteCode = nil
+                    goToInviteJoin = false
+                })
+            }
+            .onAppear {
+                if appSettings.pendingInviteCode != nil {
+                    goToInviteJoin = true
                 }
-        }
+            }
+            .onChange(of: appSettings.pendingInviteCode) { _, code in
+                if code != nil {
+                    goToInviteJoin = true
+                }
+            }
         }
     }
 
@@ -99,6 +117,15 @@ struct OnboardingView: View {
                         appSettings.connectionMode = .cloud
                         goToCloudAuth = true
                     }
+                }
+
+                connectionOptionButton(
+                    icon: "person.badge.plus",
+                    titleKey: "onboarding.welcome.invite",
+                    descKey: "onboarding.welcome.invite.desc",
+                    isEnabled: true
+                ) {
+                    goToInviteJoin = true
                 }
 
                 connectionOptionButton(
@@ -368,5 +395,114 @@ struct OnboardingView: View {
         let host = hostInput.trimmingCharacters(in: .whitespaces)
         if !host.isEmpty { appSettings.serverHost = host }
         if !apiKeyInput.isEmpty { appSettings.apiKey = apiKeyInput }
+    }
+}
+
+/// 초대 링크/코드로 채널에 게스트로 참여하는 공용 화면 (온보딩 및 설정 시트 겸용)
+struct InviteJoinView: View {
+    @ObservedObject var appSettings: AppSettings
+    var onCancel: (() -> Void)? = nil
+
+    @State private var linkOrURL = ""
+    @State private var inviteCode = ""
+    @State private var displayName = ""
+    @State private var isJoining = false
+    @State private var errorMessage: String? = nil
+
+    var body: some View {
+        Form {
+            Section {
+                TextField("invite.join.url.placeholder", text: $linkOrURL)
+                    .textContentType(.URL)
+                    .keyboardType(.URL)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                TextField("invite.join.code.placeholder", text: $inviteCode)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                TextField("invite.join.name.placeholder", text: $displayName)
+            } header: {
+                Text("invite.join.title")
+            } footer: {
+                Text("invite.join.desc")
+            }
+
+            if let errorMessage {
+                Section {
+                    Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.red)
+                        .font(.footnote)
+                }
+            }
+
+            Section {
+                Button {
+                    Task { await join() }
+                } label: {
+                    HStack {
+                        Spacer()
+                        if isJoining {
+                            ProgressView()
+                        } else {
+                            Text("invite.join.submit").bold()
+                        }
+                        Spacer()
+                    }
+                }
+                .disabled(isJoining || !canSubmit)
+            }
+        }
+        .navigationTitle("invite.join.title")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if let onCancel {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("common.cancel", action: onCancel)
+                }
+            }
+        }
+        .onAppear { prefillFromPending() }
+        .onChange(of: appSettings.pendingInviteCode) { _, _ in prefillFromPending() }
+    }
+
+    private var canSubmit: Bool {
+        let name = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return false }
+        return InviteInputParser.parse(urlOrLink: linkOrURL, code: inviteCode) != nil
+    }
+
+    private func prefillFromPending() {
+        if let url = appSettings.pendingInviteURL, !url.isEmpty, linkOrURL.isEmpty {
+            linkOrURL = url
+        }
+        if let code = appSettings.pendingInviteCode, !code.isEmpty, inviteCode.isEmpty {
+            inviteCode = code
+        }
+        if displayName.isEmpty && !appSettings.botDisplayName.isEmpty {
+            displayName = appSettings.botDisplayName
+        }
+    }
+
+    private func join() async {
+        guard let (serverURL, code) = InviteInputParser.parse(urlOrLink: linkOrURL, code: inviteCode) else {
+            errorMessage = NSLocalizedString("invite.join.invalid", comment: "")
+            return
+        }
+        guard let url = URL(string: serverURL) else {
+            errorMessage = NSLocalizedString("invite.join.invalid", comment: "")
+            return
+        }
+        isJoining = true
+        errorMessage = nil
+        defer { isJoining = false }
+
+        do {
+            let client = BotClient(baseURL: url, token: "")
+            let res = try await client.acceptInvite(code: code, displayName: displayName)
+            appSettings.enterGuestSession(serverURL: serverURL, result: res)
+            onCancel?()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 }

@@ -8,7 +8,7 @@ Jetpack Compose 클라이언트 (봇 중심). 맥미니 hermes-agent 게이트�
 - **6탭 구성** — 대화 · 작업(워크스페이스) · 칸반 · 크론 · 대시보드 · 더보기 (Galaxy Z Fold 커버/펼침 적응형 레이아웃)
 - **대화 & Live** — DM/채널 채팅, GFM 마크다운 표, 첨부 사진 원본/뷰어, Meta Wearables DAT SDK 직접 촬영 기반 핸즈프리 Live (`T-187~195`)
 - **워크스페이스 & Git** — 작업 폴더별 다중 작업 채팅, `GET /git/status` · `POST /git/<commit|pull|push|pr|merge|deploy>` 팝업
-- **사용량 & 채널 토론** — `paseo usage` 기반 에이전트 계정별 사용량 팝업(`GET /usage`), 다중 봇 채널 토론 시트/진행 줄 (`Phase 28`)
+- **사용량 & 채널 토론** — `paseo usage` 기반 에이전트 계정별 사용량 팝업(`GET /usage`), 다중 봇 채널 토론 시트/진행 줄 (`Phase 28`), 토론 결론 이어서 요청 및 새 대화 맥락 초기화 (`T-219`)
 - **알림** — WorkManager 15분 주기 + 포그라운드 30초 폴링 (봇 답장·승인 요청)
 
 ## 요구사항
